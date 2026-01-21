@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""
+Preprocess December 2025 Twitter dump:
+- extract tweet text only
+- lowercase
+- remove punctuation
+- replace URLs with <URL>
+- replace @mentions with @user
+
+Input:  dataset/twitter/twitter/2025-12-*/tweets_*.json
+Output: stdout (one cleaned line per tweet) or redirect to a file.
+"""
+
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Dict, List, Set
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DATA_ROOT = REPO_ROOT / "dataset/twitter/twitter"
+MONTH_PREFIX = "2025-12"
+OUTPUT_PATH = REPO_ROOT / "tweet_processing/tweet_December.txt"
+JACCARD_THRESHOLD = 0.8
+
+# URL regex covers http(s) and bare x.com/twitter.com short links.
+URL_PATTERN = re.compile(
+    r"(https?://\S+|x\.com/\S+|twitter\.com/\S+)",
+    flags=re.IGNORECASE,
+)
+# @mentions that start at word boundary.
+MENTION_PATTERN = re.compile(r"(?<!\w)@\w+")
+# Punctuation (keep @ so we can replace mentions first; keep <> for placeholders).
+PUNCT_PATTERN = re.compile(r"[!\"#$%&'()*+,\-./:;=?\[\\\]^_`{|}~]")
+
+
+def clean_text(text: str) -> str:
+    text = text.lower()
+    text = URL_PATTERN.sub("<URL>", text)
+    text = MENTION_PATTERN.sub("@user", text)
+    text = PUNCT_PATTERN.sub(" ", text)
+    text = re.sub(r"\d+", "<num>", text)
+    # Collapse multiple adjacent <num> placeholders into one.
+    text = re.sub(r"(?:<num>\s*){2,}", "<num> ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def iter_tweets():
+    for day_dir in sorted(DATA_ROOT.glob(f"{MONTH_PREFIX}-*")):
+        for json_file in sorted(day_dir.glob("tweets_*.json")):
+            with json_file.open("r", encoding="utf-8") as f:
+                payload = json.load(f)
+            items = payload.get("tweet") or payload.get("messages") or []
+            for item in items:
+                text = item.get("text", "")
+                if not text:
+                    continue
+                yield clean_text(text)
+
+
+def bucket_for_length(length: int):
+    if length < 20:
+        return None
+    if length <= 25:
+        return (20, 25)
+    start = 26 + ((length - 26) // 5) * 5
+    return (start, start + 4)
+
+
+def jaccard(a: Set[str], b: Set[str]) -> float:
+    if not a and not b:
+        return 1.0
+    intersection = len(a & b)
+    union = len(a | b)
+    return intersection / union if union else 0.0
+
+
+def main():
+    if not DATA_ROOT.exists():
+        sys.stderr.write(f"DATA_ROOT not found: {DATA_ROOT}\n")
+        return
+    # For each bucket, store list of dicts with token set and duplication flag.
+    buckets: Dict[tuple, List[Dict[str, object]]] = {}
+    records: List[Dict[str, object]] = []
+
+    for text in iter_tweets():
+        tokens = text.split()
+        token_count = len(tokens)
+        bucket = bucket_for_length(token_count)
+        record = {"text": text, "bucket": bucket, "tokens": set(tokens), "dup": 0}
+
+        if bucket is not None:
+            seen = buckets.setdefault(bucket, [])
+            for prev in seen:
+                if jaccard(record["tokens"], prev["tokens"]) >= JACCARD_THRESHOLD:
+                    record["dup"] = 1
+                    prev["dup"] = 1  # mark the earlier one as duplicate too
+            seen.append(record)
+
+        records.append(record)
+
+    with OUTPUT_PATH.open("w", encoding="utf-8") as out:
+        for rec in records:
+            out.write(f"{rec['dup']}\t{rec['text']}\n")
+
+
+if __name__ == "__main__":
+    main()
