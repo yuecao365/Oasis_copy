@@ -40,7 +40,6 @@ def clean_text(text: str) -> str:
     text = MENTION_PATTERN.sub("@user", text)
     text = PUNCT_PATTERN.sub(" ", text)
     text = re.sub(r"\d+", "<num>", text)
-    # Collapse multiple adjacent <num> placeholders into one.
     text = re.sub(r"(?:<num>\s*){2,}", "<num> ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
@@ -93,6 +92,8 @@ def main():
         if bucket is not None:
             seen = buckets.setdefault(bucket, [])
             for prev in seen:
+                if prev["dup"] == 1:
+                    continue
                 if jaccard(record["tokens"], prev["tokens"]) >= JACCARD_THRESHOLD:
                     record["dup"] = 1
                     prev["dup"] = 1  # mark the earlier one as duplicate too
