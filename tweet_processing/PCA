@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""
+Compute PCA weights for engagement metrics (likes, retweets, replies, quotes, views)
+using non-duplicate tweets from tweet_December.txt with log(1 + count) transform.
+
+Output: prints normalized weights of the first principal component.
+"""
+
+import csv
+import json
+import math
+from pathlib import Path
+from typing import Dict, List
+
+import numpy as np
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DATA_FILE = REPO_ROOT / "tweet_processing" / "tweet_Nov+Dec.txt"
+METRIC_COLS = ["likes", "retweets", "replies", "quotes", "impressions"]
+STATS_FILE = REPO_ROOT / "tweet_processing" / "pca_stats.json"
+
+
+def load_metrics() -> np.ndarray:
+    rows: List[List[float]] = []
+    with DATA_FILE.open() as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("dup") != "0":
+                continue
+            metrics = [math.log1p(float(row[col])) for col in METRIC_COLS]
+            rows.append(metrics)
+    if not rows:
+        raise SystemExit("No non-duplicate rows found.")
+    return np.array(rows, dtype=float)
+
+
+def zscore(matrix: np.ndarray) -> np.ndarray:
+    means = matrix.mean(axis=0)
+    stds = matrix.std(axis=0, ddof=1)
+    stds = np.where(stds == 0, 1, stds)  # avoid divide by zero
+    return (matrix - means) / stds, means, stds
+
+
+def first_pc_weights(matrix: np.ndarray):
+    z, means, stds = zscore(matrix)
+    cov = np.cov(z, rowvar=False)
+    eigenvals, eigenvecs = np.linalg.eigh(cov)
+    idx = eigenvals.argsort()[::-1]
+    top_vec = eigenvecs[:, idx[0]]
+    # Normalize to sum of absolute values = 1 for easy interpretation.
+    norm = np.sum(np.abs(top_vec))
+    weights = top_vec / norm if norm != 0 else top_vec
+    return dict(zip(METRIC_COLS, weights)), means, stds
+
+
+def main():
+    matrix = load_metrics()
+    weights, means, stds = first_pc_weights(matrix)
+    # Flip sign so that the aggregate contribution is non-negative.
+    sign = 1.0 if sum(weights.values()) >= 0 else -1.0
+    print("First principal component weights (abs-normalized):")
+    for col in METRIC_COLS:
+        print(f"{col}: {sign * weights[col]:.6f}")
+    stats = {
+        "weights": {k: sign * v for k, v in weights.items()},
+        "means": {k: float(m) for k, m in zip(METRIC_COLS, means)},
+        "stds": {k: float(s) for k, s in zip(METRIC_COLS, stds)},
+    }
+    STATS_FILE.write_text(json.dumps(stats, indent=2))
+    print(f"Saved stats to {STATS_FILE}")
+
+
+if __name__ == "__main__":
+    main()

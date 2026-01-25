@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
 """
-Preprocess December 2025 Twitter dump:
+Preprocess November–December+November 2025 Twitter dump:
 - extract tweet text only
 - lowercase
 - remove punctuation
 - replace URLs with <URL>
 - replace @mentions with @user
 
-Input:  dataset/twitter/twitter/2025-12-*/tweets_*.json
+Input:  dataset/twitter/twitter/2025-11-*/tweets_*.json and 2025-12-*/tweets_*.json
 Output: stdout (one cleaned line per tweet) or redirect to a file.
 """
 
+import csv
 import json
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, Iterable, List, Optional, Set
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_ROOT = REPO_ROOT / "dataset/twitter/twitter"
 MONTH_PREFIX = "2025-12"
-OUTPUT_PATH = REPO_ROOT / "tweet_processing/tweet_December.txt"
+OUTPUT_PATH = REPO_ROOT / "tweet_processing/tweet_Nov+Dec.txt"
 JACCARD_THRESHOLD = 0.8
 
 # URL regex covers http(s) and bare x.com/twitter.com short links.
@@ -45,17 +46,87 @@ def clean_text(text: str) -> str:
     return text
 
 
-def iter_tweets():
-    for day_dir in sorted(DATA_ROOT.glob(f"{MONTH_PREFIX}-*")):
-        for json_file in sorted(day_dir.glob("tweets_*.json")):
-            with json_file.open("r", encoding="utf-8") as f:
-                payload = json.load(f)
-            items = payload.get("tweet") or payload.get("messages") or []
-            for item in items:
-                text = item.get("text", "")
-                if not text:
-                    continue
-                yield clean_text(text)
+def is_reply_flag(item: Dict[str, object]) -> bool:
+    """
+    Normalizes reply flag across formats.
+    - tweet_collection: isReply, inReplyToId, inReplyToUserId indicate replies.
+    - generic_messages (v1.1): reply_to field points to parent tweet id.
+    """
+    if item.get("reply_to"):
+        return True
+
+    # The dataset sometimes spells it isReplay; treat it the same.
+    reply = item.get("isReply") or item.get("isReplay")
+    reply = bool(reply)
+    if not reply:
+        # Fallback to presence of reply relationship fields.
+        reply = item.get("inReplyToId") is not None or item.get("inReplyToUserId") is not None
+    return bool(reply)
+
+
+def normalize_item(item: Dict[str, object]) -> Optional[Dict[str, object]]:
+    """
+    Returns a normalized record with cleaned text and metrics, or None if no text.
+    Supports both `tweet_collection` (likeCount, retweetCount...) and
+    `generic_messages` (engagement.likes...).
+    """
+    text = item.get("text", "")
+    if not text:
+        return None
+
+    engagement = item.get("engagement") or {}
+    likes = item.get("likeCount") or engagement.get("likes") or 0
+    retweets = item.get("retweetCount") or engagement.get("retweets") or 0
+    replies = item.get("replyCount") or engagement.get("replies") or 0
+    quotes = item.get("quoteCount") or engagement.get("quotes") or 0
+    views = item.get("viewCount") or engagement.get("impressions") or 0
+
+    author = item.get("author") or {}
+    extra_data = item.get("extra_data") or {}
+    user_name = author.get("userName") or extra_data.get("user_name") or ""
+    user_id = author.get("id") or item.get("user_id") or ""
+    reply_to_user = (extra_data.get("reply_to_text") or "").lstrip("@") or (
+        item.get("reply_to_text") or ""
+    ).lstrip("@")
+
+    return {
+        "id": item.get("id") or "",
+        "topic_id": item.get("topic_id") or "",
+        "reply_to_id": item.get("reply_to")
+        or item.get("inReplyToId")
+        or item.get("in_reply_to_status_id")
+        or "",
+        "reply_to_user": reply_to_user,
+        "text": clean_text(text),
+        "likes": likes,
+        "retweets": retweets,
+        "replies": replies,
+        "quotes": quotes,
+        "impressions": views,
+        "user_name": user_name,
+        "user_id": user_id,
+        "is_root": not is_reply_flag(item),
+    }
+
+
+def iter_tweets() -> Iterable[Dict[str, object]]:
+    for month_prefix in ("2025-11", "2025-12"):
+        for day_dir in sorted(DATA_ROOT.glob(f"{month_prefix}-*")):
+            for json_file in sorted(day_dir.glob("tweets_*.json")):
+                with json_file.open("r", encoding="utf-8") as f:
+                    payload = json.load(f)
+                items = (
+                    payload.get("tweet")  # legacy single tweet
+                    or payload.get("tweets")  # tweet_collection format
+                    or payload.get("messages")  # generic_messages format
+                    or []
+                )
+                if isinstance(items, dict):
+                    items = [items]
+                for item in items:
+                    record = normalize_item(item)
+                    if record is not None:
+                        yield record
 
 
 def bucket_for_length(length: int):
@@ -83,11 +154,12 @@ def main():
     buckets: Dict[tuple, List[Dict[str, object]]] = {}
     records: List[Dict[str, object]] = []
 
-    for text in iter_tweets():
+    for record in iter_tweets():
+        text = record["text"]
         tokens = text.split()
         token_count = len(tokens)
         bucket = bucket_for_length(token_count)
-        record = {"text": text, "bucket": bucket, "tokens": set(tokens), "dup": 0}
+        record.update({"bucket": bucket, "tokens": set(tokens), "dup": 0})
 
         if bucket is not None:
             seen = buckets.setdefault(bucket, [])
@@ -101,9 +173,45 @@ def main():
 
         records.append(record)
 
-    with OUTPUT_PATH.open("w", encoding="utf-8") as out:
+    with OUTPUT_PATH.open("w", encoding="utf-8", newline="") as out:
+        writer = csv.writer(out)
+        writer.writerow(
+            [
+                "dup",
+                "id",
+                "topic_id",
+                "reply_to_id",
+                "reply_to_user",
+                "likes",
+                "retweets",
+                "replies",
+                "quotes",
+                "impressions",
+                "user_name",
+                "user_id",
+                "is_root",
+                "text",
+            ]
+        )
         for rec in records:
-            out.write(f"{rec['dup']}\t{rec['text']}\n")
+            writer.writerow(
+                [
+                    rec["dup"],
+                    rec["id"],
+                    rec["topic_id"],
+                    rec["reply_to_id"],
+                    rec["reply_to_user"],
+                    rec["likes"],
+                    rec["retweets"],
+                    rec["replies"],
+                    rec["quotes"],
+                    rec["impressions"],
+                    rec["user_name"],
+                    rec["user_id"],
+                    1 if rec["is_root"] else 0,
+                    rec["text"],
+                ]
+            )
 
 
 if __name__ == "__main__":
