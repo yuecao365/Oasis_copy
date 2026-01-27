@@ -1,0 +1,2273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Rankings & Personas Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .section {
+            margin-bottom: 50px;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+        
+        .category-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .category-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+            flex: 1;
+        }
+        
+        .user-count-badge {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .user-list {
+            list-style: none;
+        }
+        
+        .user-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .user-info {
+            flex: 1;
+        }
+        
+        .user-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .user-stats {
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        .tweet-count {
+            background: #764ba2;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .persona-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        
+        .persona-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .persona-card:hover {
+            transform: scale(1.02);
+        }
+        
+        .persona-header {
+            margin-bottom: 15px;
+        }
+        
+        .persona-name {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .persona-username {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .persona-category {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        
+        .persona-bio {
+            font-style: italic;
+            color: #555;
+            margin: 15px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .persona-details {
+            margin-top: 15px;
+        }
+        
+        .detail-item {
+            margin: 8px 0;
+            font-size: 0.9em;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .sample-tweet {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #555;
+            border-left: 3px solid #667eea;
+        }
+        
+        .top-categories-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .category-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .category-item-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .category-item-count {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 User Rankings & Personas Dashboard</h1>
+        <p class="subtitle">Analysis of Top Users by Category and Generated Personas</p>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">6</div>
+                <div class="stat-label">Categories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">53</div>
+                <div class="stat-label">Personas Generated</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">60</div>
+                <div class="stat-label">Users Ranked</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">10</div>
+                <div class="stat-label">Avg Users/Category</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">🏆 Top Categories by User Count</h2>
+            <div class="top-categories-list">
+
+                <div class="category-item">
+                    <div class="category-item-name">Giveaway and Community Rewards</div>
+                    <div class="category-item-count">10 users</div>
+                </div>
+
+                <div class="category-item">
+                    <div class="category-item-name">Sustainable Eating Rewards</div>
+                    <div class="category-item-count">10 users</div>
+                </div>
+
+                <div class="category-item">
+                    <div class="category-item-name">VeChain Ecosystem Developments</div>
+                    <div class="category-item-count">10 users</div>
+                </div>
+
+                <div class="category-item">
+                    <div class="category-item-name">VeChain Blockchain Developments</div>
+                    <div class="category-item-count">10 users</div>
+                </div>
+
+                <div class="category-item">
+                    <div class="category-item-name">Community Engagement and Updates</div>
+                    <div class="category-item-count">10 users</div>
+                </div>
+
+                <div class="category-item">
+                    <div class="category-item-name">VTHO Price Movement</div>
+                    <div class="category-item-count">10 users</div>
+                </div>
+
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">👥 Top Users by Category</h2>
+            <div class="category-grid">
+
+                <div class="category-card">
+                    <div class="category-header">
+                        <div class="category-name">Giveaway and Community Rewards</div>
+                        <div class="user-count-badge">10 users</div>
+                    </div>
+                    <ul class="user-list">
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#1 @koyapeey</div>
+                                <div class="user-stats">📊 41 tweets</div>
+                                <div class="sample-tweet">"what s great is the lovely weather ☀️ 🚀 just earned b<num>tr with @user by sipping sustainably 🌿☕️ s..."</div>
+                            </div>
+                            <div class="tweet-count">41</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#2 @Dec3pt1Kon13</div>
+                                <div class="user-stats">📊 31 tweets</div>
+                                <div class="sample-tweet">"rolling into nov<num>mb<num>r like a boss 🛹💥 recycled tee poppin vechain bucket hat nfc chipped sust..."</div>
+                            </div>
+                            <div class="tweet-count">31</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#3 @Vecosystem_t</div>
+                                <div class="user-stats">📊 30 tweets</div>
+                                <div class="sample-tweet">"make every mug count its time to earn b<num>tr with @user by sipping sustainably 🌿☕️ snap your eco m..."</div>
+                            </div>
+                            <div class="tweet-count">30</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#4 @ValuableTX</div>
+                                <div class="user-stats">📊 29 tweets</div>
+                                <div class="sample-tweet">"i am <num> followers shy away from reaching <num> will do a giveaway when we hit <num> 🍻🤝 should it ..."</div>
+                            </div>
+                            <div class="tweet-count">29</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#5 @CrazyMistyCat</div>
+                                <div class="user-stats">📊 27 tweets</div>
+                                <div class="sample-tweet">"just reclaimed <num> hours with @user ⏳ took the pups out for a treat 🐶 cleaned the parrots amp the ..."</div>
+                            </div>
+                            <div class="tweet-count">27</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#6 @wattgase</div>
+                                <div class="user-stats">📊 21 tweets</div>
+                                <div class="sample-tweet">"<URL> vet b<num>tr 𝕍echain 𝕍ebetterdao <URL>"</div>
+                            </div>
+                            <div class="tweet-count">21</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#7 @Hacnen10</div>
+                                <div class="user-stats">📊 20 tweets</div>
+                                <div class="sample-tweet">"i started using @user on <num> sept <num> and my steps have been rising since — this week i’m averag..."</div>
+                            </div>
+                            <div class="tweet-count">20</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#8 @VechainROWS</div>
+                                <div class="user-stats">📊 19 tweets</div>
+                                <div class="sample-tweet">"when i say be active i dont mean it literally 😈 download the @user wallet and stake as little as <nu..."</div>
+                            </div>
+                            <div class="tweet-count">19</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#9 @BreakingBallz1</div>
+                                <div class="user-stats">📊 17 tweets</div>
+                                <div class="sample-tweet">"starting my day with @user on a run so i can get the very sought after @user <num>k step club card t..."</div>
+                            </div>
+                            <div class="tweet-count">17</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#10 @GabrielMar79084</div>
+                                <div class="user-stats">📊 16 tweets</div>
+                                <div class="sample-tweet">"gm vefam let’s make good sustainable choices today and earn b<num>tr while doing it download the vew..."</div>
+                            </div>
+                            <div class="tweet-count">16</div>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-header">
+                        <div class="category-name">Sustainable Eating Rewards</div>
+                        <div class="user-count-badge">10 users</div>
+                    </div>
+                    <ul class="user-list">
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#1 @MyuraPhasu73047</div>
+                                <div class="user-stats">📊 42 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">42</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#2 @kanpekolove</div>
+                                <div class="user-stats">📊 40 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">40</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#3 @Phak915</div>
+                                <div class="user-stats">📊 38 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">38</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#4 @Risky333995</div>
+                                <div class="user-stats">📊 38 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">38</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#5 @Nasichas1974</div>
+                                <div class="user-stats">📊 36 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">36</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#6 @Pat1127325</div>
+                                <div class="user-stats">📊 35 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">35</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#7 @iku_918chan</div>
+                                <div class="user-stats">📊 33 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">33</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#8 @9Charn9</div>
+                                <div class="user-stats">📊 33 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">33</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#9 @Helen290907</div>
+                                <div class="user-stats">📊 32 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">32</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#10 @BeautyFree7</div>
+                                <div class="user-stats">📊 31 tweets</div>
+                                <div class="sample-tweet">"i just earned <num> b<num>tr eating better feeling better with @user sustainability vebetterdao vech..."</div>
+                            </div>
+                            <div class="tweet-count">31</div>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-header">
+                        <div class="category-name">VeChain Ecosystem Developments</div>
+                        <div class="user-count-badge">10 users</div>
+                    </div>
+                    <ul class="user-list">
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#1 @VETlieber</div>
+                                <div class="user-stats">📊 36 tweets</div>
+                                <div class="sample-tweet">"day <num> of posting the vechain logo till it hits <num> vet <URL>"</div>
+                            </div>
+                            <div class="tweet-count">36</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#2 @CryptoGnomie</div>
+                                <div class="user-stats">📊 31 tweets</div>
+                                <div class="sample-tweet">"🚨the prophet has spoken🚨 recently activated hayabusa on testnet now testing vechain in its most powe..."</div>
+                            </div>
+                            <div class="tweet-count">31</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#3 @GoldnShamrock</div>
+                                <div class="user-stats">📊 31 tweets</div>
+                                <div class="sample-tweet">"🤳 vechain veworld enhancements look super slick 😮 🧵 check this thread for the latest vet visuals inf..."</div>
+                            </div>
+                            <div class="tweet-count">31</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#4 @ValuableTX</div>
+                                <div class="user-stats">📊 20 tweets</div>
+                                <div class="sample-tweet">"im proud of the vefam always knew your dreaming big kekw vet"</div>
+                            </div>
+                            <div class="tweet-count">20</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#5 @Thorheads</div>
+                                <div class="user-stats">📊 19 tweets</div>
+                                <div class="sample-tweet">"⚒️ <num> m mint party incoming celebrate with us — <num>x rewards on thursday <num> x <num> vtho win..."</div>
+                            </div>
+                            <div class="tweet-count">19</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#6 @sinaim33</div>
+                                <div class="user-stats">📊 19 tweets</div>
+                                <div class="sample-tweet">"just minted a <num> rarity @user 🚀 try your luck now 👉 <URL> <URL> thorhead vechain nft"</div>
+                            </div>
+                            <div class="tweet-count">19</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#7 @420_vechain</div>
+                                <div class="user-stats">📊 19 tweets</div>
+                                <div class="sample-tweet">"you can now pick as primary color one of your vechain wallet address colors go check yours at <URL> ..."</div>
+                            </div>
+                            <div class="tweet-count">19</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#8 @Chris06902330</div>
+                                <div class="user-stats">📊 17 tweets</div>
+                                <div class="sample-tweet">"vechain vet 🚀 <URL>"</div>
+                            </div>
+                            <div class="tweet-count">17</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#9 @Murtagh300</div>
+                                <div class="user-stats">📊 14 tweets</div>
+                                <div class="sample-tweet">"gn legends make sure to hover my pfp amp hit that follow button building on vechain daily <URL>"</div>
+                            </div>
+                            <div class="tweet-count">14</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#10 @ThorpeAvax</div>
+                                <div class="user-stats">📊 12 tweets</div>
+                                <div class="sample-tweet">"do you have your @user <URL> wallet ascend to a higher level of nfts @user is gamified and the vefam..."</div>
+                            </div>
+                            <div class="tweet-count">12</div>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-header">
+                        <div class="category-name">VeChain Blockchain Developments</div>
+                        <div class="user-count-badge">10 users</div>
+                    </div>
+                    <ul class="user-list">
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#1 @ValuableTX</div>
+                                <div class="user-stats">📊 101 tweets</div>
+                                <div class="sample-tweet">"vet saves you real money already while making a purchase and getting a cashback via @user vet keeps ..."</div>
+                            </div>
+                            <div class="tweet-count">101</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#2 @SplendidMite</div>
+                                <div class="user-stats">📊 35 tweets</div>
+                                <div class="sample-tweet">"vechain is building a more sustainable future by harnessing blockchain to drive real world impact th..."</div>
+                            </div>
+                            <div class="tweet-count">35</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#3 @Finora_EN</div>
+                                <div class="user-stats">📊 28 tweets</div>
+                                <div class="sample-tweet">"breaking market report vtho faces resistance at <num> in <num>h outlook the market sentiment for vth..."</div>
+                            </div>
+                            <div class="tweet-count">28</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#4 @vechainofficial</div>
+                                <div class="user-stats">📊 27 tweets</div>
+                                <div class="sample-tweet">"vechain x ufc in the big apple 😍 we re bringing our tech amp story to the world s biggest stages tod..."</div>
+                            </div>
+                            <div class="tweet-count">27</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#5 @Dec3pt1Kon13</div>
+                                <div class="user-stats">📊 22 tweets</div>
+                                <div class="sample-tweet">"vechain vet is quietly killing it in evs amp batteries 🔋 using blockchain for transparency amp rewar..."</div>
+                            </div>
+                            <div class="tweet-count">22</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#6 @NiklasTheisen</div>
+                                <div class="user-stats">📊 15 tweets</div>
+                                <div class="sample-tweet">"whenever the obv indicator for vet reached the upper orange trend line caution was advised whenever ..."</div>
+                            </div>
+                            <div class="tweet-count">15</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#7 @CryptoBusy</div>
+                                <div class="user-stats">📊 15 tweets</div>
+                                <div class="sample-tweet">"institutional interest in vechain keeps accelerating🚨 with players like keyrock bitgo franklin templ..."</div>
+                            </div>
+                            <div class="tweet-count">15</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#8 @CryptoGnomie</div>
+                                <div class="user-stats">📊 14 tweets</div>
+                                <div class="sample-tweet">"gm to the mfkrs that list conviction vechainthor vtho vechain vet vebetterdao b<num>tr ethereum eth ..."</div>
+                            </div>
+                            <div class="tweet-count">14</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#9 @cexscan</div>
+                                <div class="user-stats">📊 13 tweets</div>
+                                <div class="sample-tweet">"binance spot usdt <num>m top <num> gainers bttc bittorrent ↑<num> cfx conflux network ↑<num> flux fl..."</div>
+                            </div>
+                            <div class="tweet-count">13</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#10 @VechainBuilders</div>
+                                <div class="user-stats">📊 12 tweets</div>
+                                <div class="sample-tweet">"🎙️ vefam join us on wednesday for the vechain ecosystem builders spotlight this x spaces will featur..."</div>
+                            </div>
+                            <div class="tweet-count">12</div>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-header">
+                        <div class="category-name">Community Engagement and Updates</div>
+                        <div class="user-count-badge">10 users</div>
+                    </div>
+                    <ul class="user-list">
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#1 @Crypto_VeChain</div>
+                                <div class="user-stats">📊 127 tweets</div>
+                                <div class="sample-tweet">"when you too stupid to add anotha <num> or just broke as fxck and always crying vra vra @user sorry ..."</div>
+                            </div>
+                            <div class="tweet-count">127</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#2 @420_vechain</div>
+                                <div class="user-stats">📊 53 tweets</div>
+                                <div class="sample-tweet">"👀 @user"</div>
+                            </div>
+                            <div class="tweet-count">53</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#3 @gugukkusu67</div>
+                                <div class="user-stats">📊 46 tweets</div>
+                                <div class="sample-tweet">"a mind calming walk and the companionship of loyal friends the formula for emotional well being is s..."</div>
+                            </div>
+                            <div class="tweet-count">46</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#4 @Dec3pt1Kon13</div>
+                                <div class="user-stats">📊 21 tweets</div>
+                                <div class="sample-tweet">"「毎日のお散歩で拾ってるうんち、実は報酬に変えられます🐕💕 @user で写真<num>枚でb<num>trゲット！ 環境にもお財布にも優しい神アプリです✨ ぜひ一緒に始めましょう〜！」 どちらがいい..."</div>
+                            </div>
+                            <div class="tweet-count">21</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#5 @GoldnShamrock</div>
+                                <div class="user-stats">📊 16 tweets</div>
+                                <div class="sample-tweet">"🚩 vebetterdao community anouncement ▪️ please be advised"</div>
+                            </div>
+                            <div class="tweet-count">16</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#6 @AlexanderJ184</div>
+                                <div class="user-stats">📊 12 tweets</div>
+                                <div class="sample-tweet">"gm vefam today is travel day again last stop unfortunately but i m very excited 😎 from koh rong camb..."</div>
+                            </div>
+                            <div class="tweet-count">12</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#7 @cmScanner_PSAR</div>
+                                <div class="user-stats">📊 11 tweets</div>
+                                <div class="sample-tweet">"pairs with psar direction changed in the last <num>h truth lumia on inj lpt deep myro tao vtho mmt f..."</div>
+                            </div>
+                            <div class="tweet-count">11</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#8 @Wattly_app</div>
+                                <div class="user-stats">📊 11 tweets</div>
+                                <div class="sample-tweet">"wattly said he was “just going out for one drink” and somehow ended up front row at a full club conc..."</div>
+                            </div>
+                            <div class="tweet-count">11</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#9 @VeChainJP</div>
+                                <div class="user-stats">📊 11 tweets</div>
+                                <div class="sample-tweet">"vechainrowsと米国の友人たちに感謝祭おめでとう！ vet <URL> vet vtho vefam"</div>
+                            </div>
+                            <div class="tweet-count">11</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#10 @kerrymcook</div>
+                                <div class="user-stats">📊 8 tweets</div>
+                                <div class="sample-tweet">"just picked up a sweet @user cant wait for that @user multiplier vet vebetterdao @user <URL>"</div>
+                            </div>
+                            <div class="tweet-count">8</div>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-header">
+                        <div class="category-name">VTHO Price Movement</div>
+                        <div class="user-count-badge">10 users</div>
+                    </div>
+                    <ul class="user-list">
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#1 @MaxineF70459684</div>
+                                <div class="user-stats">📊 64 tweets</div>
+                                <div class="sample-tweet">"vtho here we go <URL>"</div>
+                            </div>
+                            <div class="tweet-count">64</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#2 @RuthRos60303226</div>
+                                <div class="user-stats">📊 42 tweets</div>
+                                <div class="sample-tweet">"vtho here we go <URL>"</div>
+                            </div>
+                            <div class="tweet-count">42</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#3 @DorisPo81247510</div>
+                                <div class="user-stats">📊 28 tweets</div>
+                                <div class="sample-tweet">"vtho here we go <URL>"</div>
+                            </div>
+                            <div class="tweet-count">28</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#4 @AmadGilson</div>
+                                <div class="user-stats">📊 25 tweets</div>
+                                <div class="sample-tweet">"vtho here we go <URL>"</div>
+                            </div>
+                            <div class="tweet-count">25</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#5 @Stock_Analysis4</div>
+                                <div class="user-stats">📊 18 tweets</div>
+                                <div class="sample-tweet">"vtho aero guys don t miss the next move in a few hours ➡️ <URL>"</div>
+                            </div>
+                            <div class="tweet-count">18</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#6 @Loretta36000494</div>
+                                <div class="user-stats">📊 17 tweets</div>
+                                <div class="sample-tweet">"vtho here we go <URL>"</div>
+                            </div>
+                            <div class="tweet-count">17</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#7 @Stock_Marketer1</div>
+                                <div class="user-stats">📊 12 tweets</div>
+                                <div class="sample-tweet">"aero vtho guys don t miss the next move in a few hours ➡️ <URL>"</div>
+                            </div>
+                            <div class="tweet-count">12</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#8 @Stock_Marketr14</div>
+                                <div class="user-stats">📊 12 tweets</div>
+                                <div class="sample-tweet">"vtho aero guys don t miss the next move in a few hours ➡️ <URL>"</div>
+                            </div>
+                            <div class="tweet-count">12</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#9 @Stock_Analysis8</div>
+                                <div class="user-stats">📊 11 tweets</div>
+                                <div class="sample-tweet">"vtho guys don t miss the next move in a few hours gt <URL>"</div>
+                            </div>
+                            <div class="tweet-count">11</div>
+                        </li>
+
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">#10 @Stock_Marketr20</div>
+                                <div class="user-stats">📊 11 tweets</div>
+                                <div class="sample-tweet">"aero vtho guys don t miss the next move in a few hours ➡️ <URL>"</div>
+                            </div>
+                            <div class="tweet-count">11</div>
+                        </li>
+
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">🎭 Generated Personas</h2>
+            <div class="persona-grid">
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@koyapeey</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Community advocate and sustainability enthusiast. Join me for giveaways and eco-friendly vibes! 🌿☕️"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 23 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ESFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> JP | 
+                            <span class="detail-label">Profession:</span> Arts Audio/Video Technology & Communications
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 41 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user, @koyapeey, embodies the lively spirit of an ESFP, thriving on social interactions and creative expression. With a background in Arts Audio/Video Technology & Communications, she actively pa...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Dec3pt1Kon13</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Tech-savvy ENTJ dedicated to community engagement and blockchain innovation. Championing giveaways and sustainability initiatives."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 31 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34, this user balances a dynamic career in Information Technology with a passion for VeChain blockchain developments. As an ENTJ, he is a natural leader who thrives on community engagement, frequen...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Vecosystem_t</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Eco-conscious marketer on a mission to turn everyday choices into community rewards. Join me in sipping sustainably and earning together! 🌿☕️"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 23 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 30 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a spirited 23-year-old female marketer with an ENFP personality, known for her creativity and enthusiasm. She thrives on building community through innovative reward systems, particularly...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@ValuableTX</div>
+                        <div class="persona-category">VeChain Blockchain Developments</div>
+                    </div>
+                    <div class="persona-bio">"VeChain advocate & community builder. Join me for giveaways and discussions on blockchain developments! 🍻"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 25 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 101 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a dynamic 25-year-old marketing professional with an ENFP personality, thriving in the fast-paced world of blockchain technology. Their enthusiasm for VeChain is evident as they actively ...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@CrazyMistyCat</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Community advocate and dog lover dedicated to turning everyday tasks into rewarding experiences. Join me in celebrating small wins!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Human Services
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 27 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a spirited and enthusiastic individual in her mid-30s, embodying the ENFP personality type. With a background in human services, she merges her professional passion for community well-bei...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@wattgase</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"IT guy navigating the world of giveaways and community rewards. Let's build a better future together!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 23 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 21 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 23, this user embodies the ENFP spirit with a vibrant enthusiasm for technology and community engagement. They immerse themselves in the world of giveaways and rewards, leveraging their IT backgrou...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Hacnen10</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Community-driven human services professional who loves sharing rewards and giveaways. Always ready to inspire and uplift others!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ESFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Human Services
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 20 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a warm-hearted ESFJ who thrives on connection and community support. At 34, she works in human services, where her empathetic nature shines through. Passionate about giveaways and communi...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@VechainROWS</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing aficionado & crypto enthusiast 🌟 Join me for giveaways and rewards that make a difference! ♻️"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 24 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 19 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 24, this vibrant ENFP is driven by creativity and connection. As a marketing professional, she thrives on community engagement and believes in the power of sustainable actions. With a keen interest...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@BreakingBallz1</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro and community enthusiast. Chasing rewards while inspiring others to stay active!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 24 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 17 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a lively 24-year-old female with an ENFP personality, thriving in the marketing realm. She has a passion for community engagement and actively participates in giveaways and rewards progra...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@GabrielMar79084</div>
+                        <div class="persona-category">Giveaway and Community Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro dedicated to promoting sustainability and community rewards. Join me in making impactful choices while earning perks!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 24 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 16 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a vibrant and enthusiastic 24-year-old male with an ENFP personality type, thriving on creativity and connection. As a marketing professional, he actively engages in initiatives that prom...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@MyuraPhasu73047</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro on a mission to promote sustainable eating. Join me in rewarding better food choices!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ESTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 42 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a dynamic 35-year-old marketing professional with an ESTP personality, known for their energetic and pragmatic approach to life. They are deeply invested in the concept of Sustainable Eat...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@kanpekolove</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing professional on a mission to promote sustainable eating. Sharing tips and rewards for healthier choices! 🌱"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 40 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 35-year-old female marketing specialist with an ENFJ personality, known for her enthusiasm and strong interpersonal skills. She is deeply committed to sustainable living and actively pr...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Phak915</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Health science advocate committed to sustainable eating. Sharing rewards and tips for a healthier planet."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 42 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ISFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Health Science
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 38 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 42, this user embodies the ISFJ personality, characterized by a nurturing and responsible nature. With a background in health science, she is dedicated to promoting sustainable eating practices and...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Risky333995</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Tech enthusiast exploring the intersection of sustainability and blockchain. Earning rewards while eating better!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 38 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user, @Risky333995, is a 34-year-old male in the information technology field with an ENTP personality. He is driven by a passion for sustainable eating and rewards systems, frequently sharing hi...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Nasichas1974</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro on a mission to promote sustainable eating. Join me in rewarding better choices! #SustainableEatingRewards"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 36 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old male marketing professional with an ENFP personality, known for their enthusiasm and creativity. He is deeply invested in promoting sustainable eating habits and often share...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Pat1127325</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro advocating for sustainable eating. Join me on my journey to better health and a greener planet!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 35 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34, this user embodies the ENFJ personality, making her a natural leader and advocate for positive change. She is deeply invested in sustainable eating and actively participates in reward programs ...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@iku_918chan</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing enthusiast on a mission for sustainable eating! 🌱 Rewarding healthy choices, one bite at a time."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 24 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 33 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 24, this vibrant user embodies the ENFP spirit, bringing creativity and enthusiasm to her marketing career. Passionate about promoting sustainable eating habits, she actively shares her journey of ...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@9Charn9</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro dedicated to promoting sustainable eating habits. Let's make healthy choices rewarding!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ESFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 33 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34, this female user embodies the ESFJ personality, often putting others' needs first while advocating for sustainable eating practices. As a marketing professional, she leverages her skills to ins...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Helen290907</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Health science advocate focused on sustainable eating rewards. Sharing my journey to better health and a better planet!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ESFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Health Science
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 32 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old health science professional with an ESFJ personality, known for their warm and engaging nature. They are deeply passionate about sustainable eating practices and actively pa...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@BeautyFree7</div>
+                        <div class="persona-category">Sustainable Eating Rewards</div>
+                    </div>
+                    <div class="persona-bio">"Marketing professional focused on promoting sustainable eating practices. Join me on my journey to eat better and earn rewards!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 31 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old female ENFJ who thrives on connecting with others and making a positive impact. With a background in marketing, she is dedicated to promoting sustainable eating initiatives ...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@VETlieber</div>
+                        <div class="persona-category">VeChain Ecosystem Developments</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain enthusiast diving deep into the VeChain ecosystem. Sharing insights and predictions for the future of VET."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 36 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 35, this male INTP is a dedicated information technology professional with a strong interest in the VeChain ecosystem. He loves analyzing market trends and developments, regularly sharing updates a...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@CryptoGnomie</div>
+                        <div class="persona-category">VeChain Ecosystem Developments</div>
+                    </div>
+                    <div class="persona-bio">"Passionate about the VeChain ecosystem and its blockchain developments. Advocate for innovative tech solutions in sustainability."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 31 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old male with an ENTJ personality, deeply immersed in the world of blockchain and cryptocurrency, particularly within the VeChain ecosystem. As an Information Technology profess...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@GoldnShamrock</div>
+                        <div class="persona-category">VeChain Ecosystem Developments</div>
+                    </div>
+                    <div class="persona-bio">"VeChain advocate & community builder. Sharing the latest developments and engaging with fellow enthusiasts! 🌍💡"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 31 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 35-year-old male marketing professional with an ENFP personality, driven by creativity and innovation. He is deeply invested in the VeChain ecosystem, frequently sharing insights and up...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Thorheads</div>
+                        <div class="persona-category">VeChain Ecosystem Developments</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro diving deep into the VeChain ecosystem. Join the journey and let's thrive together!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 19 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a dynamic and enthusiastic marketing professional with an ENFP personality. At 34 years old, they are deeply engaged in the VeChain ecosystem, often sharing insights and updates about its...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@sinaim33</div>
+                        <div class="persona-category">VeChain Ecosystem Developments</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain enthusiast exploring the depths of the VeChain ecosystem. Join me on this journey! 🚀"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 23 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Arts Audio/Video Technology & Communications
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 19 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 23, this user embodies the ENFP personality with a vibrant curiosity for technology and innovation. As a professional in Arts Audio/Video Technology & Communications, they leverage their creative s...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@420_vechain</div>
+                        <div class="persona-category">Community Engagement and Updates</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain advocate and community builder focused on VeChain developments. Here to share updates and foster engagement."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ESTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 53 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 35, this user embodies the ESTP personality type, thriving on interaction and spontaneous innovation. With a solid background in Information Technology, he is deeply immersed in the VeChain ecosyst...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Chris06902330</div>
+                        <div class="persona-category">VeChain Ecosystem Developments</div>
+                    </div>
+                    <div class="persona-bio">"Tech enthusiast passionate about blockchain and sustainability. Always learning about VeChain's innovations."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 17 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old male working in Information Technology with an ENTP personality. He has a keen interest in the VeChain ecosystem and frequently shares insights and updates about its develop...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Murtagh300</div>
+                        <div class="persona-category">VeChain Ecosystem Developments</div>
+                    </div>
+                    <div class="persona-bio">"Tech enthusiast diving deep into the VeChain ecosystem. Building, learning, and sharing daily insights!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 23 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ESTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 14 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a dynamic 23-year-old male with an ESTP personality, thriving in the fast-paced world of information technology. He has a keen interest in the VeChain ecosystem, often sharing development...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@ThorpeAvax</div>
+                        <div class="persona-category">VeChain Ecosystem Developments</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain enthusiast diving deep into the VeChain ecosystem. NFT gaming and innovation excite me!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 24 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 12 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 24, this user embodies the ENFP personality, characterized by curiosity and enthusiasm. As an information technology professional, they have a strong interest in the developments within the VeChain...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@SplendidMite</div>
+                        <div class="persona-category">VeChain Blockchain Developments</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain advocate focused on VeChain developments and sustainable solutions. Exploring tech for a greener future."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 35 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old male INTJ with a strong background in Information Technology. He is deeply invested in the potential of blockchain to drive sustainable change, particularly through VeChain’...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Finora_EN</div>
+                        <div class="persona-category">VeChain Blockchain Developments</div>
+                    </div>
+                    <div class="persona-bio">"Finance professional focused on VeChain blockchain developments and market analysis. Sharing insights and trading strategies."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Finance
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 28 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old male finance expert with an INTJ personality. He has a deep interest in blockchain technologies, particularly VeChain, and regularly offers detailed market analyses and trad...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@vechainofficial</div>
+                        <div class="persona-category">VeChain Blockchain Developments</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain advocate focused on real-world applications and innovations in VeChain technology. Techie at heart."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 27 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old male IT professional with an INTJ personality, deeply engaged in the world of blockchain and specifically in VeChain developments. With a strategic mindset, he analyzes tren...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@NiklasTheisen</div>
+                        <div class="persona-category">VeChain Blockchain Developments</div>
+                    </div>
+                    <div class="persona-bio">"Finance professional with a keen interest in VeChain developments and blockchain technology. Analyzing market trends with a strategic mindset."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 33 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Finance
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 15 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user, @NiklasTheisen, is a strategic thinker with an INTJ personality, deeply immersed in the world of finance and blockchain. With a strong focus on VeChain's advancements, they meticulously ana...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@CryptoBusy</div>
+                        <div class="persona-category">VeChain Blockchain Developments</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain enthusiast focused on VeChain developments and real-world applications. Sharing insights and updates."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 15 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34 years old, this male user embodies the INTJ personality type, characterized by a strategic mindset and a deep interest in innovative technology. With a background in Information Technology, he d...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@cexscan</div>
+                        <div class="persona-category">VeChain Blockchain Developments</div>
+                    </div>
+                    <div class="persona-bio">"Finance professional exploring the future of blockchain with a keen eye on VeChain developments. Sharing insights and trends."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Finance
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 13 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34, this user exemplifies the INTJ personality type, marked by strategic thinking and a deep passion for innovative technologies like blockchain. With a background in finance, @cexscan is particula...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@VechainBuilders</div>
+                        <div class="persona-category">VeChain Blockchain Developments</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain advocate focused on VeChain developments and real-world applications. Sharing insights and innovations."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 12 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 35-year-old male with an INTJ personality, deeply immersed in the information technology sector. With a keen interest in blockchain advancements, particularly within the VeChain ecosyst...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Crypto_VeChain</div>
+                        <div class="persona-category">Community Engagement and Updates</div>
+                    </div>
+                    <div class="persona-bio">"Finance guru and crypto enthusiast. Sharing insights and updates on community engagement in the blockchain space."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 24 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ESTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Finance
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 127 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 24, this user embodies the ESTP personality type, known for their energetic and spontaneous nature. With a background in finance, they are deeply involved in the cryptocurrency community, often sha...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@gugukkusu67</div>
+                        <div class="persona-category">Community Engagement and Updates</div>
+                    </div>
+                    <div class="persona-bio">"Health science advocate dedicated to community wellness and connection. Sharing moments that nourish both body and spirit."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Health Science
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 46 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a compassionate and outgoing health science professional in her mid-30s with an ENFJ personality. She is deeply invested in community engagement and wellness, often sharing insights about...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@AlexanderJ184</div>
+                        <div class="persona-category">Community Engagement and Updates</div>
+                    </div>
+                    <div class="persona-bio">"Adventure-seeker exploring the world one culture at a time. Always ready to share experiences and insights with the community."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 32 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> UK | 
+                            <span class="detail-label">Profession:</span> Hospitality & Tourism
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 12 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 32-year-old male with an ENFP personality, working in the Hospitality & Tourism sector. He has a zest for life and loves to engage with his community by sharing travel experiences, cook...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@cmScanner_PSAR</div>
+                        <div class="persona-category">Community Engagement and Updates</div>
+                    </div>
+                    <div class="persona-bio">"IT professional dedicated to sharing insights on market trends and community updates. Staying connected in the ever-evolving tech landscape."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 11 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34 years old, this user embodies the INTJ personality type, reflecting a strategic thinker with a strong analytical mindset. As an Information Technology professional, they actively engage with onl...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Wattly_app</div>
+                        <div class="persona-category">Community Engagement and Updates</div>
+                    </div>
+                    <div class="persona-bio">"Community enthusiast sharing updates and adventures. Always on the lookout for new experiences! 🌍✨"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 24 | 
+                            <span class="detail-label">Gender:</span> other | 
+                            <span class="detail-label">MBTI:</span> ESFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Arts Audio/Video Technology & Communications
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 11 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 24 years old, @Wattly_app embodies the vibrant and spontaneous spirit of an ESFP. Working in Arts Audio/Video Technology & Communications, they have a knack for storytelling and connecting with oth...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@VeChainJP</div>
+                        <div class="persona-category">Community Engagement and Updates</div>
+                    </div>
+                    <div class="persona-bio">"Blockchain advocate focused on community updates and engagement within the VeChain ecosystem. Let's build a stronger future together!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INTJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> JP | 
+                            <span class="detail-label">Profession:</span> Information Technology
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 11 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34, this male user embodies the INTJ personality, showcasing a strategic and forward-thinking approach to technology and community involvement. With a strong background in Information Technology, h...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@kerrymcook</div>
+                        <div class="persona-category">Community Engagement and Updates</div>
+                    </div>
+                    <div class="persona-bio">"Marketing professional dedicated to community engagement and sharing updates. Let's connect and grow together!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 33 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 8 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user, @kerrymcook, is a vibrant 33-year-old female with an ENFP personality, thriving in the marketing field. She is deeply invested in community engagement, often sharing updates and insights wi...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@MaxineF70459684</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro with a passion for VTHO price trends. Let's ride the crypto wave together!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 64 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old female marketing professional with an ENFP personality. She thrives on connecting with others and sharing insights about the VTHO price movement, often posting updates and e...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@RuthRos60303226</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Education advocate with a keen eye on VTHO price movements. Sharing insights and updates in the crypto world."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ISFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Education & Training
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 42 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 35-year-old female professional in the Education & Training sector, embodying the nurturing and detail-oriented traits of an ISFJ. She has a strong interest in VTHO price movements, oft...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@DorisPo81247510</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Marketing pro and crypto enthusiast focused on VTHO price movements. Sharing insights and analysis!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ESFJ
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 28 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34, this female user embodies the ESFJ personality, thriving on social interactions and team collaboration. With a professional background in marketing, she leverages her skills to analyze and disc...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@AmadGilson</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Passionate about VTHO price movements and the future of blockchain. Sharing insights and updates."</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> INFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Arts Audio/Video Technology & Communications
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 25 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old male with an INFP personality, deeply engaged in the arts and technology. Based in the US, he combines his professional background in audio/video technology with a keen inte...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Stock_Analysis4</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Finance professional with a keen eye on VTHO price movements. Join me for timely insights and predictions!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Finance
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 18 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a dynamic finance professional at 34, embodying the ENTP personality type, which drives their curiosity and innovative thinking. With a strong focus on VTHO price movements, they actively...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Loretta36000494</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Marketing professional diving deep into the world of VTHO and its price movements. Let's ride this wave together!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> female | 
+                            <span class="detail-label">MBTI:</span> ENFP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 17 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user, @Loretta36000494, is a dynamic 35-year-old female with an ENFP personality. With a background in marketing, she passionately explores the intricacies of VTHO price movement, often sharing i...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Stock_Marketer1</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Marketing guru with a keen eye on VTHO price movements. Join me for the latest insights and updates!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 35 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ENTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Marketing
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 12 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 35-year-old marketing professional with an ENTP personality, known for their innovative thinking and energetic approach. They have a strong interest in VTHO price movements and are heav...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Stock_Marketr14</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Finance enthusiast focused on VTHO price movements. Sharing insights and predictions for the next big moves!"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ESTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Finance
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 12 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> At 34 years old, this user is a male finance professional with an ESTP personality. He thrives on fast-paced environments and enjoys analyzing the price movements of VTHO, often sharing his prediction...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Stock_Analysis8</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Finance enthusiast focused on VTHO price movements. Here for the next big opportunity! 🚀💸"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 22 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ESTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Finance
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 11 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 22-year-old male finance professional with an ESTP personality. He thrives on the excitement of market trends and actively tracks VTHO price movements to capitalize on potential gains. ...
+                    </div>
+                </div>
+
+                <div class="persona-card">
+                    <div class="persona-header">
+                        <div class="persona-name">@Stock_Marketr20</div>
+                        <div class="persona-category">VTHO Price Movement</div>
+                    </div>
+                    <div class="persona-bio">"Finance professional tracking VTHO price movements. Join me for the latest updates and insights! 🚀📈"</div>
+                    <div class="persona-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Age:</span> 34 | 
+                            <span class="detail-label">Gender:</span> male | 
+                            <span class="detail-label">MBTI:</span> ESTP
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Country:</span> US | 
+                            <span class="detail-label">Profession:</span> Finance
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tweet Count:</span> 11 tweets in category
+                        </div>
+                    </div>
+                    <div class="sample-tweet">
+                        <strong>Persona:</strong> This user is a 34-year-old male finance professional with an ESTP personality, known for being action-oriented and confident. He actively engages in discussions about the VTHO price movement, sharing ...
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</body>
+</html>

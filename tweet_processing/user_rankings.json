@@ -1,7 +1,7 @@
 [
   {
     "cluster_id": 1,
-    "topic": "Community Giveaways and Rewards",
+    "topic": "Giveaway and Community Rewards",
     "top_users": [
       {
         "user_name": "koyapeey",
@@ -922,7 +922,7 @@
   },
   {
     "cluster_id": 2,
-    "topic": "VeChain Ecosystem Updates",
+    "topic": "VeChain Ecosystem Developments",
     "top_users": [
       {
         "user_name": "VETlieber",
@@ -1296,7 +1296,7 @@
   },
   {
     "cluster_id": 3,
-    "topic": "VeChain Blockchain Ecosystem",
+    "topic": "VeChain Blockchain Developments",
     "top_users": [
       {
         "user_name": "ValuableTX",
@@ -1734,7 +1734,7 @@
   },
   {
     "cluster_id": 0,
-    "topic": "Vechain Community Engagement",
+    "topic": "Community Engagement and Updates",
     "top_users": [
       {
         "user_name": "Crypto_VeChain",
@@ -2206,7 +2206,7 @@
   },
   {
     "cluster_id": 5,
-    "topic": "VTHO Market Activity",
+    "topic": "VTHO Price Movement",
     "top_users": [
       {
         "user_name": "MaxineF70459684",

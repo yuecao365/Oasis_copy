@@ -51,7 +51,8 @@ class Persona:
     mbti: str
     country: str
     profession: str
-    category: str
+    category: str  # Primary category
+    all_categories: List[str]  # All categories user appears in
     cluster_id: int
     original_user_name: str
     original_user_id: str
@@ -142,11 +143,18 @@ Sample tweets:
 {sample_tweets}
 
 Based on the writing style, topics, language patterns, and any available profile information, infer:
-1. Age (as an integer, estimate based on writing style and topics)
+1. Age (as an integer between 18-65, estimate based on writing style, topics, and language patterns. Ensure good variance across users - don't cluster around the same age)
 2. Gender (one of: "male", "female", "other")
 3. MBTI personality type (one of: ISTJ, ISFJ, INFJ, INTJ, ISTP, ISFP, INFP, INTP, ESTP, ESFP, ENFP, ENTP, ESTJ, ESFJ, ENFJ, ENTJ)
 4. Country (ISO country code like "US", "UK", "CA", etc. - infer from location field if available, or from language/content)
 5. Profession (choose from: Agriculture Food & Natural Resources, Architecture & Construction, Arts Audio/Video Technology & Communications, Business Management & Administration, Education & Training, Finance, Government & Public Administration, Health Science, Hospitality & Tourism, Human Services, Information Technology, Law Public Safety Corrections & Security, Manufacturing, Marketing, Science Technology Engineering & Mathematics, Transportation Distribution & Logistics)
+
+IMPORTANT: For age, ensure diversity. Consider factors like:
+- Writing formality and style
+- References to life events (college, career milestones, family)
+- Technology adoption patterns
+- Cultural references
+- Language complexity
 
 Output ONLY valid JSON in this exact format:
 {{
@@ -163,11 +171,11 @@ Output ONLY valid JSON in this exact format:
         messages=[
             {
                 "role": "system",
-                "content": "You are a demographics inference assistant. Output only valid JSON.",
+                "content": "You are a demographics inference assistant. Output only valid JSON. Ensure age diversity across users.",
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=0.7,
+        temperature=1.0,  # Increased from 0.7 to 1.0 for more variance
         max_tokens=200,
     )
     
@@ -195,6 +203,7 @@ def generate_persona(
     demographics: Demographics,
     user_tweets: List[str],
     category_topic: str,
+    all_categories: List[str],
     cluster_id: int,
     original_user_id: str,
     tweet_count: int,
@@ -206,7 +215,8 @@ def generate_persona(
         user_name: Original username
         demographics: Inferred demographics
         user_tweets: List of tweet texts
-        category_topic: Topic/category name
+        category_topic: Primary topic/category name
+        all_categories: All categories the user appears in
         cluster_id: Cluster ID
         original_user_id: Original user ID
         tweet_count: Number of tweets
@@ -222,31 +232,38 @@ def generate_persona(
     # Prepare sample tweets
     sample_tweets = "\n".join([f"- {tweet}" for tweet in user_tweets[:15]])  # Use up to 15 tweets
     
+    # Build category description
+    if len(all_categories) > 1:
+        categories_text = f"Primary category: {category_topic}. Also active in: {', '.join([c for c in all_categories if c != category_topic])}"
+        category_instruction = f"the categories: {', '.join(all_categories)}. The persona should reflect their multi-faceted interests across these areas."
+    else:
+        categories_text = category_topic
+        category_instruction = f"the category: {category_topic}"
+    
     prompt = f"""Generate a social media user profile based on the provided information.
 
 User Information:
+- Username: @{user_name}
 - Age: {demographics.age}
 - Gender: {demographics.gender}
 - MBTI: {demographics.mbti}
 - Country: {demographics.country}
 - Profession: {demographics.profession}
-- Primary Interest Category: {category_topic}
+- Interest Categories: {categories_text}
 
 Sample tweets from this user:
 {sample_tweets}
 
 Generate:
-1. A real name (first and last name)
-2. A username (different from the original, suitable for social media)
-3. A bio (1-2 sentences, similar to Twitter bio style)
-4. A detailed persona description (2-3 sentences describing personality, interests, background, and how they relate to the category "{category_topic}")
+1. A bio (1-2 sentences, similar to Twitter bio style) that reflects their interests in {category_instruction}
+2. A detailed persona description (2-3 sentences describing personality, interests, background, and how they engage with {category_instruction})
+
+IMPORTANT: Do NOT generate names or usernames. Use the provided username @{user_name} in your description if needed.
 
 Output ONLY valid JSON in this exact format:
 {{
-    "realname": "John Smith",
-    "username": "john_crypto_enthusiast",
     "bio": "Tech enthusiast passionate about blockchain and sustainability. Always learning.",
-    "persona": "John is a tech-savvy professional in his late 20s with an ENTP personality. He's passionate about blockchain technology and sustainable solutions, often engaging in discussions about VeChain and related ecosystems. His analytical mind and outgoing nature make him an active participant in crypto communities."
+    "persona": "This user is a tech-savvy professional in their late 20s with an ENTP personality. They're passionate about blockchain technology and sustainable solutions, often engaging in discussions about VeChain and related ecosystems. Their analytical mind and outgoing nature make them an active participant in crypto communities."
 }}
 """
     
@@ -273,9 +290,12 @@ Output ONLY valid JSON in this exact format:
     
     persona_dict = json.loads(content)
     
+    # Use the REAL username from the data for both display name and handle.
+    # We ignore any AI-generated names/usernames to keep personas grounded
+    # in the original dataset. The prompt no longer asks for names.
     return Persona(
-        username=persona_dict["username"],
-        realname=persona_dict["realname"],
+        username=user_name,
+        realname=user_name,
         bio=persona_dict["bio"],
         persona=persona_dict["persona"],
         age=demographics.age,
@@ -284,6 +304,7 @@ Output ONLY valid JSON in this exact format:
         country=demographics.country,
         profession=demographics.profession,
         category=category_topic,
+        all_categories=all_categories,
         cluster_id=cluster_id,
         original_user_name=user_name,
         original_user_id=original_user_id,
@@ -298,53 +319,116 @@ def generate_personas_for_users(
     """
     Generate personas for a list of ranked users.
     
+    Each user gets only ONE persona, using their PRIMARY category (where they rank highest
+    or have the most tweets). If a user appears in multiple categories, we select the one
+    where they have the highest tweet count.
+    
     Args:
         user_rankings: List of cluster ranking dicts (from rank_users_by_category output)
         use_twitter_api: Whether to fetch profiles from Twitter API
         
     Returns:
-        List of Persona objects
+        List of Persona objects (one per unique user)
     """
-    personas = []
+    # First pass: collect all users and their appearances across categories
+    user_appearances = {}  # user_id -> list of (cluster_data, user_data, rank_in_category)
     
     for cluster_data in user_rankings:
         cluster_id = cluster_data["cluster_id"]
         topic = cluster_data.get("topic", "")
         
-        for user_data in cluster_data["top_users"]:
+        for rank, user_data in enumerate(cluster_data["top_users"], 1):
             user_id = user_data["user_id"]
-            user_name = user_data["user_name"]
-            tweets = user_data["sample_tweets"]
-            tweet_count = user_data["tweet_count"]
             
-            # Optionally fetch from API
-            api_profile = None
-            if use_twitter_api:
-                api_profile = fetch_user_profile_from_api(user_id)
+            if user_id not in user_appearances:
+                user_appearances[user_id] = []
             
-            # Infer demographics
-            try:
-                demographics = generate_demographics_from_tweets(
-                    tweets, user_name, api_profile
-                )
-                
-                # Generate persona
-                persona = generate_persona(
-                    user_name=user_name,
-                    demographics=demographics,
-                    user_tweets=tweets,
-                    category_topic=topic,
-                    cluster_id=cluster_id,
-                    original_user_id=user_id,
-                    tweet_count=tweet_count,
-                )
-                
-                personas.append(persona)
-                print(f"Generated persona for {user_name} (cluster {cluster_id})")
-                
-            except Exception as e:
-                print(f"Error generating persona for {user_name}: {e}")
-                continue
+            user_appearances[user_id].append({
+                "cluster_data": cluster_data,
+                "user_data": user_data,
+                "rank": rank,
+                "cluster_id": cluster_id,
+                "topic": topic,
+            })
+    
+    # Second pass: for each user, select their PRIMARY category (highest tweet count)
+    # and generate one persona that reflects ALL their categories
+    personas = []
+    processed_users = set()
+    
+    for user_id, appearances in user_appearances.items():
+        if user_id in processed_users:
+            continue
+        
+        # Select primary category: highest tweet count, or highest rank if tied
+        primary_appearance = max(
+            appearances,
+            key=lambda x: (x["user_data"]["tweet_count"], -x["rank"])
+        )
+        
+        cluster_data = primary_appearance["cluster_data"]
+        user_data = primary_appearance["user_data"]
+        cluster_id = primary_appearance["cluster_id"]
+        topic = primary_appearance["topic"]
+        user_name = user_data["user_name"]
+        tweets = user_data["sample_tweets"]
+        tweet_count = user_data["tweet_count"]
+        
+        # Collect ALL categories this user appears in
+        all_categories = [a["topic"] for a in appearances]
+        
+        # Collect tweets from ALL categories for better persona generation
+        # Combine sample tweets from all appearances (up to 15 total)
+        all_tweets = []
+        for appearance in appearances:
+            all_tweets.extend(appearance["user_data"]["sample_tweets"])
+        # Deduplicate while preserving order
+        seen = set()
+        unique_tweets = []
+        for tweet in all_tweets:
+            if tweet not in seen:
+                seen.add(tweet)
+                unique_tweets.append(tweet)
+        tweets = unique_tweets[:15]  # Limit to 15 tweets
+        
+        # If user appears in multiple categories, note it
+        if len(appearances) > 1:
+            print(f"User {user_name} appears in {len(appearances)} categories: {', '.join(all_categories)}. "
+                  f"Primary: {topic} ({tweet_count} tweets). Generating multi-category persona.")
+        
+        # Optionally fetch from API
+        api_profile = None
+        if use_twitter_api:
+            api_profile = fetch_user_profile_from_api(user_id)
+        
+        # Infer demographics
+        try:
+            demographics = generate_demographics_from_tweets(
+                tweets, user_name, api_profile
+            )
+            
+            # Generate persona (with all categories)
+            persona = generate_persona(
+                user_name=user_name,
+                demographics=demographics,
+                user_tweets=tweets,
+                category_topic=topic,
+                all_categories=all_categories,
+                cluster_id=cluster_id,
+                original_user_id=user_id,
+                tweet_count=tweet_count,
+            )
+            
+            personas.append(persona)
+            processed_users.add(user_id)
+            if len(appearances) > 1:
+                print(f"Generated multi-category persona for {user_name} (categories: {', '.join(all_categories)})")
+            else:
+                print(f"Generated persona for {user_name} (category: {topic})")
+            
+        except Exception as e:
+            print(f"Error generating persona for {user_name}: {e}")
+            continue
     
     return personas
 
@@ -372,11 +456,12 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                 "mbti": persona.mbti,
                 "country": persona.country,
                 "profession": persona.profession,
-                "category": persona.category,
-                "cluster_id": persona.cluster_id,
-                "original_user_name": persona.original_user_name,
-                "original_user_id": persona.original_user_id,
-                "tweet_count": persona.tweet_count,
+            "category": persona.category,
+            "all_categories": persona.all_categories,
+            "cluster_id": persona.cluster_id,
+            "original_user_name": persona.original_user_name,
+            "original_user_id": persona.original_user_id,
+            "tweet_count": persona.tweet_count,
             })
         
         with output_path.open("w", encoding="utf-8") as f:
