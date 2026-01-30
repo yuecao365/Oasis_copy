@@ -21,4 +21,4 @@ python cleaning/preprocessing
 # or redirect: python cleaning/preprocessing > cleaning/cleaned.txt
 ```
 
-Output is used by **pca_cleaning** and **clustering** / **topic_generation**.
+Output is used by **pca_cleaning** and **clustering** / **persona_generation**.

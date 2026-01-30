@@ -22,4 +22,4 @@ From repo root. Requires `tweet_processing/tweet_Nov+Dec.txt`.
 python pca_cleaning/PCA
 ```
 
-`pca_stats.json` is used by **clustering** / **topic_generation** for popularity-based ranking.
+`pca_stats.json` is used by **clustering** / **persona_generation** for popularity-based ranking.

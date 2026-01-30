@@ -22,4 +22,4 @@ From repo root. Requires `tweet_processing/tweet_Nov+Dec.txt` (from **cleaning**
 python clustering/run_cluster_topics.py
 ```
 
-Output feeds into **topic_generation** (user rankings, personas).
+Output feeds into **persona_generation** (user rankings, personas).

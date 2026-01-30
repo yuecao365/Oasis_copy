@@ -1,4 +1,4 @@
-# topic_generation – User rankings and personas
+# persona_generation – User rankings and personas
 
 Split tweets in time, cluster them, rank users by category, and generate personas for simulation.
 
@@ -22,7 +22,7 @@ Split tweets in time, cluster them, rank users by category, and generate persona
 From repo root. Uses `tweet_processing/tweet_Nov+Dec.txt` and `pca_stats.json`. Set `OPENAI_API_KEY` for topics and personas.
 
 ```bash
-python topic_generation/user_persona_pipeline.py
+python persona_generation/user_persona_pipeline.py
 ```
 
 Outputs include `train_tweets.csv`, `test_tweets.csv`, `user_rankings.json`, `user_personas.json`. Personas can be turned into agent CSVs for **simulation** (see `README_personas.md`).

@@ -11,8 +11,13 @@ Output: user_personas.json compatible with OASIS simulation format
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -31,19 +36,19 @@ from rank_users_by_category import (
     rank_users_by_category,
     save_user_rankings,
 )
-from topic_generation import (
+from clustering.topic_generation import (
     PCA_STATS_FILE,
     embed_texts,
     load_pca_stats,
     load_tweets,
 )
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = _REPO_ROOT
 
 
 def load_train_tweets_for_clustering(train_tweets_file: Path) -> List:
     """
-    Load train tweets in format compatible with topic_generation.load_tweets().
+    Load train tweets in format compatible with clustering.topic_generation.load_tweets().
     
     Returns list of TweetRow-like objects with: text, popularity, id, topic_id, user_name
     """
@@ -194,7 +199,7 @@ def cluster_tweets(
         raise ValueError(f"Unknown clustering method: {clustering_method}")
     
     # Generate topics for clusters
-    from topic_generation import TweetRow, build_prompt, maybe_call_openai
+    from clustering.topic_generation import TweetRow, build_prompt, maybe_call_openai
     
     clusters: Dict[int, List] = {}
     for label, tweet in zip(labels, tweets):
