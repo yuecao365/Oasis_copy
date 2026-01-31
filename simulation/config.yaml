@@ -1,0 +1,25 @@
+# Oasis Twitter simulation config
+# Run from repo root: python simulation/twitter_simulation.py --config_path simulation/config.yaml
+#
+# Point csv_path and db_path to your own data. Paths are relative to repo root.
+# With submodule at oasis/, default data lives under oasis/data/.
+
+---
+data:
+  db_path: data/simu_db/yaml_gpt/False_Business_0.db
+  csv_path: oasis/data/twitter_dataset/anonymous_topic_200_1h/False_Business_0.csv
+
+simulation:
+  num_timesteps: 3
+  clock_factor: 60
+  recsys_type: twhin-bert
+  available_actions:
+    - do_nothing
+    - repost
+    - quote_post
+    - like_post
+    - follow
+
+inference:
+  model_type: gpt-4o-mini
+  is_openai_model: true

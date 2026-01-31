@@ -99,3 +99,5 @@ models/
 *.sqlite
 
 tmp
+data/
+log/
