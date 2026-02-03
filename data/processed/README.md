@@ -80,13 +80,24 @@ This folder stores the outputs after each major preprocessing step.
 
 ---
 
+### `cluster_assignments.jsonl`
+- **Format**: One JSON object per line: `{"tweet_id": "...", "cluster_id": 0}`
+- **Used by**: Persona generation pipeline
+- **Note**: A sample file is provided for testing. Replace with real clustering output from the clustering step. See `persona_generation/CLUSTERING_INPUT_SPEC.md` for the contract.
 
+### `cluster_topics.json`
+- **Format**: JSON object mapping cluster ID (string) to topic description: `{"0": "...", "1": "..."}`
+- **Used by**: Persona generation pipeline
+
+
+---
 
 ## Notes
 
 - This directory is intentionally excluded from version control.
 - To regenerate all files, run the pipeline scripts in order:
-  1. `tweet_cleaning.py`
-  2. `user_filtering_and_replychain.py`
-  3. `tweet_popularity_pca.py`
-  4. 
+  1. `cleaning/tweet_cleaning.py`
+  2. `cleaning/user_filtering_and_replychain.py`
+  3. `pca/tweet_popularity_pca.py`
+  4. [clustering file]
+  5. 'persona_generation/user_persona_pipeline.py`

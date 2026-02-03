@@ -141,6 +141,7 @@ async def running(
             model_type=ModelType(inference_configs["model_type"]),
         )
 
+    start_hour = 13.0  # Default when topic metadata unavailable
     try:
         all_topic_df = pd.read_csv(_ALL_TOPICS_CSV)
         if "False" in csv_path or "True" in csv_path:
@@ -154,7 +155,6 @@ async def running(
             start_hour = int(h) + float(m) / 60
     except Exception:
         social_log.info("No real-world topic data; using start_hour = 13 (1 PM).")
-        start_hour = 13.0
 
     agent_graph = await generate_agents(
         agent_info_path=csv_path,

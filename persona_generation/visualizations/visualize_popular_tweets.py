@@ -11,11 +11,18 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-RANKINGS_FILE = REPO_ROOT / "tweet_processing" / "user_rankings.json"
-TRAIN_TWEETS_FILE = REPO_ROOT / "tweet_processing" / "train_tweets.csv"
-PCA_STATS_FILE = REPO_ROOT / "tweet_processing" / "pca_stats.json"
-OUTPUT_DIR = REPO_ROOT / "tweet_processing" / "visualizations"
+import sys
+from pathlib import Path
+_SCRIPT_DIR = Path(__file__).resolve().parent.parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from config import OUTPUT_DIR as CONFIG_OUTPUT_DIR
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+RANKINGS_FILE = CONFIG_OUTPUT_DIR / "user_rankings.json"
+TRAIN_TWEETS_FILE = CONFIG_OUTPUT_DIR / "train_tweets.csv"
+PCA_STATS_FILE = CONFIG_OUTPUT_DIR / "pca_stats.json"  # Optional; uses defaults if missing
+OUTPUT_DIR = CONFIG_OUTPUT_DIR / "visualizations"
 OUTPUT_DIR.mkdir(exist_ok=True)
 HTML_FILE = OUTPUT_DIR / "popular_tweets_by_cluster.html"
 

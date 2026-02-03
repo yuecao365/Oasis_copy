@@ -57,6 +57,7 @@ class Persona:
     original_user_name: str
     original_user_id: str
     tweet_count: int
+    sample_tweets: List[str]  # Tweet texts for previous_tweets (OASIS simulation)
 
 
 def fetch_user_profile_from_api(user_id: str) -> Optional[UserProfile]:
@@ -309,6 +310,7 @@ Output ONLY valid JSON in this exact format:
         original_user_name=user_name,
         original_user_id=original_user_id,
         tweet_count=tweet_count,
+        sample_tweets=user_tweets[:15],
     )
 
 
@@ -456,33 +458,46 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                 "mbti": persona.mbti,
                 "country": persona.country,
                 "profession": persona.profession,
-            "category": persona.category,
-            "all_categories": persona.all_categories,
-            "cluster_id": persona.cluster_id,
-            "original_user_name": persona.original_user_name,
-            "original_user_id": persona.original_user_id,
-            "tweet_count": persona.tweet_count,
+                "category": persona.category,
+                "all_categories": persona.all_categories,
+                "cluster_id": persona.cluster_id,
+                "original_user_name": persona.original_user_name,
+                "original_user_id": persona.original_user_id,
+                "tweet_count": persona.tweet_count,
+                "sample_tweets": persona.sample_tweets,
             })
         
         with output_path.open("w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
     
     elif format == "csv":
-        # Twitter format (CSV)
+        # OASIS Twitter simulation format (CSV)
+        # Required columns: username, name, description, user_char,
+        # following_agentid_list, previous_tweets (see agents_generator.generate_agents)
         import csv
-        
+
         with output_path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([
-                "user_id", "name", "username", "user_char", "description"
+                "user_id",
+                "name",
+                "username",
+                "following_agentid_list",
+                "previous_tweets",
+                "user_char",
+                "description",
             ])
             for idx, persona in enumerate(personas):
+                # previous_tweets: Python list literal for agents_generator.ast.literal_eval
+                tweets_str = json.dumps(persona.sample_tweets) if persona.sample_tweets else "[]"
                 writer.writerow([
-                    idx,  # user_id (agent_id)
-                    persona.realname,  # name
-                    persona.username,  # username
-                    persona.persona,  # user_char
-                    persona.bio,  # description
+                    idx,
+                    persona.realname,
+                    persona.username,
+                    "[]",  # following_agentid_list (empty; no follow graph from pipeline)
+                    tweets_str,
+                    persona.persona,
+                    persona.bio,
                 ])
     
     else:
