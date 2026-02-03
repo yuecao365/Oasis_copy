@@ -1,13 +1,14 @@
 # Oasis Twitter simulation config
 # Run from repo root: python simulation/twitter_simulation.py --config_path simulation/config.yaml
 #
-# Point csv_path and db_path to your own data. Paths are relative to repo root.
-# With submodule at oasis/, default data lives under oasis/data/.
+# Point csv_path to your agent/persona data. Paths are relative to repo root.
+# To use personas from the generation pipeline:
+#   csv_path: persona_generation/outputs/user_personas.csv
 
 ---
 data:
   db_path: data/simu_db/yaml_gpt/False_Business_0.db
-  csv_path: oasis/data/twitter_dataset/anonymous_topic_200_1h/False_Business_0.csv
+  csv_path: persona_generation/outputs/user_personas.csv
 
 simulation:
   num_timesteps: 3

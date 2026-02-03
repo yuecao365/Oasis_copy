@@ -1,91 +1,112 @@
 # User Persona Generation Pipeline
 
-This directory contains modules for ranking top users by tweet category and generating personas for simulation.
+This directory contains modules for ranking top users by tweet category and generating personas for OASIS simulation. The pipeline loads cleaned tweets and clustering output, then ranks users and generates LLM-based personas.
 
 ## Overview
 
 The pipeline:
-1. **Splits tweets** into train/test sets using time-based splitting (first 6 months train, next 1-3 months test)
-2. **Clusters train tweets** by topic using HDBSCAN or KMeans
-3. **Ranks top N users** per category based on tweet count
-4. **Generates personas** for top users using LLM inference
+1. **Loads** `filtered_tweets.jsonl` and splits into train/test sets by time
+2. **Loads** clustering output (`cluster_assignments.jsonl`, `cluster_topics.json`) from the clustering stage
+3. **Ranks** top N users per cluster by tweet count (and popularity)
+4. **Generates** personas for ranked users using LLM inference
 
-## Modules
+Clustering is **not** performed here; it is done in the `clustering/` directory. See `CLUSTERING_INPUT_SPEC.md` for the expected clustering output format.
 
-### `data_split.py`
-Time-based train/test splitting:
-- Extracts timestamps from Snowflake tweet IDs
-- Splits chronologically (first N months → train, next M months → test)
-- Filters to only users active in BOTH periods
+---
 
-### `rank_users_by_category.py`
-Ranks users within each cluster:
-- Groups tweets by cluster ID
-- Counts tweets per user per cluster
-- Returns top N users per cluster
+## Required Inputs
 
-### `generate_personas.py`
-Generates personas using hybrid approach:
-- Optional Twitter API for location/created_at hints
-- LLM inference for demographics (age, gender, MBTI, country, profession)
-- LLM generation for detailed persona
+All default paths are defined in `config.py` and are relative to the repo root.
 
-### `user_persona_pipeline.py`
-Main orchestration script that runs the full pipeline.
+| Input | Default Path | Description |
+|-------|--------------|-------------|
+| `filtered_tweets.jsonl` | `data/processed/filtered_tweets.jsonl` | Cleaned tweets from the cleaning stage |
+| `tweet_popularity_scores.csv` | `data/processed/tweet_popularity_scores.csv` | PCA-based popularity scores from the PCA stage |
+| `cluster_assignments.jsonl` | `data/processed/cluster_assignments.jsonl` | Tweet → cluster assignments from clustering |
+| `cluster_topics.json` | `data/processed/cluster_topics.json` | Cluster ID → topic description from clustering |
+
+---
+
+
+## Outputs and Locations
+
+By default, outputs are written to `persona_generation/outputs/` (configurable via `--output-dir` or `config.OUTPUT_DIR`).
+
+| Output | Location | Description |
+|--------|----------|-------------|
+| `train_tweets.csv` | `{OUTPUT_DIR}/train_tweets.csv` | Training tweets (time-split, filtered) |
+| `test_tweets.csv` | `{OUTPUT_DIR}/test_tweets.csv` | Test tweets |
+| `split_info.json` | `{OUTPUT_DIR}/split_info.json` | Split metadata (date ranges, user counts) |
+| `user_rankings.json` | `{OUTPUT_DIR}/user_rankings.json` | Top users per cluster with sample tweets |
+| `user_personas.csv` or `user_personas.json` | `{OUTPUT_DIR}/user_personas.csv` | Generated personas (OASIS Twitter simulation format) |
+
+---
 
 ## Usage
 
-### Basic Usage
+### Usage
+
+All parameters are set in `config.py`. Edit that file to change paths, split boundaries, or other settings.
 
 ```bash
+# From repo root
+cd persona_generation
+
 # Set OpenAI API key (required)
 export OPENAI_API_KEY="your-key-here"
 
-# Optional: Set Twitter API key for location hints
+# Optional: Twitter API for profile hints (set USE_TWITTER_API=True in config.py)
 export TWITTER_API_KEY="your-bearer-token"
 
 # Run pipeline
 python user_persona_pipeline.py
 ```
 
-### Advanced Options
+---
+
+## Visualizing Results
+
+### HTML Dashboards (no extra dependencies)
+
+**Rankings and personas dashboard**
 
 ```bash
-python user_persona_pipeline.py \
-    --train-months 6 \
-    --test-months 1 \
-    --clustering-method hdbscan_400 \
-    --top-n 10 \
-    --min-train-tweets 1 \
-    --min-test-tweets 1 \
-    --use-twitter-api \
-    --output-format json \
-    --output-dir ./output
+cd persona_generation
+python visualizations/visualize_rankings_html.py
 ```
 
-### Arguments
+- **Output**: `persona_generation/visualizations/rankings_dashboard.html` (or `{OUTPUT_DIR}/visualizations/` depending on config)
+- Shows: top users by category, sample personas, category distribution
+- Open in a browser: `file:///path/to/rankings_dashboard.html`
 
-- `--train-months`: Number of months for training period (default: 6)
-- `--test-months`: Number of months for test period (default: 1)
-- `--clustering-method`: One of `hdbscan_200`, `hdbscan_400`, `hdbscan_600`, `kmeans_3`, `kmeans_4`, `kmeans_5`, `kmeans_6` (default: `hdbscan_400`)
-- `--top-n`: Number of top users per category (default: 10)
-- `--min-train-tweets`: Minimum tweets in train period (default: 1)
-- `--min-test-tweets`: Minimum tweets in test period (default: 1)
-- `--use-twitter-api`: Use Twitter API to fetch user profiles (requires `TWITTER_API_KEY`)
-- `--output-format`: `json` (Reddit format) or `csv` (Twitter format) (default: `json`)
-- `--output-dir`: Output directory (default: `tweet_processing/`)
+**Popular tweets by cluster**
 
-## Output Files
+```bash
+python visualizations/visualize_popular_tweets.py
+```
 
-- `train_tweets.csv`: Training tweets (first N months)
-- `test_tweets.csv`: Test tweets (next M months)
-- `split_info.json`: Split metadata (date ranges, user counts)
-- `user_rankings.json`: Top users per cluster
-- `user_personas.json` or `user_personas.csv`: Generated personas
+- **Output**: `persona_generation/outputs/visualizations/popular_tweets_by_cluster.html`
+- Shows: most popular tweets per cluster, ranked by popularity score
 
-## Output Format
+### Matplotlib/Seaborn (requires `matplotlib`, `seaborn`)
 
-### JSON Format (Reddit)
+```bash
+python visualizations/visualize_rankings.py
+```
+
+- **Output**: PNG files in `persona_generation/outputs/visualizations/`
+  - `top_users_by_category.png`
+  - `category_distribution.png`
+  - `user_rankings_heatmap.png`
+  - `persona_examples.png`
+  - `summary_statistics.png`
+
+---
+
+## Output Formats
+
+### JSON (Reddit/OASIS)
+
 ```json
 [
   {
@@ -98,7 +119,8 @@ python user_persona_pipeline.py \
     "mbti": "ENTP",
     "country": "US",
     "profession": "Information Technology",
-    "category": "VeChain Hayabusa Upgrade",
+    "category": "Primary topic",
+    "all_categories": ["Topic A", "Topic B"],
     "cluster_id": 0,
     "original_user_name": "username1",
     "original_user_id": "123456",
@@ -107,26 +129,46 @@ python user_persona_pipeline.py \
 ]
 ```
 
-### CSV Format (Twitter)
+### CSV (Twitter / OASIS simulation)
+
+Default format. Compatible with `oasis.social_agent.agents_generator.generate_agents`.
+
 ```csv
-user_id,name,username,user_char,description
-0,Generated Name,generated_username,"Detailed persona description...","Bio text"
+user_id,name,username,following_agentid_list,previous_tweets,user_char,description
+0,CryptoGnomie,CryptoGnomie,[],[],"Detailed persona description...","Bio text"
 ```
+
+- `following_agentid_list`: Empty `[]` (no follow graph from pipeline)
+- `previous_tweets`: Sample tweets from the user's training data (up to 15 per user), seeded so agents have posts to interact with
+- Set `simulation/config.yaml` → `data.csv_path` to `persona_generation/outputs/user_personas.csv` to run Twitter simulation
+
+---
+
+## Config
+
+All parameters are in `config.py`:
+
+- **Paths**: `FILTERED_TWEETS_PATH`, `TWEET_POPULARITY_PATH`, `CLUSTER_ASSIGNMENTS_PATH`, `CLUSTER_TOPICS_PATH`, `OUTPUT_DIR`
+- **Split**: `TRAIN_YEAR`, `TRAIN_MONTH`, `TEST_YEAR`, `TEST_MONTH`, `MIN_TRAIN_TWEETS`, `MIN_TEST_TWEETS`
+- **Ranking**: `TOP_N`
+- **Persona**: `OUTPUT_FORMAT` (`"csv"` default for Twitter sim, or `"json"` for Reddit-style), `USE_TWITTER_API` (bool)
+
+---
 
 ## Requirements
 
 - Python 3.8+
-- `hdbscan`
-- `scikit-learn`
-- `sentence-transformers`
-- `openai`
-- `numpy`
-- `pandas` (optional, for easier data manipulation)
-- `requests` (optional, if using Twitter API)
+- `openai` (LLM persona generation)
+- `requests` (optional, for Twitter API)
 
-## Notes
+Clustering dependencies (`hdbscan`, `sentence-transformers`, `scikit-learn`) are **not** required by persona generation; clustering runs separately.
 
-- **Time-based split**: Uses chronological splitting (not random) to ensure users are active in test period
-- **User filtering**: Only includes users active in BOTH train and test periods
-- **Demographics**: Twitter API doesn't provide age/gender/MBTI, so LLM inference is required
-- **Cost**: LLM calls for demographics inference and persona generation (consider batching/caching)
+---
+
+## Pipeline Order
+
+1. **Cleaning** → `filtered_tweets.jsonl`
+2. **PCA** → `tweet_popularity_scores.csv`
+3. **Clustering** → `cluster_assignments.jsonl`, `cluster_topics.json` (see `CLUSTERING_INPUT_SPEC.md`)
+4. **Persona generation** (this pipeline) → `user_rankings.json`, `user_personas.csv`
+5. **Simulation** → OASIS Twitter simulation: set `simulation/config.yaml` `data.csv_path` to `persona_generation/outputs/user_personas.csv`

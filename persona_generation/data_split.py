@@ -2,20 +2,22 @@
 """
 Time-based train/test split for tweets.
 
-Extracts timestamps from Snowflake tweet IDs and splits data chronologically.
+Loads from filtered_tweets.jsonl and splits data chronologically.
 Only includes users who are active in BOTH train and test periods.
 """
 
 import csv
+import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_FILE = REPO_ROOT / "tweet_processing" / "tweet_Nov+Dec.txt"
+from config import FILTERED_TWEETS_PATH, OUTPUT_DIR
 
-# Snowflake epoch: 1288834974657 milliseconds since Unix epoch
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Snowflake epoch: 1288834974657 milliseconds since Unix epoch (kept for compatibility)
 SNOWFLAKE_EPOCH = 1288834974657
 
 
@@ -35,6 +37,93 @@ class TweetWithTimestamp:
     impressions: int
     is_root: bool
     dup: bool
+
+
+def _parse_created_at(created_at: str) -> datetime:
+    """Parse Twitter createdAt string (e.g. 'Tue Jul 22 07:01:42 +0000 2025')."""
+    if not created_at:
+        return datetime.fromtimestamp(0, tz=timezone.utc)
+    try:
+        # Twitter format: "Tue Jul 22 07:01:42 +0000 2025"
+        dt = datetime.strptime(created_at.strip(), "%a %b %d %H:%M:%S %z %Y")
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, TypeError):
+        return datetime.fromtimestamp(0, tz=timezone.utc)
+
+
+def _safe_int(val, default: int = 0) -> int:
+    """Cast to int, handling None and empty strings."""
+    if val is None:
+        return default
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
+
+
+def load_tweets_from_filtered_jsonl(path: Path) -> List[TweetWithTimestamp]:
+    """
+    Load tweets from filtered_tweets.jsonl (output of cleaning phase).
+
+    Maps fields: id, clean_text -> text, author.id -> user_id, author.userName -> user_name.
+    Parses createdAt for timestamps. is_root from isReply == False.
+    """
+    tweets = []
+    if not path.exists():
+        return tweets
+
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            tweet_id = obj.get("id", "")
+            if not tweet_id:
+                continue
+
+            author = obj.get("author") or {}
+            user_id = str(author.get("id", ""))
+            user_name = author.get("userName", "")
+
+            text = obj.get("clean_text") or obj.get("text", "")
+
+            likes = _safe_int(obj.get("likeCount"))
+            retweets = _safe_int(obj.get("retweetCount"))
+            replies = _safe_int(obj.get("replyCount"))
+            quotes = _safe_int(obj.get("quoteCount"))
+            views = _safe_int(obj.get("viewCount"))
+
+            created_at = obj.get("createdAt", "")
+            timestamp = _parse_created_at(created_at)
+
+            is_reply = obj.get("isReply", False)
+            is_root = not is_reply
+
+            tweets.append(
+                TweetWithTimestamp(
+                    text=text,
+                    id=str(tweet_id),
+                    topic_id="",
+                    user_name=user_name,
+                    user_id=user_id,
+                    timestamp=timestamp,
+                    likes=likes,
+                    retweets=retweets,
+                    replies=replies,
+                    quotes=quotes,
+                    impressions=views,
+                    is_root=is_root,
+                    dup=False,  # filtered_tweets has deduped
+                )
+            )
+    return tweets
 
 
 def extract_timestamp_from_tweet_id(tweet_id: str) -> datetime:
@@ -59,36 +148,9 @@ def extract_timestamp_from_tweet_id(tweet_id: str) -> datetime:
         return datetime.fromtimestamp(0)
 
 
-def load_tweets_with_timestamps() -> List[TweetWithTimestamp]:
-    """Load tweets and extract timestamps from IDs."""
-    tweets = []
-    with DATA_FILE.open() as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            tweet_id = row.get("id", "")
-            if not tweet_id:
-                continue
-                
-            timestamp = extract_timestamp_from_tweet_id(tweet_id)
-            
-            tweets.append(
-                TweetWithTimestamp(
-                    text=row.get("text", ""),
-                    id=tweet_id,
-                    topic_id=row.get("topic_id", ""),
-                    user_name=row.get("user_name", ""),
-                    user_id=row.get("user_id", ""),
-                    timestamp=timestamp,
-                    likes=int(row.get("likes", 0) or 0),
-                    retweets=int(row.get("retweets", 0) or 0),
-                    replies=int(row.get("replies", 0) or 0),
-                    quotes=int(row.get("quotes", 0) or 0),
-                    impressions=int(row.get("impressions", 0) or 0),
-                    is_root=row.get("is_root") == "1",
-                    dup=row.get("dup") != "0",
-                )
-            )
-    return tweets
+def load_tweets_with_timestamps(path: Path = None) -> List[TweetWithTimestamp]:
+    """Load tweets from filtered_tweets.jsonl with timestamps from createdAt."""
+    return load_tweets_from_filtered_jsonl(path or FILTERED_TWEETS_PATH)
 
 
 def split_tweets_by_time(
@@ -358,11 +420,11 @@ def main():
     print(f"After filtering - Train: {len(train_filtered)} tweets, Test: {len(test_filtered)} tweets")
     
     # Save outputs
-    output_dir = REPO_ROOT / "tweet_processing"
-    save_tweets_to_csv(train_filtered, output_dir / "train_tweets.csv")
-    save_tweets_to_csv(test_filtered, output_dir / "test_tweets.csv")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    save_tweets_to_csv(train_filtered, OUTPUT_DIR / "train_tweets.csv")
+    save_tweets_to_csv(test_filtered, OUTPUT_DIR / "test_tweets.csv")
     save_split_info(
-        train_filtered, test_filtered, output_dir / "split_info.json",
+        train_filtered, test_filtered, OUTPUT_DIR / "split_info.json",
         train_months=6, test_months=1
     )
     print("Saved train_tweets.csv, test_tweets.csv, and split_info.json")

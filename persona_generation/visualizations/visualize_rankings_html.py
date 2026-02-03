@@ -9,16 +9,20 @@ Creates an interactive HTML dashboard showing:
 """
 
 import json
+import sys
 from pathlib import Path
 from collections import defaultdict
 from typing import Dict, List
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-RANKINGS_FILE = REPO_ROOT / "tweet_processing" / "user_rankings.json"
-PERSONAS_FILE = REPO_ROOT / "tweet_processing" / "user_personas.json"
-OUTPUT_DIR = REPO_ROOT / "tweet_processing" / "visualizations"
-OUTPUT_DIR.mkdir(exist_ok=True)
-HTML_FILE = OUTPUT_DIR / "rankings_dashboard.html"
+_SCRIPT_DIR = Path(__file__).resolve().parent.parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from config import OUTPUT_DIR as CONFIG_OUTPUT_DIR, VISUALIZATIONS_DIR
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+RANKINGS_FILE = CONFIG_OUTPUT_DIR / "user_rankings.json"
+PERSONAS_FILE = CONFIG_OUTPUT_DIR / "user_personas.json"
+HTML_FILE = VISUALIZATIONS_DIR / "rankings_dashboard.html"
 
 
 def load_data():
