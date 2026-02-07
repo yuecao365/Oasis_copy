@@ -187,8 +187,23 @@ def main():
 
     # Step 2: Load clustering output
     print("\n[Step 2] Loading clustering output...")
-    tweet_to_cluster = load_cluster_assignments(CLUSTER_ASSIGNMENTS_PATH)
-    topics_dict = load_cluster_topics(CLUSTER_TOPICS_PATH)
+    cluster_assignments_path = CLUSTER_ASSIGNMENTS_PATH
+    cluster_topics_path = CLUSTER_TOPICS_PATH
+
+    if not cluster_assignments_path.exists():
+        fallback = REPO_ROOT / "clustering" / "cluster_assignments.jsonl"
+        if fallback.exists():
+            print(f"Cluster assignments not found at {cluster_assignments_path}, using {fallback}")
+            cluster_assignments_path = fallback
+
+    if not cluster_topics_path.exists():
+        fallback = REPO_ROOT / "clustering" / "cluster_topics.json"
+        if fallback.exists():
+            print(f"Cluster topics not found at {cluster_topics_path}, using {fallback}")
+            cluster_topics_path = fallback
+
+    tweet_to_cluster = load_cluster_assignments(cluster_assignments_path)
+    topics_dict = load_cluster_topics(cluster_topics_path)
     print(f"Loaded {len(tweet_to_cluster)} cluster assignments, {len(topics_dict)} topics")
 
     clusters = load_train_tweets_with_popularity_and_clusters(

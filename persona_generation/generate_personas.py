@@ -8,6 +8,7 @@ Generate personas for users using hybrid approach:
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -32,7 +33,7 @@ class UserProfile:
 @dataclass
 class Demographics:
     """Inferred demographics for a user."""
-    age: int
+    age: Optional[int]
     gender: str
     mbti: str
     country: str
@@ -46,7 +47,7 @@ class Persona:
     realname: str
     bio: str
     persona: str
-    age: int
+    age: Optional[int]
     gender: str
     mbti: str
     country: str
@@ -103,6 +104,224 @@ def fetch_user_profile_from_api(user_id: str) -> Optional[UserProfile]:
     return None
 
 
+ALLOWED_GENDERS = {"male", "female", "other", "unknown"}
+ALLOWED_MBTI = {
+    "ISTJ", "ISFJ", "INFJ", "INTJ",
+    "ISTP", "ISFP", "INFP", "INTP",
+    "ESTP", "ESFP", "ENFP", "ENTP",
+    "ESTJ", "ESFJ", "ENFJ", "ENTJ",
+}
+ALLOWED_PROFESSIONS = {
+    "Agriculture Food & Natural Resources",
+    "Architecture & Construction",
+    "Arts Audio/Video Technology & Communications",
+    "Business Management & Administration",
+    "Education & Training",
+    "Finance",
+    "Government & Public Administration",
+    "Health Science",
+    "Hospitality & Tourism",
+    "Human Services",
+    "Information Technology",
+    "Law Public Safety Corrections & Security",
+    "Manufacturing",
+    "Marketing",
+    "Science Technology Engineering & Mathematics",
+    "Transportation Distribution & Logistics",
+}
+
+
+def _normalize_age(value) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        cleaned = value.strip().lower()
+        if cleaned in {"unknown", "n/a", "na", ""}:
+            return None
+        try:
+            value = int(re.sub(r"[^0-9]", "", cleaned))
+        except ValueError:
+            return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        value = int(value)
+        if 18 <= value <= 65:
+            return value
+    return None
+
+
+def _normalize_gender(value: Optional[str]) -> str:
+    if value is None:
+        return "unknown"
+    cleaned = str(value).strip().lower()
+    if cleaned in {"nonbinary", "non-binary", "nb"}:
+        cleaned = "other"
+    if cleaned not in ALLOWED_GENDERS:
+        return "unknown"
+    return cleaned
+
+
+def _normalize_mbti(value: Optional[str]) -> str:
+    if value is None:
+        return "unknown"
+    cleaned = str(value).strip().upper()
+    if cleaned.endswith("-A") or cleaned.endswith("-T"):
+        cleaned = cleaned[:4]
+    if cleaned not in ALLOWED_MBTI:
+        return "unknown"
+    return cleaned
+
+
+def _normalize_country(value: Optional[str]) -> str:
+    if value is None:
+        return "unknown"
+    cleaned = str(value).strip().upper()
+    if cleaned in {"UNKNOWN", "N/A", "NA", ""}:
+        return "unknown"
+    cleaned = cleaned.replace(".", "")
+    if cleaned in {"USA", "US"}:
+        return "US"
+    if cleaned in {"UK", "GB", "GBR"}:
+        return "UK"
+    if not re.fullmatch(r"[A-Z]{2,3}", cleaned):
+        return "unknown"
+    return cleaned
+
+
+def _normalize_profession(value: Optional[str]) -> str:
+    if value is None:
+        return "unknown"
+    cleaned = str(value).strip()
+    if cleaned.lower() in {"unknown", "n/a", "na", ""}:
+        return "unknown"
+    if cleaned not in ALLOWED_PROFESSIONS:
+        return "unknown"
+    return cleaned
+
+
+def _evidence_says_unknown(evidence: Dict, key: str) -> bool:
+    if not evidence or key not in evidence:
+        return False
+    value = str(evidence.get(key, "")).strip().lower()
+    return value in {"unknown", "n/a", "na", "", "none"}
+
+
+def _normalize_demographics(demographics_dict: Dict) -> Demographics:
+    evidence = demographics_dict.get("evidence", {}) if isinstance(demographics_dict, dict) else {}
+
+    age = _normalize_age(demographics_dict.get("age") if isinstance(demographics_dict, dict) else None)
+    gender = _normalize_gender(demographics_dict.get("gender") if isinstance(demographics_dict, dict) else None)
+    mbti = _normalize_mbti(demographics_dict.get("mbti") if isinstance(demographics_dict, dict) else None)
+    country = _normalize_country(demographics_dict.get("country") if isinstance(demographics_dict, dict) else None)
+    profession = _normalize_profession(demographics_dict.get("profession") if isinstance(demographics_dict, dict) else None)
+
+    if _evidence_says_unknown(evidence, "age"):
+        age = None
+    if _evidence_says_unknown(evidence, "gender"):
+        gender = "unknown"
+    if _evidence_says_unknown(evidence, "mbti"):
+        mbti = "unknown"
+    if _evidence_says_unknown(evidence, "country"):
+        country = "unknown"
+    if _evidence_says_unknown(evidence, "profession"):
+        profession = "unknown"
+
+    return Demographics(
+        age=age,
+        gender=gender,
+        mbti=mbti,
+        country=country,
+        profession=profession,
+    )
+
+
+def _evidence_matches_text(evidence_value, text_lower: str) -> bool:
+    if not evidence_value or not text_lower:
+        return False
+    if isinstance(evidence_value, list):
+        candidates = [str(item) for item in evidence_value]
+    else:
+        raw = str(evidence_value)
+        if "|" in raw:
+            candidates = raw.split("|")
+        elif ";" in raw:
+            candidates = raw.split(";")
+        else:
+            candidates = [raw]
+    for candidate in candidates:
+        snippet = candidate.strip()
+        if not snippet:
+            continue
+        if snippet.lower() in text_lower:
+            return True
+    return False
+
+
+def _extract_anchor_terms(tweets: List[str]) -> List[str]:
+    anchors: List[str] = []
+    seen = set()
+
+    for tweet in tweets:
+        for token in re.findall(r"(#\w+|\$\w+)", tweet):
+            if token.upper() == "URL":
+                continue
+            if token not in seen:
+                seen.add(token)
+                anchors.append(token)
+
+    if len(anchors) >= 4:
+        return anchors[:6]
+
+    stopwords = {
+        "the", "and", "for", "with", "this", "that", "from", "into", "your", "you", "are",
+        "was", "were", "have", "has", "had", "will", "would", "could", "should", "about",
+        "just", "like", "what", "when", "where", "their", "them", "they", "then", "than",
+        "also", "here", "there", "over", "under", "into", "onto", "our", "out", "too",
+        "very", "more", "most", "some", "much", "any", "can", "cant", "dont", "does",
+        "did", "didnt", "im", "its", "its", "url", "http", "https",
+    }
+
+    word_counts: Dict[str, int] = {}
+    for tweet in tweets:
+        for word in re.findall(r"[A-Za-z][A-Za-z0-9]{2,}", tweet):
+            lowered = word.lower()
+            if lowered in stopwords:
+                continue
+            word_counts[lowered] = word_counts.get(lowered, 0) + 1
+
+    for word, _ in sorted(word_counts.items(), key=lambda item: (-item[1], item[0])):
+        if word not in seen:
+            seen.add(word)
+            anchors.append(word)
+        if len(anchors) >= 6:
+            break
+
+    return anchors[:6]
+
+
+def _extract_behavioral_signals(tweets: List[str]) -> List[str]:
+    signals = []
+    if any("?" in t for t in tweets):
+        signals.append("asks questions to engage others")
+    exclamation_count = sum(t.count("!") for t in tweets)
+    if exclamation_count >= 3:
+        signals.append("uses emphatic exclamations")
+    hashtag_count = sum(len(re.findall(r"#\w+", t)) for t in tweets)
+    if hashtag_count >= 5:
+        signals.append("uses many hashtags")
+    if any("http" in t or "URL" in t for t in tweets):
+        signals.append("shares links to resources")
+    if any(re.search(r"\b[A-Z]{3,}\b", t) for t in tweets):
+        signals.append("uses all-caps emphasis")
+    if any(re.search(r"\b(thank you|thanks)\b", t, re.IGNORECASE) for t in tweets):
+        signals.append("often expresses gratitude")
+    if any(re.search(r"\b(DYOR|NFA|not financial advice)\b", t, re.IGNORECASE) for t in tweets):
+        signals.append("adds cautionary notes")
+
+    return signals[:5]
+
+
 def generate_demographics_from_tweets(
     user_tweets: List[str],
     user_name: str,
@@ -143,27 +362,33 @@ User: @{user_name}
 Sample tweets:
 {sample_tweets}
 
-Based on the writing style, topics, language patterns, and any available profile information, infer:
-1. Age (as an integer between 18-65, estimate based on writing style, topics, and language patterns. Ensure good variance across users - don't cluster around the same age)
-2. Gender (one of: "male", "female", "other")
-3. MBTI personality type (one of: ISTJ, ISFJ, INFJ, INTJ, ISTP, ISFP, INFP, INTP, ESTP, ESFP, ENFP, ENTP, ESTJ, ESFJ, ENFJ, ENTJ)
-4. Country (ISO country code like "US", "UK", "CA", etc. - infer from location field if available, or from language/content)
-5. Profession (choose from: Agriculture Food & Natural Resources, Architecture & Construction, Arts Audio/Video Technology & Communications, Business Management & Administration, Education & Training, Finance, Government & Public Administration, Health Science, Hospitality & Tourism, Human Services, Information Technology, Law Public Safety Corrections & Security, Manufacturing, Marketing, Science Technology Engineering & Mathematics, Transportation Distribution & Logistics)
+Rules:
+- Only set a value if it is explicitly stated or directly supported by a quoted phrase in the tweets or profile fields above.
+- If there is no explicit evidence, output \"unknown\" for that field.
+- Evidence MUST be a direct, exact substring from the tweets or profile fields (no paraphrase).
+- Do NOT guess based on writing style alone.
 
-IMPORTANT: For age, ensure diversity. Consider factors like:
-- Writing formality and style
-- References to life events (college, career milestones, family)
-- Technology adoption patterns
-- Cultural references
-- Language complexity
+Fields:
+1. Age: integer 18-65 or \"unknown\" (only if explicitly stated, e.g., \"I'm 29\")
+2. Gender: \"male\", \"female\", \"other\", or \"unknown\" (only if explicit, e.g., pronouns or self-ID)
+3. MBTI: one of ISTJ, ISFJ, INFJ, INTJ, ISTP, ISFP, INFP, INTP, ESTP, ESFP, ENFP, ENTP, ESTJ, ESFJ, ENFJ, ENTJ, or \"unknown\"
+4. Country: ISO code like \"US\", \"UK\", \"CA\" or \"unknown\" (only if location is explicit; cite the location string)
+5. Profession: one of Agriculture Food & Natural Resources, Architecture & Construction, Arts Audio/Video Technology & Communications, Business Management & Administration, Education & Training, Finance, Government & Public Administration, Health Science, Hospitality & Tourism, Human Services, Information Technology, Law Public Safety Corrections & Security, Manufacturing, Marketing, Science Technology Engineering & Mathematics, Transportation Distribution & Logistics, or \"unknown\"
 
 Output ONLY valid JSON in this exact format:
 {{
-    "age": 28,
-    "gender": "male",
-    "mbti": "ENTP",
-    "country": "US",
-    "profession": "Information Technology"
+    "age": "unknown",
+    "gender": "unknown",
+    "mbti": "unknown",
+    "country": "unknown",
+    "profession": "unknown",
+    "evidence": {
+        "age": "unknown",
+        "gender": "unknown",
+        "mbti": "unknown",
+        "country": "unknown",
+        "profession": "unknown"
+    }
 }}
 """
     
@@ -172,11 +397,14 @@ Output ONLY valid JSON in this exact format:
         messages=[
             {
                 "role": "system",
-                "content": "You are a demographics inference assistant. Output only valid JSON. Ensure age diversity across users.",
+                "content": (
+                    "You are a demographics inference assistant. Use only explicit evidence from the input. "
+                    "If evidence is missing, return \"unknown\". Output only valid JSON."
+                ),
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=1.0,  # Increased from 0.7 to 1.0 for more variance
+        temperature=0.4,
         max_tokens=200,
     )
     
@@ -189,14 +417,31 @@ Output ONLY valid JSON in this exact format:
         content = content.strip()
     
     demographics_dict = json.loads(content)
-    
-    return Demographics(
-        age=int(demographics_dict["age"]),
-        gender=demographics_dict["gender"],
-        mbti=demographics_dict["mbti"],
-        country=demographics_dict["country"],
-        profession=demographics_dict["profession"],
-    )
+    normalized = _normalize_demographics(demographics_dict)
+
+    evidence = demographics_dict.get("evidence", {}) if isinstance(demographics_dict, dict) else {}
+    combined_text_parts = list(user_tweets)
+    if api_profile:
+        if api_profile.location:
+            combined_text_parts.append(api_profile.location)
+        if api_profile.description:
+            combined_text_parts.append(api_profile.description)
+        if api_profile.created_at:
+            combined_text_parts.append(api_profile.created_at)
+    combined_text_lower = "\n".join(combined_text_parts).lower()
+
+    if not _evidence_matches_text(evidence.get("age"), combined_text_lower):
+        normalized.age = None
+    if not _evidence_matches_text(evidence.get("gender"), combined_text_lower):
+        normalized.gender = "unknown"
+    if not _evidence_matches_text(evidence.get("mbti"), combined_text_lower):
+        normalized.mbti = "unknown"
+    if not _evidence_matches_text(evidence.get("country"), combined_text_lower):
+        normalized.country = "unknown"
+    if not _evidence_matches_text(evidence.get("profession"), combined_text_lower):
+        normalized.profession = "unknown"
+
+    return normalized
 
 
 def generate_persona(
@@ -241,30 +486,53 @@ def generate_persona(
         categories_text = category_topic
         category_instruction = f"the category: {category_topic}"
     
-    prompt = f"""Generate a social media user profile based on the provided information.
+    age_value = demographics.age if demographics.age is not None else "unknown"
+    gender_value = demographics.gender or "unknown"
+    mbti_value = demographics.mbti or "unknown"
+    country_value = demographics.country or "unknown"
+    profession_value = demographics.profession or "unknown"
+
+    anchors = _extract_anchor_terms(user_tweets)
+    behavioral_signals = _extract_behavioral_signals(user_tweets)
+
+    anchors_text = ", ".join(anchors) if anchors else "None"
+    signals_text = ", ".join(behavioral_signals) if behavioral_signals else "None"
+
+    prompt = f"""Generate a social media user profile grounded ONLY in the evidence below.
 
 User Information:
 - Username: @{user_name}
-- Age: {demographics.age}
-- Gender: {demographics.gender}
-- MBTI: {demographics.mbti}
-- Country: {demographics.country}
-- Profession: {demographics.profession}
+- Age: {age_value}
+- Gender: {gender_value}
+- MBTI: {mbti_value}
+- Country: {country_value}
+- Profession: {profession_value}
 - Interest Categories: {categories_text}
+
+Evidence anchors (exact strings from tweets; mention 1-2 if available):
+{anchors_text}
+
+Behavioral signals (from tweets; mention 1 if available):
+{signals_text}
 
 Sample tweets from this user:
 {sample_tweets}
 
 Generate:
 1. A bio (1-2 sentences, similar to Twitter bio style) that reflects their interests in {category_instruction}
-2. A detailed persona description (2-3 sentences describing personality, interests, background, and how they engage with {category_instruction})
+2. A detailed persona description (2-3 sentences describing personality, interests, and how they engage with {category_instruction})
 
-IMPORTANT: Do NOT generate names or usernames. Use the provided username @{user_name} in your description if needed.
+Rules:
+- Do NOT generate names or usernames. Use the provided username @{user_name} if needed.
+- Do NOT invent demographics, education, family status, or life events.
+- If a demographic field is \"unknown\", do NOT mention or imply it.
+- Keep wording specific to tweet evidence; avoid generic stock phrases (e.g., \"tech-savvy professional\", \"passionate about\").
+- Make this persona distinct by using anchors/behaviors unique to this user's tweets.
 
 Output ONLY valid JSON in this exact format:
 {{
-    "bio": "Tech enthusiast passionate about blockchain and sustainability. Always learning.",
-    "persona": "This user is a tech-savvy professional in their late 20s with an ENTP personality. They're passionate about blockchain technology and sustainable solutions, often engaging in discussions about VeChain and related ecosystems. Their analytical mind and outgoing nature make them an active participant in crypto communities."
+    "bio": "Shares concise updates and calls to action around the topics they tweet about, often linking to resources.",
+    "persona": "They engage the community with specific project mentions and a direct, update-driven tone. Their posts highlight concrete milestones and participation prompts drawn from their own tweets."
 }}
 """
     
@@ -273,7 +541,10 @@ Output ONLY valid JSON in this exact format:
         messages=[
             {
                 "role": "system",
-                "content": "You are a persona generation assistant. Create realistic social media user profiles. Output only valid JSON.",
+                "content": (
+                    "You are a persona generation assistant. Use only provided evidence. "
+                    "Do not invent demographics or life details. Output only valid JSON."
+                ),
             },
             {"role": "user", "content": prompt},
         ],
@@ -453,7 +724,7 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                 "realname": persona.realname,
                 "bio": persona.bio,
                 "persona": persona.persona,
-                "age": persona.age,
+                "age": persona.age if persona.age is not None else "unknown",
                 "gender": persona.gender,
                 "mbti": persona.mbti,
                 "country": persona.country,
