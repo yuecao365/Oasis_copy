@@ -9,12 +9,13 @@ from typing import Dict, List, Set
 # Config
 # =========================
 
-INPUT_DIR = "data/raw/twitter"
+INPUT_DIR = "/Users/sichengxu/Downloads/twitter"
 OUTPUT_DIR = "data/processed"
 
 MIN_TOKEN_LEN = 20          # skip very short tweets
 BIN_SIZE = 10               # 0–10, 10–20, ...
 JACCARD_THRESHOLD = 0.85    # high threshold for auto-gen
+MIN_LIKES_THRESHOLD = 10    # duplicate cluster: if any tweet has likes >= this, keep one (the one with most likes); else drop all
 LOG_EVERY = 5000
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -57,6 +58,12 @@ def jaccard(a: Set[str], b: Set[str]) -> float:
     if not a or not b:
         return 0.0
     return len(a & b) / len(a | b)
+
+
+def get_likes(tw: Dict) -> int:
+    """Likes count from raw tweet (likeCount / likes / favorite_count)."""
+    v = tw.get("likeCount") or tw.get("likes") or tw.get("favorite_count") or 0
+    return int(v) if v is not None else 0
 
 # =========================
 # Load tweets
@@ -105,35 +112,93 @@ def deduplicate_tweets(tweets: List[Dict]):
         if idx % LOG_EVERY == 0 and idx > 0:
             print(f"Processed {idx} tweets...")
 
-    kept_ids = set()
-
+    
     for bin_id, group in bins.items():
-        token_sets = {tw["id"]: set(tw["tokens"]) for tw in group}
+        kept: List[tuple] = []  # (tw, token_set)
+        dropped_reps: List[set] = []  
 
         for tw in group:
-            if tw["id"] in kept_ids:
-                continue
+            tid = tw["id"]
+            tokens = set(tw["tokens"])
 
-            keep = True
-            for other_id, other_set in token_sets.items():
-                if other_id == tw["id"]:
-                    continue
+            
+            similar_kept_idx = None
+            for idx, (kept_tw, kept_tokens) in enumerate(kept):
+                if jaccard(tokens, kept_tokens) >= JACCARD_THRESHOLD:
+                    similar_kept_idx = idx
+                    break
 
-                score = jaccard(set(tw["tokens"]), other_set)
-                if score >= JACCARD_THRESHOLD:
-                    keep = False
+            if similar_kept_idx is not None:
+                
+                kept_tw, kept_tokens = kept[similar_kept_idx]
+                score = jaccard(tokens, kept_tokens)
+                likes_tw = get_likes(tw)
+                likes_kept = get_likes(kept_tw)
+
+                if max(likes_tw, likes_kept) >= MIN_LIKES_THRESHOLD:
+                    
+                    if likes_tw >= likes_kept:
+                        kept.pop(similar_kept_idx)
+                        dropped.append({
+                            "tweet_id": kept_tw["id"],
+                            "reason": "near_duplicate",
+                            "similar_to": tid,
+                            "jaccard": round(score, 4),
+                            "clean_text": kept_tw["clean_text"],
+                        })
+                        kept.append((tw, tokens))
+                    else:
+                        dropped.append({
+                            "tweet_id": tid,
+                            "reason": "near_duplicate",
+                            "similar_to": kept_tw["id"],
+                            "jaccard": round(score, 4),
+                            "clean_text": tw["clean_text"],
+                        })
+                else:
+                    # 簇里人气都低 → 两条都删，记代表进 dropped_reps
                     dropped.append({
-                        "tweet_id": tw["id"],
+                        "tweet_id": tid,
                         "reason": "near_duplicate",
-                        "similar_to": other_id,
+                        "similar_to": kept_tw["id"],
                         "jaccard": round(score, 4),
                         "clean_text": tw["clean_text"],
                     })
-                    break
+                    kept.pop(similar_kept_idx)
+                    dropped.append({
+                        "tweet_id": kept_tw["id"],
+                        "reason": "near_duplicate",
+                        "similar_to": tid,
+                        "jaccard": round(score, 4),
+                        "clean_text": kept_tw["clean_text"],
+                    })
+                    dropped_reps.append(kept_tokens)
+                continue
 
-            if keep:
-                kept_ids.add(tw["id"])
-                processed.append(tw)
+            
+            similar_to_rep = False
+            for rep_tokens in dropped_reps:
+                if jaccard(tokens, rep_tokens) >= JACCARD_THRESHOLD:
+                    similar_to_rep = True
+                    if get_likes(tw) >= MIN_LIKES_THRESHOLD:
+                        
+                        kept.append((tw, tokens))
+                    else:
+                        dropped.append({
+                            "tweet_id": tid,
+                            "reason": "near_duplicate",
+                            "similar_to": "(dropped_rep)",
+                            "jaccard": round(jaccard(tokens, rep_tokens), 4),
+                            "clean_text": tw["clean_text"],
+                        })
+                    break
+            if similar_to_rep:
+                continue
+
+            kept.append((tw, tokens))
+
+        for tw, _ in kept:
+            processed.append(tw)
 
     return processed, dropped
 
