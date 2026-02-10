@@ -8,6 +8,7 @@ Generate personas for users using hybrid approach:
 
 import json
 import os
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -476,6 +477,8 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
         # following_agentid_list, previous_tweets (see agents_generator.generate_agents)
         import csv
 
+        n = len(personas)
+
         with output_path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([
@@ -488,13 +491,19 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                 "description",
             ])
             for idx, persona in enumerate(personas):
+                # following_agentid_list: random subset of other agent IDs
+                other_ids = [i for i in range(n) if i != idx]
+                k = random.randint(0, min(10, len(other_ids))) if other_ids else 0
+                following_list = random.sample(other_ids, k) if k > 0 else []
+
                 # previous_tweets: Python list literal for agents_generator.ast.literal_eval
                 tweets_str = json.dumps(persona.sample_tweets) if persona.sample_tweets else "[]"
+
                 writer.writerow([
                     idx,
                     persona.realname,
                     persona.username,
-                    "[]",  # following_agentid_list (empty; no follow graph from pipeline)
+                    json.dumps(following_list),
                     tweets_str,
                     persona.persona,
                     persona.bio,
