@@ -98,7 +98,7 @@ def load_train_tweets_with_popularity_and_clusters(
     # Load popularity: tweet_id -> score
     popularity_map: Dict[str, float] = {}
     if popularity_csv_path.exists():
-        with popularity_csv_path.open("r", encoding="utf-8") as f:
+        with popularity_csv_path.open("r", newline="", encoding="utf-8", errors="replace") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 tid = row.get("tweet_id")
@@ -180,8 +180,8 @@ def main():
         train_filtered,
         test_filtered,
         OUTPUT_DIR / "split_info.json",
-        train_months=1,
-        test_months=1,
+        train_months=TRAIN_MONTH,
+        test_months=TEST_MONTH,
     )
     print(f"Saved train/test splits to {train_file} and {test_file}")
 
