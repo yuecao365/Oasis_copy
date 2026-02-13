@@ -237,24 +237,24 @@ def generate_persona(
 # DRY RUN MODE: dummy persona
 # -----------------------------
     if DRY_RUN:
-    return Persona(
-        username=user_name,
-        realname=user_name,
-        bio=f"Bio placeholder for @{user_name} (DRY RUN)",
-        persona=f"Persona description placeholder for @{user_name}. Categories: {all_categories}.",
-        age=demographics.age,
-        gender=demographics.gender,
-        mbti=demographics.mbti,
-        country=demographics.country,
-        profession=demographics.profession,
-        category=category_topic,
-        all_categories=all_categories,
-        cluster_id=cluster_id,
-        original_user_name=user_name,
-        original_user_id=original_user_id,
-        tweet_count=tweet_count,
-        sample_tweets=user_tweets[:15],
-    )
+        return Persona(
+            username=user_name,
+            realname=user_name,
+            bio=f"Bio placeholder for @{user_name} (DRY RUN)",
+            persona=f"Persona description placeholder for @{user_name}. Categories: {all_categories}.",
+            age=demographics.age,
+            gender=demographics.gender,
+            mbti=demographics.mbti,
+            country=demographics.country,
+            profession=demographics.profession,
+            category=category_topic,
+            all_categories=all_categories,
+            cluster_id=cluster_id,
+            original_user_name=user_name,
+            original_user_id=original_user_id,
+            tweet_count=tweet_count,
+            sample_tweets=user_tweets[:15],
+        )
     """
     Generate detailed persona for a user.
     
