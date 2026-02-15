@@ -567,7 +567,7 @@ if __name__ == "__main__":
         print(f"Rankings file not found: {rankings_file}")
         print("Run rank_users_by_category.py first")
     else:
-        with rankings_file.open() as f:
+        with rankings_file.open("r", encoding="utf-8") as f:
             rankings = json.load(f)
         
         use_api = bool(TWITTER_API_KEY)
