@@ -175,11 +175,68 @@ def load_cluster_assignments_from_labels(
             assignments[idx] = int(label)
     return assignments
 
+def load_tweets_with_clusters(tweets_csv_path: Path) -> Dict[int, List[Dict]]:
+    """
+    Load tweets from CSV and group them by topic_id (used as cluster_id).
+
+    Expected columns in train_tweets.csv:
+      dup,id,topic_id,reply_to_id,reply_to_user,likes,retweets,replies,quotes,
+      impressions,user_name,user_id,is_root,text,timestamp
+    """
+    clusters: Dict[int, List[Dict]] = defaultdict(list)
+
+    with tweets_csv_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            # Use topic_id as the cluster label
+            try:
+                cluster_id = int(row.get("topic_id", -1))
+            except ValueError:
+                cluster_id = -1
+
+            if cluster_id == -1:
+                # Skip rows without a valid topic/cluster
+                continue
+
+            # Build a popularity proxy: likes + retweets + replies + quotes
+            def to_int(x):
+                try:
+                    return int(float(x))
+                except Exception:
+                    return 0
+
+            likes = to_int(row.get("likes", 0))
+            retweets = to_int(row.get("retweets", 0))
+            replies = to_int(row.get("replies", 0))
+            quotes = to_int(row.get("quotes", 0))
+            impressions = to_int(row.get("impressions", 0))
+
+            popularity = likes + retweets + replies + quotes
+            if popularity == 0 and impressions > 0:
+                # Optional: if no engagements, use impressions as a weak signal
+                popularity = impressions
+
+            tweet = {
+                "id": str(row.get("id", "")).strip(),
+                "user_id": str(row.get("user_id", "")).strip(),
+                "user_name": str(row.get("user_name", "")).strip(),
+                "text": row.get("text", "") or "",
+                "popularity": float(popularity),
+                # topic name not provided in CSV; keep empty string
+                "topic": "",
+            }
+            clusters[cluster_id].append(tweet)
+
+    return clusters
 
 if __name__ == "__main__":
     # Example usage
-    tweets_file = REPO_ROOT / "tweet_processing" / "train_tweets.csv"
-    output_file = REPO_ROOT / "tweet_processing" / "user_rankings.json"
+    BASE_DIR = Path(__file__).resolve().parent
+    OUTPUTS_DIR = BASE_DIR / "outputs"
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    tweets_file = OUTPUTS_DIR / "train_tweets.csv"
+    output_file = OUTPUTS_DIR / "user_rankings.json"
     
     if not tweets_file.exists():
         print(f"Tweets file not found: {tweets_file}")

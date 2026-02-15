@@ -16,7 +16,7 @@ from config import DRY_RUN
 
 from openai import OpenAI
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent / "outputs"
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -560,8 +560,8 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
 
 if __name__ == "__main__":
     # Example usage
-    rankings_file = REPO_ROOT / "tweet_processing" / "user_rankings.json"
-    output_file = REPO_ROOT / "tweet_processing" / "user_personas.json"
+    rankings_file = REPO_ROOT / "user_rankings.json"
+    output_file = REPO_ROOT / "user_personas.json"
     
     if not rankings_file.exists():
         print(f"Rankings file not found: {rankings_file}")

@@ -209,9 +209,9 @@ def main():
 
     # Step 4: Generate personas
     print("\n[Step 4] Generating personas...")
-    with rankings_file.open() as f:
+    with rankings_file.open("r", encoding="utf-8") as f:
         rankings_data = json.load(f)
-
+    
     personas = generate_personas_for_users(
         rankings_data, use_twitter_api=USE_TWITTER_API
     )
