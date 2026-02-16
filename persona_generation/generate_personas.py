@@ -17,6 +17,7 @@ import hashlib
 
 from openai import OpenAI
 
+# NOTE: This points to the outputs directory under the script's folder, not the repo root.
 REPO_ROOT = Path(__file__).resolve().parent / "outputs"
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -82,6 +83,7 @@ def pick_with_priors(options, priors, rng, noise_eps: float = 0.05):
     probs = [x / s for x in noisy]
     return rng.choices(options, weights=probs, k=1)[0]
 
+
 def persona_rng(user_id: str, global_seed: int = 20260215) -> random.Random:
     """
     Deterministic RNG for a user, stable across processes/machines.
@@ -91,26 +93,27 @@ def persona_rng(user_id: str, global_seed: int = 20260215) -> random.Random:
     seed = int.from_bytes(h[:8], "big")  # use 64 bits of the hash
     return random.Random(seed)
 
+
 def fetch_user_profile_from_api(user_id: str) -> Optional[UserProfile]:
     """
     Fetch user profile from Twitter API v2 (optional).
-    
+
     Args:
         user_id: Twitter user ID
-        
+
     Returns:
         UserProfile if API available, None otherwise
     """
     if not TWITTER_API_KEY:
         return None
-    
+
     try:
         try:
             import requests
         except ImportError:
             print("Warning: requests library not installed. Install with: pip install requests")
             return None
-        
+
         url = f"https://api.twitter.com/2/users/{user_id}"
         headers = {
             "Authorization": f"Bearer {TWITTER_API_KEY}",
@@ -118,7 +121,7 @@ def fetch_user_profile_from_api(user_id: str) -> Optional[UserProfile]:
         params = {
             "user.fields": "location,created_at,description",
         }
-        
+
         response = requests.get(url, headers=headers, params=params, timeout=10)
         if response.status_code == 200:
             data = response.json()
@@ -130,7 +133,7 @@ def fetch_user_profile_from_api(user_id: str) -> Optional[UserProfile]:
             )
     except Exception as e:
         print(f"Warning: Failed to fetch user profile from API: {e}")
-    
+
     return None
 
 
@@ -140,9 +143,18 @@ def generate_demographics_from_tweets(
     api_profile: Optional[UserProfile] = None,
     rng: Optional[random.Random] = None,
 ) -> Demographics:
-    
-    from config import DRY_RUN
+    """
+    Infer demographics from user tweets using LLM (or return synthetic values in DRY_RUN).
 
+    Args:
+        user_tweets: List of tweet texts from the user
+        user_name: Username
+        api_profile: Optional profile from Twitter API
+        rng: Optional random.Random for reproducibility
+
+    Returns:
+        Demographics object
+    """
     # -----------------------------
     # DRY RUN MODE: return fake demographics
     # -----------------------------
@@ -194,25 +206,14 @@ def generate_demographics_from_tweets(
         }
         return Demographics(**fake)
 
-    """
-    Infer demographics from user tweets using LLM.
-    
-    Args:
-        user_tweets: List of tweet texts from the user
-        user_name: Username
-        api_profile: Optional profile from Twitter API
-        
-    Returns:
-        Demographics object
-    """
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY not set - required for demographics inference")
-    
+
     client = OpenAI(api_key=OPENAI_API_KEY)
-    
+
     # Prepare context
     sample_tweets = "\n".join([f"- {tweet}" for tweet in user_tweets[:10]])  # Use up to 10 tweets
-    
+
     api_context = ""
     if api_profile:
         api_context = f"""
@@ -221,7 +222,7 @@ Additional context from Twitter profile:
 - Account created: {api_profile.created_at or 'Not specified'}
 - Bio: {api_profile.description or 'Not specified'}
 """
-    
+
     prompt = f"""Analyze the following tweets from a Twitter user and infer their demographics.
 
 User: @{user_name}
@@ -262,11 +263,11 @@ Output ONLY valid JSON in this exact format:
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=1.0,  # Increased from 0.7 to 1.0 for more variance
+        temperature=1.0,  # Increased for more variance
         max_tokens=200,
         **({"seed": seed_int} if seed_int is not None else {}),  # Optional seeding for reproducibility
     )
-    
+
     content = response.choices[0].message.content.strip()
     # Remove markdown code blocks if present
     if content.startswith("```"):
@@ -274,9 +275,9 @@ Output ONLY valid JSON in this exact format:
         if content.startswith("json"):
             content = content[4:]
         content = content.strip()
-    
+
     demographics_dict = json.loads(content)
-    
+
     return Demographics(
         age=int(demographics_dict["age"]),
         gender=demographics_dict["gender"],
@@ -297,11 +298,15 @@ def generate_persona(
     tweet_count: int,
     rng: Optional[random.Random] = None,
 ) -> Persona:
-    from config import DRY_RUN
+    """
+    Generate detailed persona for a user from demographics and sample tweets.
 
-# -----------------------------
-# DRY RUN MODE: dummy persona
-# -----------------------------
+    Returns:
+        Persona object (DRY_RUN returns a minimal persona with placeholders).
+    """
+    # -----------------------------
+    # DRY RUN MODE: dummy persona
+    # -----------------------------
     if DRY_RUN:
         return Persona(
             username=user_name,
@@ -321,33 +326,18 @@ def generate_persona(
             tweet_count=tweet_count,
             sample_tweets=user_tweets[:15],
         )
-    """
-    Generate detailed persona for a user.
-    
-    Args:
-        user_name: Original username
-        demographics: Inferred demographics
-        user_tweets: List of tweet texts
-        category_topic: Primary topic/category name
-        all_categories: All categories the user appears in
-        cluster_id: Cluster ID
-        original_user_id: Original user ID
-        tweet_count: Number of tweets
-        
-    Returns:
-        Persona object
-    """
+
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY not set - required for persona generation")
-    
+
     client = OpenAI(api_key=OPENAI_API_KEY)
-    
+
     # Prepare sample tweets (deterministic shuffle if rng is provided)
     tweets_for_prompt = list(user_tweets)
     if rng:
         rng.shuffle(tweets_for_prompt)
     sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt[:15]])  # Use up to 15 tweets
-    
+
     # Build category description
     if len(all_categories) > 1:
         categories_text = f"Primary category: {category_topic}. Also active in: {', '.join([c for c in all_categories if c != category_topic])}"
@@ -355,7 +345,7 @@ def generate_persona(
     else:
         categories_text = category_topic
         category_instruction = f"the category: {category_topic}"
-    
+
     prompt = f"""Generate a social media user profile based on the provided information.
 
 User Information:
@@ -382,7 +372,7 @@ Output ONLY valid JSON in this exact format:
     "persona": "This user is a tech-savvy professional in their late 20s with an ENTP personality. They're passionate about blockchain technology and sustainable solutions, often engaging in discussions about VeChain and related ecosystems. Their analytical mind and outgoing nature make them an active participant in crypto communities."
 }}
 """
-    
+
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[
@@ -395,7 +385,7 @@ Output ONLY valid JSON in this exact format:
         temperature=0.8,
         max_tokens=400,
     )
-    
+
     content = response.choices[0].message.content.strip()
     # Remove markdown code blocks if present
     if content.startswith("```"):
@@ -403,12 +393,11 @@ Output ONLY valid JSON in this exact format:
         if content.startswith("json"):
             content = content[4:]
         content = content.strip()
-    
+
     persona_dict = json.loads(content)
-    
+
     # Use the REAL username from the data for both display name and handle.
-    # We ignore any AI-generated names/usernames to keep personas grounded
-    # in the original dataset. The prompt no longer asks for names.
+    # We ignore any AI-generated names/usernames to keep personas grounded in the original dataset.
     return Persona(
         username=user_name,
         realname=user_name,
@@ -435,31 +424,23 @@ def generate_personas_for_users(
 ) -> List[Persona]:
     """
     Generate personas for a list of ranked users.
-    
-    Each user gets only ONE persona, using their PRIMARY category (where they rank highest
-    or have the most tweets). If a user appears in multiple categories, we select the one
-    where they have the highest tweet count.
-    
-    Args:
-        user_rankings: List of cluster ranking dicts (from rank_users_by_category output)
-        use_twitter_api: Whether to fetch profiles from Twitter API
-        
-    Returns:
-        List of Persona objects (one per unique user)
+
+    Each user gets only ONE persona, using their PRIMARY category (highest tweet count or best rank).
+    If a user appears in multiple categories, include all categories in the persona.
     """
     # First pass: collect all users and their appearances across categories
     user_appearances = {}  # user_id -> list of (cluster_data, user_data, rank_in_category)
-    
+
     for cluster_data in user_rankings:
         cluster_id = cluster_data["cluster_id"]
         topic = cluster_data.get("topic", "")
-        
+
         for rank, user_data in enumerate(cluster_data["top_users"], 1):
             user_id = user_data["user_id"]
-            
+
             if user_id not in user_appearances:
                 user_appearances[user_id] = []
-            
+
             user_appearances[user_id].append({
                 "cluster_data": cluster_data,
                 "user_data": user_data,
@@ -467,22 +448,22 @@ def generate_personas_for_users(
                 "cluster_id": cluster_id,
                 "topic": topic,
             })
-    
+
     # Second pass: for each user, select their PRIMARY category (highest tweet count)
     # and generate one persona that reflects ALL their categories
     personas = []
     processed_users = set()
-    
+
     for user_id, appearances in user_appearances.items():
         if user_id in processed_users:
             continue
-        
+
         # Select primary category: highest tweet count, or highest rank if tied
         primary_appearance = max(
             appearances,
             key=lambda x: (x["user_data"]["tweet_count"], -x["rank"])
         )
-        
+
         cluster_data = primary_appearance["cluster_data"]
         user_data = primary_appearance["user_data"]
         cluster_id = primary_appearance["cluster_id"]
@@ -490,10 +471,10 @@ def generate_personas_for_users(
         user_name = user_data["user_name"]
         tweets = user_data["sample_tweets"]
         tweet_count = user_data["tweet_count"]
-        
+
         # Collect ALL categories this user appears in
         all_categories = [a["topic"] for a in appearances]
-        
+
         # Collect tweets from ALL categories for better persona generation
         # Combine sample tweets from all appearances (up to 15 total)
         all_tweets = []
@@ -507,24 +488,28 @@ def generate_personas_for_users(
                 seen.add(tweet)
                 unique_tweets.append(tweet)
         tweets = unique_tweets[:15]  # Limit to 15 tweets
-        
+
         # If user appears in multiple categories, note it
         if len(appearances) > 1:
-            print(f"User {user_name} appears in {len(appearances)} categories: {', '.join(all_categories)}. "
-                  f"Primary: {topic} ({tweet_count} tweets). Generating multi-category persona.")
-        
+            print(
+                f"User {user_name} appears in {len(appearances)} categories: "
+                f"{', '.join(all_categories)}. Primary: {topic} ({tweet_count} tweets). "
+                "Generating multi-category persona."
+            )
+
         # Optionally fetch from API
         api_profile = None
         if use_twitter_api:
             api_profile = fetch_user_profile_from_api(user_id)
-        
+
         user_rng = persona_rng(user_id, global_seed=GLOBAL_SEED)
+
         # Infer demographics
         try:
             demographics = generate_demographics_from_tweets(
                 tweets, user_name, api_profile, rng=user_rng
             )
-            
+
             # Generate persona (with all categories)
             persona = generate_persona(
                 user_name=user_name,
@@ -537,25 +522,25 @@ def generate_personas_for_users(
                 tweet_count=tweet_count,
                 rng=user_rng,
             )
-            
+
             personas.append(persona)
             processed_users.add(user_id)
             if len(appearances) > 1:
                 print(f"Generated multi-category persona for {user_name} (categories: {', '.join(all_categories)})")
             else:
                 print(f"Generated persona for {user_name} (category: {topic})")
-            
+
         except Exception as e:
             print(f"Error generating persona for {user_name}: {e}")
             continue
-    
+
     return personas
 
 
 def save_personas(personas: List[Persona], output_path: Path, format: str = "json"):
     """
     Save personas to file in OASIS-compatible format.
-    
+
     Args:
         personas: List of Persona objects
         output_path: Output file path
@@ -583,10 +568,10 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                 "tweet_count": persona.tweet_count,
                 "sample_tweets": persona.sample_tweets,
             })
-        
+
         with output_path.open("w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
-    
+
     elif format == "csv":
         # OASIS Twitter simulation format (CSV)
         # Required columns: username, name, description, user_char,
@@ -610,7 +595,7 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                 # following_agentid_list: random subset of other agent IDs, deterministic per-user sampling
                 user_rng = persona_rng(persona.original_user_id, global_seed=GLOBAL_SEED)
                 other_ids = [i for i in range(n) if i != idx]
-                k = user_rng.randint(0, min(10, len(other_ids)))  if other_ids else 0
+                k = user_rng.randint(0, min(10, len(other_ids))) if other_ids else 0
                 following_list = user_rng.sample(other_ids, k) if k > 0 else []
 
                 # previous_tweets: Python list literal for agents_generator.ast.literal_eval
@@ -625,7 +610,7 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                     persona.persona,
                     persona.bio,
                 ])
-    
+
     else:
         raise ValueError(f"Unknown format: {format}")
 
@@ -634,14 +619,15 @@ if __name__ == "__main__":
     # Example usage
     rankings_file = REPO_ROOT / "user_rankings.json"
     output_file = REPO_ROOT / "user_personas.json"
-    
+
     if not rankings_file.exists():
         print(f"Rankings file not found: {rankings_file}")
         print("Run rank_users_by_category.py first")
     else:
+        REPO_ROOT.mkdir(parents=True, exist_ok=True)  # ensure outputs directory exists
         with rankings_file.open("r", encoding="utf-8") as f:
             rankings = json.load(f)
-        
+
         use_api = bool(TWITTER_API_KEY)
         personas = generate_personas_for_users(rankings, use_twitter_api=use_api)
         save_personas(personas, output_file)

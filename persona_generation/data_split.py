@@ -187,7 +187,6 @@ def split_tweets_by_time(
     
     # If specific months are provided, use month-based splitting
     if train_year is not None and train_month is not None and test_year is not None and test_month is not None:
-        from datetime import datetime, timezone
         
         # Create date boundaries (inclusive start, exclusive end)
         # Use UTC timezone to match tweet timestamps
@@ -349,7 +348,6 @@ def save_split_info(
     test_months: int,
 ):
     """Save split metadata to JSON."""
-    import json
     
     train_users = set(t.user_id for t in train_tweets)
     test_users = set(t.user_id for t in test_tweets)

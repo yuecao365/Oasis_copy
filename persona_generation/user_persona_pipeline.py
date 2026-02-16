@@ -35,7 +35,7 @@ from config import (
     TRAIN_YEAR,
     TWEET_POPULARITY_PATH,
     USE_TWITTER_API,
-    # new: ranking strategy controls
+    # ranking strategy controls
     RANK_MODE,
     BLEND_ALPHA,
     MIN_MIX_WEIGHT,
@@ -121,7 +121,7 @@ def load_train_tweets_with_popularity_and_clusters(
     # Build clusters from train CSV
     clusters: Dict[int, List[Dict]] = {}
 
-    with train_csv_path.open("r", encoding="utf-8") as f:
+    with train_csv_path.open("r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             if row.get("dup") != "0":
@@ -231,7 +231,6 @@ def main():
     rankings_file = OUTPUT_DIR / "user_rankings.json"
     save_user_rankings(rankings, rankings_file)
     print(f"Saved rankings to {rankings_file}")
-
 
     # Step 4: Generate personas
     print("\n[Step 4] Generating personas...")

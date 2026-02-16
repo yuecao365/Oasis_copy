@@ -10,10 +10,8 @@ import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional
 from collections import Counter, defaultdict
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 @dataclass
@@ -52,18 +50,16 @@ def group_tweets_by_cluster(
         Dict mapping cluster_id to list of tweet dicts
     """
     clusters: Dict[int, List[Dict]] = defaultdict(list)
-
     for idx, tweet in enumerate(tweets):
         cluster_id = cluster_assignments.get(idx)
         if cluster_id is not None and cluster_id != -1:  # -1 is noise in HDBSCAN
             clusters[cluster_id].append(tweet)
-
     return clusters
 
 
 def rank_users_by_category(
     clusters: Dict[int, List[Dict]],
-    topics: Dict[int, str] = None,
+    topics: Optional[Dict[int, str]] = None,
     top_n: int = 10,
     max_sample_tweets: int = 5,
     rank_mode: str = "count",
@@ -112,7 +108,7 @@ def rank_users_by_category(
         max_count = max((d["tweet_count"] for d in user_data.values()), default=0)
 
         # Compute score per user according to rank_mode
-        scored_users: List[Tuple[str, Dict, float, float]] = []  # (user_id, data, mixture_weight, score)
+        scored_users: List[tuple] = []  # (user_id, data, mixture_weight, score)
         for uid, data in user_data.items():
             mixture_w = float(user_cluster_mix.get(uid, {}).get(cluster_id, 0.0))
 
@@ -276,7 +272,7 @@ def load_tweets_with_clusters(tweets_csv_path: Path) -> Dict[int, List[Dict]]:
 
 # ---- Mixture utilities ------------------------------------------------------ #
 
-def compute_user_cluster_mixture(clusters) -> dict:
+def compute_user_cluster_mixture(clusters: Dict[int, List[Dict]]) -> Dict[str, Dict[int, float]]:
     """
     Returns: Dict[user_id, Dict[cluster_id, weight]]
     Weight is normalized frequency across user's train tweets.
@@ -289,7 +285,7 @@ def compute_user_cluster_mixture(clusters) -> dict:
                 continue
             user_cluster_counts[uid][cid] += 1
 
-    user_cluster_mix = {}
+    user_cluster_mix: Dict[str, Dict[int, float]] = {}
     for uid, ctr in user_cluster_counts.items():
         total = sum(ctr.values())
         if total == 0:
