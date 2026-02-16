@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from config import DRY_RUN
 import hashlib
-import random
 
 from openai import OpenAI
 
@@ -346,7 +345,7 @@ def generate_persona(
     # Prepare sample tweets (deterministic shuffle if rng is provided)
     tweets_for_prompt = list(user_tweets)
     if rng:
-        rng.suffle(tweets_for_prompt)
+        rng.shuffle(tweets_for_prompt)
     sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt[:15]])  # Use up to 15 tweets
     
     # Build category description
