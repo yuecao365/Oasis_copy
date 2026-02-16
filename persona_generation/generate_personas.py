@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 from config import DRY_RUN
+import hashlib
+import random
 
 from openai import OpenAI
 
@@ -21,6 +23,8 @@ REPO_ROOT = Path(__file__).resolve().parent / "outputs"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")  # Bearer token for Twitter API v2
+GLOBAL_SEED = int(os.getenv("GLOBAL_SEED", "20260215"))
+NOISE_EPS = float(os.getenv("NOISE_EPS", "0.05"))  # for priors noise amplitude
 
 
 @dataclass
@@ -61,6 +65,32 @@ class Persona:
     tweet_count: int
     sample_tweets: List[str]  # Tweet texts for previous_tweets (OASIS simulation)
 
+
+def pick_with_priors(options, priors, rng, noise_eps: float = 0.05):
+    """
+    Pick an option with small controlled noise around the given priors.
+    - options: list[str]
+    - priors: list[float] (same length as options), not necessarily normalized
+    - rng: random.Random
+    - noise_eps: +/- noise range added to each prior before normalization
+    """
+    if len(options) != len(priors):
+        raise ValueError("options and priors must have the same length")
+
+    # Add small noise but keep > 0
+    noisy = [max(1e-9, p + rng.uniform(-noise_eps, noise_eps)) for p in priors]
+    s = sum(noisy)
+    probs = [x / s for x in noisy]
+    return rng.choices(options, weights=probs, k=1)[0]
+
+def persona_rng(user_id: str, global_seed: int = 20260215) -> random.Random:
+    """
+    Deterministic RNG for a user, stable across processes/machines.
+    """
+    msg = f"{global_seed}-{user_id}".encode("utf-8")
+    h = hashlib.sha256(msg).digest()
+    seed = int.from_bytes(h[:8], "big")  # use 64 bits of the hash
+    return random.Random(seed)
 
 def fetch_user_profile_from_api(user_id: str) -> Optional[UserProfile]:
     """
@@ -109,6 +139,7 @@ def generate_demographics_from_tweets(
     user_tweets: List[str],
     user_name: str,
     api_profile: Optional[UserProfile] = None,
+    rng: Optional[random.Random] = None,
 ) -> Demographics:
     
     from config import DRY_RUN
@@ -117,16 +148,50 @@ def generate_demographics_from_tweets(
     # DRY RUN MODE: return fake demographics
     # -----------------------------
     if DRY_RUN:
-        import random
+        rng = rng or random.Random()  # if not provided, fall back to non-deterministic
+
+        # Example priors (uniform by default). If you have real priors, plug them here.
+        genders = ["male", "female", "other"]
+        gender_priors = [1.0, 1.0, 0.2]  # slight tilt; tune as desired
+
+        mbti_types = [
+            "ISTJ","ISFJ","INFJ","INTJ","ISTP","ISFP","INFP","INTP",
+            "ESTP","ESFP","ENFP","ENTP","ESTJ","ESFJ","ENFJ","ENTJ"
+        ]
+        mbti_priors = [1.0] * len(mbti_types)  # uniform unless you prefer different
+
+        countries = ["US", "UK", "CA", "AU"]
+        country_priors = [1.0, 0.6, 0.6, 0.4]  # example; edit for your dataset
+
+        professions = [
+            "Agriculture Food & Natural Resources",
+            "Architecture & Construction",
+            "Arts Audio/Video Technology & Communications",
+            "Business Management & Administration",
+            "Education & Training",
+            "Finance",
+            "Government & Public Administration",
+            "Health Science",
+            "Hospitality & Tourism",
+            "Human Services",
+            "Information Technology",
+            "Law Public Safety Corrections & Security",
+            "Manufacturing",
+            "Marketing",
+            "Science Technology Engineering & Mathematics",
+            "Transportation Distribution & Logistics",
+        ]
+        profession_priors = [1.0] * len(professions)
+        # Mild bias toward IT/STEAM (optional)
+        profession_priors[professions.index("Information Technology")] = 1.4
+        profession_priors[professions.index("Science Technology Engineering & Mathematics")] = 1.2
+
         fake = {
-            "age": random.randint(20, 60),
-            "gender": random.choice(["male", "female", "other"]),
-            "mbti": random.choice([
-                "ISTJ", "ISFJ", "INFJ", "INTJ", "ISTP", "ISFP", "INFP", "INTP",
-                "ESTP", "ESFP", "ENFP", "ENTP", "ESTJ", "ESFJ", "ENFJ", "ENTJ"
-            ]),
-            "country": random.choice(["US", "UK", "CA", "AU"]),
-            "profession": "Information Technology"
+            "age": rng.randint(20, 60),
+            "gender": pick_with_priors(genders, gender_priors, rng, noise_eps=NOISE_EPS),
+            "mbti": pick_with_priors(mbti_types, mbti_priors, rng, noise_eps=NOISE_EPS),
+            "country": pick_with_priors(countries, country_priors, rng, noise_eps=NOISE_EPS),
+            "profession": pick_with_priors(professions, profession_priors, rng, noise_eps=NOISE_EPS),
         }
         return Demographics(**fake)
 
@@ -188,7 +253,7 @@ Output ONLY valid JSON in this exact format:
     "profession": "Information Technology"
 }}
 """
-    
+    seed_int = rng.randrange(0, 2**31 - 1) if rng else None
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[
@@ -200,6 +265,7 @@ Output ONLY valid JSON in this exact format:
         ],
         temperature=1.0,  # Increased from 0.7 to 1.0 for more variance
         max_tokens=200,
+        **({"seed": seed_int} if seed_int is not None else {}),  # Optional seeding for reproducibility
     )
     
     content = response.choices[0].message.content.strip()
@@ -230,6 +296,7 @@ def generate_persona(
     cluster_id: int,
     original_user_id: str,
     tweet_count: int,
+    rng: Optional[random.Random] = None,
 ) -> Persona:
     from config import DRY_RUN
 
@@ -276,8 +343,11 @@ def generate_persona(
     
     client = OpenAI(api_key=OPENAI_API_KEY)
     
-    # Prepare sample tweets
-    sample_tweets = "\n".join([f"- {tweet}" for tweet in user_tweets[:15]])  # Use up to 15 tweets
+    # Prepare sample tweets (deterministic shuffle if rng is provided)
+    tweets_for_prompt = list(user_tweets)
+    if rng:
+        rng.suffle(tweets_for_prompt)
+    sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt[:15]])  # Use up to 15 tweets
     
     # Build category description
     if len(all_categories) > 1:
@@ -449,10 +519,11 @@ def generate_personas_for_users(
         if use_twitter_api:
             api_profile = fetch_user_profile_from_api(user_id)
         
+        user_rng = persona_rng(user_id, global_seed=GLOBAL_SEED)
         # Infer demographics
         try:
             demographics = generate_demographics_from_tweets(
-                tweets, user_name, api_profile
+                tweets, user_name, api_profile, rng=user_rng
             )
             
             # Generate persona (with all categories)
@@ -465,6 +536,7 @@ def generate_personas_for_users(
                 cluster_id=cluster_id,
                 original_user_id=user_id,
                 tweet_count=tweet_count,
+                rng=user_rng,
             )
             
             personas.append(persona)
@@ -536,10 +608,11 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                 "description",
             ])
             for idx, persona in enumerate(personas):
-                # following_agentid_list: random subset of other agent IDs
+                # following_agentid_list: random subset of other agent IDs, deterministic per-user sampling
+                user_rng = persona_rng(persona.original_user_id, global_seed=GLOBAL_SEED)
                 other_ids = [i for i in range(n) if i != idx]
-                k = random.randint(0, min(10, len(other_ids))) if other_ids else 0
-                following_list = random.sample(other_ids, k) if k > 0 else []
+                k = user_rng.randint(0, min(10, len(other_ids)))  if other_ids else 0
+                following_list = user_rng.sample(other_ids, k) if k > 0 else []
 
                 # previous_tweets: Python list literal for agents_generator.ast.literal_eval
                 tweets_str = json.dumps(persona.sample_tweets) if persona.sample_tweets else "[]"
