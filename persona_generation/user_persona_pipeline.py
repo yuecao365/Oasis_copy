@@ -35,6 +35,10 @@ from config import (
     TRAIN_YEAR,
     TWEET_POPULARITY_PATH,
     USE_TWITTER_API,
+    # new: ranking strategy controls
+    RANK_MODE,
+    BLEND_ALPHA,
+    MIN_MIX_WEIGHT,
 )
 from data_split import (
     filter_active_users_in_both_periods,
@@ -44,14 +48,19 @@ from data_split import (
     split_tweets_by_time,
 )
 from generate_personas import generate_personas_for_users, save_personas
-from rank_users_by_category import rank_users_by_category, save_user_rankings
+from rank_users_by_category import (
+    rank_users_by_category,
+    save_user_rankings,
+    compute_user_cluster_mixture,
+    save_user_cluster_mix,
+)
 
 REPO_ROOT = _REPO_ROOT
 
 
 def load_cluster_assignments(path: Path) -> Dict[str, int]:
     """Load cluster_assignments.jsonl. Returns tweet_id -> cluster_id."""
-    result = {}
+    result: Dict[str, int] = {}
     if not path.exists():
         return result
     with path.open("r", encoding="utf-8") as f:
@@ -72,7 +81,7 @@ def load_cluster_assignments(path: Path) -> Dict[str, int]:
 
 def load_cluster_topics(path: Path) -> Dict[int, str]:
     """Load cluster_topics.json. Returns cluster_id -> topic string."""
-    result = {}
+    result: Dict[int, str] = {}
     if not path.exists():
         return result
     with path.open("r", encoding="utf-8") as f:
@@ -202,16 +211,33 @@ def main():
 
     # Step 3: Rank users by category
     print(f"\n[Step 3] Ranking top {TOP_N} users per category...")
-    rankings = rank_users_by_category(clusters, topics_dict, top_n=TOP_N)
+
+    # (Optional) Persist mixture for analysis/QA (independent of rank mode)
+    user_cluster_mix = compute_user_cluster_mixture(clusters)
+    mix_file = OUTPUT_DIR / "user_cluster_mix.json"
+    save_user_cluster_mix(user_cluster_mix, mix_file)
+    print(f"Saved user->cluster mixture to {mix_file}")
+
+    # Rank using strategy from config.py
+    rankings = rank_users_by_category(
+        clusters,
+        topics_dict,
+        top_n=TOP_N,
+        rank_mode=RANK_MODE,
+        alpha=BLEND_ALPHA,
+        min_weight=MIN_MIX_WEIGHT,
+    )
+
     rankings_file = OUTPUT_DIR / "user_rankings.json"
     save_user_rankings(rankings, rankings_file)
     print(f"Saved rankings to {rankings_file}")
+
 
     # Step 4: Generate personas
     print("\n[Step 4] Generating personas...")
     with rankings_file.open("r", encoding="utf-8") as f:
         rankings_data = json.load(f)
-    
+
     personas = generate_personas_for_users(
         rankings_data, use_twitter_api=USE_TWITTER_API
     )
