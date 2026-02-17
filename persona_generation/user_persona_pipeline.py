@@ -11,9 +11,11 @@ Output: user_personas.json compatible with OASIS simulation format
 
 import csv
 import json
+import math
+import re
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Set
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
@@ -152,6 +154,204 @@ def load_train_tweets_with_popularity_and_clusters(
     return clusters
 
 
+def load_all_train_tweets_by_user(train_csv_path: Path) -> Dict[str, List[str]]:
+    """
+    Load all non-duplicate tweets from the train split and group by user_id.
+
+    Returns:
+        Dict[user_id, List[tweet_text]]
+    """
+    user_tweets: Dict[str, List[str]] = {}
+    with train_csv_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("dup") != "0":
+                continue
+            user_id = str(row.get("user_id", "")).strip()
+            text = str(row.get("text", "")).strip()
+            if not user_id or not text:
+                continue
+            user_tweets.setdefault(user_id, []).append(text)
+    return user_tweets
+
+
+def build_reply_follow_map_for_train(
+    filtered_tweets_path: Path,
+    train_tweet_ids: Set[str],
+) -> Dict[str, Dict[str, int]]:
+    """
+    Build reply-derived follow edges for train split only.
+
+    Rule:
+      if user A replied to user B in train tweets, A should follow B.
+
+    Returns:
+      Dict[replier_user_id, Dict[followed_user_id, reply_count]]
+    """
+    follow_map: Dict[str, Dict[str, int]] = {}
+    if not filtered_tweets_path.exists():
+        return follow_map
+
+    with filtered_tweets_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            tweet_id = str(obj.get("id", ""))
+            if tweet_id not in train_tweet_ids:
+                continue
+
+            if not bool(obj.get("isReply", False)):
+                continue
+
+            author = obj.get("author") or {}
+            replier_user_id = str(author.get("id", "")).strip()
+            replied_to_user_id = str(obj.get("inReplyToUserId", "")).strip()
+
+            if not replier_user_id or not replied_to_user_id:
+                continue
+            if replier_user_id == replied_to_user_id:
+                continue
+
+            if replier_user_id not in follow_map:
+                follow_map[replier_user_id] = {}
+            follow_map[replier_user_id][replied_to_user_id] = (
+                follow_map[replier_user_id].get(replied_to_user_id, 0) + 1
+            )
+
+    return follow_map
+
+
+def _cosine_sparse(a: Dict[int, float], b: Dict[int, float]) -> float:
+    if not a or not b:
+        return 0.0
+    dot = 0.0
+    for k, av in a.items():
+        dot += av * b.get(k, 0.0)
+    na = math.sqrt(sum(v * v for v in a.values()))
+    nb = math.sqrt(sum(v * v for v in b.values()))
+    if na == 0.0 or nb == 0.0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def build_follow_map_for_personas(
+    personas: List,
+    direct_reply_map: Dict[str, Dict[str, int]],
+    user_all_train_tweets: Dict[str, List[str]],
+    user_cluster_mix: Dict[str, Dict[int, float]],
+    max_followees: int = 15,
+) -> Dict[str, Dict[str, float]]:
+    """
+    Deterministic follow graph generation (non-random):
+    1) direct replies
+    2) shared reply-target similarity
+    3) @mention interactions in train tweets
+    4) topic-mixture cosine similarity
+    5) deterministic fallback for empty users
+    """
+    selected_users = [p.original_user_id for p in personas]
+    selected_set = set(selected_users)
+    if len(selected_users) <= 1:
+        return {u: {} for u in selected_users}
+
+    username_to_user_ids: Dict[str, Set[str]] = {}
+    for p in personas:
+        handle = str(p.original_user_name or "").strip().lower()
+        if not handle:
+            continue
+        username_to_user_ids.setdefault(handle, set()).add(p.original_user_id)
+
+    # Precompute reply target sets (can include users outside selected set).
+    reply_target_sets: Dict[str, Set[str]] = {}
+    for uid in selected_users:
+        reply_target_sets[uid] = set((direct_reply_map.get(uid) or {}).keys())
+
+    scores: Dict[str, Dict[str, float]] = {uid: {} for uid in selected_users}
+
+    for uid in selected_users:
+        user_scores = scores[uid]
+
+        # (1) Direct replies inside selected users.
+        for target_uid, cnt in (direct_reply_map.get(uid) or {}).items():
+            if target_uid in selected_set and target_uid != uid:
+                user_scores[target_uid] = user_scores.get(target_uid, 0.0) + 1000.0 * float(cnt)
+
+        # (2) Shared reply-target similarity across selected users.
+        u_targets = reply_target_sets.get(uid, set())
+        if u_targets:
+            for other_uid in selected_users:
+                if other_uid == uid:
+                    continue
+                v_targets = reply_target_sets.get(other_uid, set())
+                if not v_targets:
+                    continue
+                inter = len(u_targets & v_targets)
+                if inter == 0:
+                    continue
+                union = len(u_targets | v_targets)
+                jacc = (inter / union) if union > 0 else 0.0
+                if jacc > 0.0:
+                    user_scores[other_uid] = user_scores.get(other_uid, 0.0) + 100.0 * jacc
+
+        # (3) Mentions from all train tweets for this user.
+        mention_counts: Dict[str, int] = {}
+        for text in user_all_train_tweets.get(uid, []):
+            for handle in re.findall(r"@([A-Za-z0-9_]{1,15})", text or ""):
+                h = handle.lower()
+                for target_uid in username_to_user_ids.get(h, set()):
+                    if target_uid == uid:
+                        continue
+                    mention_counts[target_uid] = mention_counts.get(target_uid, 0) + 1
+        for target_uid, cnt in mention_counts.items():
+            user_scores[target_uid] = user_scores.get(target_uid, 0.0) + 300.0 * float(cnt)
+
+        # (4) Topic-mixture cosine similarity.
+        u_mix = user_cluster_mix.get(uid, {})
+        for other_uid in selected_users:
+            if other_uid == uid:
+                continue
+            sim = _cosine_sparse(u_mix, user_cluster_mix.get(other_uid, {}))
+            if sim > 0.0:
+                user_scores[other_uid] = user_scores.get(other_uid, 0.0) + 10.0 * sim
+
+    # Keep only top-K and guarantee non-empty with deterministic fallback.
+    persona_by_uid = {p.original_user_id: p for p in personas}
+    final_map: Dict[str, Dict[str, float]] = {}
+    for uid in selected_users:
+        ranked = sorted(
+            ((tid, sc) for tid, sc in scores.get(uid, {}).items() if tid != uid and sc > 0),
+            key=lambda x: (-x[1], x[0]),
+        )
+
+        if not ranked:
+            # (5) Fallback: similar category first, then higher tweet_count.
+            u_cat = str(getattr(persona_by_uid[uid], "category", ""))
+            candidates = [
+                other_uid
+                for other_uid in selected_users
+                if other_uid != uid
+            ]
+            candidates.sort(
+                key=lambda other_uid: (
+                    0 if str(getattr(persona_by_uid[other_uid], "category", "")) == u_cat else 1,
+                    -int(getattr(persona_by_uid[other_uid], "tweet_count", 0) or 0),
+                    other_uid,
+                )
+            )
+            ranked = [(other_uid, 1.0) for other_uid in candidates[:max_followees]]
+
+        top_ranked = ranked[:max_followees]
+        final_map[uid] = {tid: sc for tid, sc in top_ranked}
+
+    return final_map
+
+
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -237,8 +437,28 @@ def main():
     with rankings_file.open("r", encoding="utf-8") as f:
         rankings_data = json.load(f)
 
+    user_all_train_tweets = load_all_train_tweets_by_user(train_file)
+    print(f"Loaded full train-tweet context for {len(user_all_train_tweets)} users")
+
     personas = generate_personas_for_users(
-        rankings_data, use_twitter_api=USE_TWITTER_API
+        rankings_data,
+        use_twitter_api=USE_TWITTER_API,
+        user_all_train_tweets=user_all_train_tweets,
+    )
+
+    train_tweet_ids = {t.id for t in train_filtered}
+    reply_follow_map = build_reply_follow_map_for_train(FILTERED_TWEETS_PATH, train_tweet_ids)
+    follow_map = build_follow_map_for_personas(
+        personas,
+        direct_reply_map=reply_follow_map,
+        user_all_train_tweets=user_all_train_tweets,
+        user_cluster_mix=user_cluster_mix,
+        max_followees=15,
+    )
+    nonempty = sum(1 for uid in follow_map if follow_map[uid])
+    print(
+        f"Built deterministic follow graph for {len(follow_map)} users "
+        f"({nonempty} with non-empty follow lists)"
     )
 
     if OUTPUT_FORMAT == "json":
@@ -246,7 +466,12 @@ def main():
     else:
         personas_file = OUTPUT_DIR / "user_personas.csv"
 
-    save_personas(personas, personas_file, format=OUTPUT_FORMAT)
+    save_personas(
+        personas,
+        personas_file,
+        format=OUTPUT_FORMAT,
+        following_by_user=follow_map,
+    )
     print(f"Generated {len(personas)} personas and saved to {personas_file}")
 
     print("\n" + "=" * 60)

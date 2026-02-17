@@ -212,7 +212,7 @@ def generate_demographics_from_tweets(
     client = OpenAI(api_key=OPENAI_API_KEY)
 
     # Prepare context
-    sample_tweets = "\n".join([f"- {tweet}" for tweet in user_tweets[:10]])  # Use up to 10 tweets
+    sample_tweets = "\n".join([f"- {tweet}" for tweet in user_tweets])
 
     api_context = ""
     if api_profile:
@@ -324,7 +324,7 @@ def generate_persona(
             original_user_name=user_name,
             original_user_id=original_user_id,
             tweet_count=tweet_count,
-            sample_tweets=user_tweets[:15],
+            sample_tweets=user_tweets,
         )
 
     if not OPENAI_API_KEY:
@@ -336,7 +336,7 @@ def generate_persona(
     tweets_for_prompt = list(user_tweets)
     if rng:
         rng.shuffle(tweets_for_prompt)
-    sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt[:15]])  # Use up to 15 tweets
+    sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt])
 
     # Build category description
     if len(all_categories) > 1:
@@ -414,13 +414,14 @@ Output ONLY valid JSON in this exact format:
         original_user_name=user_name,
         original_user_id=original_user_id,
         tweet_count=tweet_count,
-        sample_tweets=user_tweets[:15],
+        sample_tweets=user_tweets,
     )
 
 
 def generate_personas_for_users(
     user_rankings: List[Dict],
     use_twitter_api: bool = False,
+    user_all_train_tweets: Optional[Dict[str, List[str]]] = None,
 ) -> List[Persona]:
     """
     Generate personas for a list of ranked users.
@@ -475,19 +476,22 @@ def generate_personas_for_users(
         # Collect ALL categories this user appears in
         all_categories = [a["topic"] for a in appearances]
 
-        # Collect tweets from ALL categories for better persona generation
-        # Combine sample tweets from all appearances (up to 15 total)
-        all_tweets = []
-        for appearance in appearances:
-            all_tweets.extend(appearance["user_data"]["sample_tweets"])
-        # Deduplicate while preserving order
-        seen = set()
-        unique_tweets = []
-        for tweet in all_tweets:
-            if tweet not in seen:
-                seen.add(tweet)
-                unique_tweets.append(tweet)
-        tweets = unique_tweets[:15]  # Limit to 15 tweets
+        # Prefer full train-split tweet context for this user when available.
+        # Fallback to merged ranking samples if full context is not provided.
+        if user_all_train_tweets and user_id in user_all_train_tweets:
+            tweets = user_all_train_tweets[user_id]
+        else:
+            all_tweets = []
+            for appearance in appearances:
+                all_tweets.extend(appearance["user_data"]["sample_tweets"])
+            # Deduplicate while preserving order
+            seen = set()
+            unique_tweets = []
+            for tweet in all_tweets:
+                if tweet not in seen:
+                    seen.add(tweet)
+                    unique_tweets.append(tweet)
+            tweets = unique_tweets
 
         # If user appears in multiple categories, note it
         if len(appearances) > 1:
@@ -537,7 +541,12 @@ def generate_personas_for_users(
     return personas
 
 
-def save_personas(personas: List[Persona], output_path: Path, format: str = "json"):
+def save_personas(
+    personas: List[Persona],
+    output_path: Path,
+    format: str = "json",
+    following_by_user: Optional[Dict[str, Dict[str, int]]] = None,
+):
     """
     Save personas to file in OASIS-compatible format.
 
@@ -591,12 +600,38 @@ def save_personas(personas: List[Persona], output_path: Path, format: str = "jso
                 "user_char",
                 "description",
             ])
+            user_id_to_agent_idx = {
+                persona.original_user_id: idx for idx, persona in enumerate(personas)
+            }
+
             for idx, persona in enumerate(personas):
-                # following_agentid_list: random subset of other agent IDs, deterministic per-user sampling
-                user_rng = persona_rng(persona.original_user_id, global_seed=GLOBAL_SEED)
-                other_ids = [i for i in range(n) if i != idx]
-                k = user_rng.randint(0, min(10, len(other_ids))) if other_ids else 0
-                following_list = user_rng.sample(other_ids, k) if k > 0 else []
+                # If reply-derived edges are provided, use them:
+                #   replied_user -> followed_user
+                # and keep only users that exist in this persona file.
+                following_list: List[int] = []
+                if following_by_user:
+                    target_counts = following_by_user.get(persona.original_user_id, {})
+                    ranked_targets = sorted(
+                        target_counts.items(),
+                        key=lambda kv: (-kv[1], kv[0]),
+                    )
+                    for target_user_id, _count in ranked_targets:
+                        target_idx = user_id_to_agent_idx.get(target_user_id)
+                        if target_idx is None or target_idx == idx:
+                            continue
+                        following_list.append(target_idx)
+
+                    # De-duplicate while preserving order.
+                    seen = set()
+                    following_list = [
+                        x for x in following_list if not (x in seen or seen.add(x))
+                    ]
+                else:
+                    # Backward-compatible fallback if no follow map is provided.
+                    user_rng = persona_rng(persona.original_user_id, global_seed=GLOBAL_SEED)
+                    other_ids = [i for i in range(n) if i != idx]
+                    k = user_rng.randint(0, min(10, len(other_ids))) if other_ids else 0
+                    following_list = user_rng.sample(other_ids, k) if k > 0 else []
 
                 # previous_tweets: Python list literal for agents_generator.ast.literal_eval
                 tweets_str = json.dumps(persona.sample_tweets) if persona.sample_tweets else "[]"
