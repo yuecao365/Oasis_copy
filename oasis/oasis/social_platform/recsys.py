@@ -15,11 +15,13 @@
 into rec_matrix'''
 import heapq
 import logging
+import os
 import random
 import time
 from ast import literal_eval
 from datetime import datetime
 from math import log
+from pathlib import Path
 from typing import Any, Dict, List
 
 import numpy as np
@@ -39,6 +41,7 @@ rec_log.setLevel('DEBUG')
 model = None
 twhin_tokenizer = None
 twhin_model = None
+twhin_model_source = None
 
 # Create the TF-IDF model
 tfidf_vectorizer = TfidfVectorizer()
@@ -65,19 +68,71 @@ def get_twhin_tokenizer():
     global twhin_tokenizer
     if twhin_tokenizer is None:
         from transformers import AutoTokenizer
+        source, local_only = _resolve_twhin_model_source()
+        rec_log.info(
+            "Loading TWHIN tokenizer from source=%s local_files_only=%s",
+            source,
+            local_only,
+        )
         twhin_tokenizer = AutoTokenizer.from_pretrained(
-            pretrained_model_name_or_path="Twitter/twhin-bert-base",
-            model_max_length=512)
+            pretrained_model_name_or_path=source,
+            model_max_length=512,
+            local_files_only=local_only,
+        )
     return twhin_tokenizer
 
 
 def get_twhin_model(device):
-    global twhin_model
+    global twhin_model, twhin_model_source
     if twhin_model is None:
         from transformers import AutoModel
+        source, local_only = _resolve_twhin_model_source()
+        rec_log.info(
+            "Loading TWHIN model from source=%s local_files_only=%s",
+            source,
+            local_only,
+        )
         twhin_model = AutoModel.from_pretrained(
-            pretrained_model_name_or_path="Twitter/twhin-bert-base").to(device)
+            pretrained_model_name_or_path=source,
+            local_files_only=local_only,
+        ).to(device)
+        twhin_model_source = source
     return twhin_model
+
+
+def _resolve_twhin_model_source() -> tuple[str, bool]:
+    """
+    Resolve a local TWHIN model directory first; fallback to Hub id.
+    Returns: (source, local_files_only)
+    """
+    # Highest priority: explicit env override
+    explicit = os.getenv("TWHIN_MODEL_PATH")
+    candidates = []
+    if explicit:
+        candidates.append(Path(explicit))
+
+    # Common project-local cache locations.
+    cwd = Path.cwd()
+    candidates.extend([
+        cwd / ".cache" / "hf" / "Twitter" / "twhin-bert-base",
+        cwd / "Twitter" / "twhin-bert-base",
+    ])
+
+    # Walk upward from this file to find workspace-level .cache.
+    here = Path(__file__).resolve()
+    for p in here.parents:
+        candidates.append(p / ".cache" / "hf" / "Twitter" / "twhin-bert-base")
+        # Stop at filesystem root automatically via parents exhaustion.
+
+    for cand in candidates:
+        try:
+            if cand.is_dir() and (cand / "config.json").exists():
+                return str(cand), True
+        except OSError:
+            continue
+
+    # Fallback to remote model id.
+    return "Twitter/twhin-bert-base", False
 
 
 def load_model(model_name):
@@ -94,7 +149,7 @@ def load_model(model_name):
         else:
             raise ValueError(f"Unknown model name: {model_name}")
     except Exception as e:
-        raise Exception(f"Failed to load the model: {model_name}") from e
+        raise Exception(f"Failed to load the model: {model_name}. Details: {e}") from e
 
 
 def get_recsys_model(recsys_type: str = None):
