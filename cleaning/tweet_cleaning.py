@@ -9,7 +9,7 @@ from typing import Dict, List, Set
 # Config
 # =========================
 
-INPUT_DIR = "/Users/sichengxu/Downloads/twitter"
+INPUT_DIR = "data/raw/twitter"
 OUTPUT_DIR = "data/processed"
 
 MIN_TOKEN_LEN = 20          # skip very short tweets

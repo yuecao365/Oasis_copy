@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import math
 import logging
 import os
 import random
@@ -103,6 +104,12 @@ async def running(
     csv_path: str | None = _DEFAULT_CSV,
     num_timesteps: int = 3,
     clock_factor: int = 60,
+    clock_step_units: int = 1,
+    timestep_hours: float = 1.0,
+    agent_activation_multiplier: float = 1.0,
+    min_activation_threshold: float = 0.0,
+    auto_num_timesteps_from_split: bool = False,
+    split_info_path: str = "persona_generation/outputs/split_info.json",
     recsys_type: str = "twhin-bert",
     inference_configs: dict[str, Any] | None = None,
     available_actions: list[ActionType] | None = None,
@@ -166,20 +173,46 @@ async def running(
         twitter=infra,
     )
 
+    if auto_num_timesteps_from_split:
+        try:
+            split_path = _resolve(split_info_path, _REPO_ROOT)
+            with open(split_path, "r", encoding="utf-8") as f:
+                split_info = safe_load(f)
+            test_period = (split_info or {}).get("test_period", {})
+            test_start_raw = test_period.get("start")
+            test_end_raw = test_period.get("end")
+            if test_start_raw and test_end_raw:
+                test_start = datetime.fromisoformat(str(test_start_raw))
+                test_end = datetime.fromisoformat(str(test_end_raw))
+                duration_hours = max(1.0, (test_end - test_start).total_seconds() / 3600.0)
+                num_timesteps = max(1, int(math.ceil(duration_hours / max(timestep_hours, 1e-9))))
+                social_log.info(
+                    "Auto timesteps enabled. test_duration_hours=%.2f timestep_hours=%.3f num_timesteps=%d",
+                    duration_hours,
+                    timestep_hours,
+                    num_timesteps,
+                )
+        except Exception as e:
+            social_log.warning(f"Failed to auto-set num_timesteps from split info: {e}")
+
     for timestep in range(1, num_timesteps + 1):
-        clock.time_step = timestep * 3
+        clock.time_step = timestep * clock_step_units
         db_file = Path(db_path).name
         print(Back.GREEN + f"DB:{db_file} timestep:{timestep}" + Back.RESET)
         await infra.update_rec_table()
 
-        simulation_time_hour = start_hour + 0.05 * timestep
+        simulation_time_hour = start_hour + timestep_hours * timestep
         tasks = []
         for _node_id, agent in agent_graph.get_agents():
             if agent.user_info.is_controllable is False:
                 agent_ac_prob = random.random()
-                threshold = agent.user_info.profile["other_info"]["active_threshold"][
+                base_threshold = agent.user_info.profile["other_info"]["active_threshold"][
                     int(simulation_time_hour % 24)
                 ]
+                threshold = max(
+                    min_activation_threshold,
+                    min(1.0, float(base_threshold) * float(agent_activation_multiplier)),
+                )
                 if agent_ac_prob < threshold:
                     tasks.append(agent.perform_action_by_llm())
             else:

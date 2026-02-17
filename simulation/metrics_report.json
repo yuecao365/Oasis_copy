@@ -1,0 +1,55 @@
+{
+  "inputs": {
+    "db": "data/simu_db/yaml_gpt/False_Business_0.db",
+    "test_csv": "persona_generation/outputs/test_tweets.csv",
+    "personas_csv": "persona_generation/outputs/user_personas.csv",
+    "filtered_jsonl": "data/processed/filtered_tweets.jsonl",
+    "timestep_hours": 24.0
+  },
+  "coverage": {
+    "persona_user_count": 60,
+    "gt_active_users": 54,
+    "sim_active_users": 6
+  },
+  "user_activity_fit": {
+    "spearman_posts_per_user": -0.12606675341330864,
+    "jsd_posts_per_user": 0.8502508995279392,
+    "top10_overlap": 0.1,
+    "top20_overlap": 0.05
+  },
+  "temporal_fit": {
+    "hour_of_day_jsd": 0.8816865054534756,
+    "cumulative_posts_rmse": 145.87251854501815,
+    "cumulative_posts_nrmse": 0.5881956392944281
+  },
+  "engagement_fit": {
+    "gt_mean_likes_per_post": 4.839080459770115,
+    "gt_mean_retweets_per_post": 0.9386973180076629,
+    "gt_mean_replies_per_post": 0.7547892720306514,
+    "gt_mean_quotes_per_post": 0.019157088122605363,
+    "gt_total_retweets": 245,
+    "gt_total_quotes": 5,
+    "sim_mean_likes_per_post": 0.0,
+    "sim_mean_shares_per_post": 1.0909090909090908,
+    "sim_mean_replies_per_post": 1.7272727272727273,
+    "sim_mean_reposts_per_post": 0.9090909090909091,
+    "sim_mean_quotes_per_post": 0.18181818181818182,
+    "sim_total_reposts": 10,
+    "sim_total_quotes": 2,
+    "gt_total_posts": 261,
+    "sim_total_posts": 11
+  },
+  "graph_fit": {
+    "sim_nodes": 60,
+    "sim_edges": 601,
+    "gt_reply_nodes": 60,
+    "gt_reply_edges": 2,
+    "sim_density": 0.16977401129943503,
+    "gt_reply_density": 0.0005649717514124294,
+    "sim_reciprocity": 0.9816971713810316,
+    "gt_reply_reciprocity": 0.0,
+    "edge_precision_sim_vs_gt_reply": 0.0016638935108153079,
+    "edge_recall_sim_vs_gt_reply": 0.5,
+    "edge_f1_sim_vs_gt_reply": 0.003316749585406302
+  }
+}

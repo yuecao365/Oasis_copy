@@ -11,10 +11,23 @@ data:
   csv_path: persona_generation/outputs/user_personas.csv
 
 simulation:
+  # If auto_num_timesteps_from_split=true, num_timesteps is ignored and derived
+  # from persona_generation/outputs/split_info.json test_period duration.
   num_timesteps: 3
+  auto_num_timesteps_from_split: true
+  split_info_path: persona_generation/outputs/split_info.json
+  # One simulation step represents this many real-world hours.
+  timestep_hours: 24.0
+  # Value written to clock.time_step each iteration: timestep * clock_step_units.
+  clock_step_units: 1
+  # Increase autonomous agent action firing rate.
+  agent_activation_multiplier: 1.8
+  min_activation_threshold: 0.10
   clock_factor: 60
   recsys_type: twhin-bert
   available_actions:
+    - create_post
+    - create_comment
     - do_nothing
     - repost
     - quote_post
