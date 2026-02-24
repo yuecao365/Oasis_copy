@@ -26,6 +26,76 @@ TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")  # Bearer token for Twitter API v
 GLOBAL_SEED = int(os.getenv("GLOBAL_SEED", "20260215"))
 NOISE_EPS = float(os.getenv("NOISE_EPS", "0.05"))  # for priors noise amplitude
 
+# -----------------------------
+# Diversity controls: add tweet sampling + prompt variants
+# -----------------------------
+MAX_TWEETS_DEMO = int(os.getenv("MAX_TWEETS_DEMO", "24"))      # tweets shown to demographics prompt
+MAX_TWEETS_PERSONA = int(os.getenv("MAX_TWEETS_PERSONA", "28")) # tweets shown to persona prompt
+MIN_TWEETS = int(os.getenv("MIN_TWEETS", "10"))               # if available
+SHUFFLE_TWEETS = os.getenv("SHUFFLE_TWEETS", "1") == "1"
+
+DEMO_PROMPT_VARIANTS = [
+    # Variant A: emphasize linguistic/cultural cues
+    "Prioritize linguistic/cultural cues (spelling, slang, holidays, sports, local institutions) and avoid defaulting to US unless evidence suggests it.",
+    # Variant B: emphasize life stage & career signals
+    "Prioritize life-stage and career signals (school, entry-level, parenting, management, retirement) and avoid clustering ages around late 20s/30s.",
+    # Variant C: emphasize interests-to-profession mapping
+    "Infer profession primarily from recurring topics/tools/industries mentioned and be willing to select less-common professions if plausible.",
+    # Variant D: emphasize uncertainty and diversity
+    "If evidence is weak for gender/country, choose a plausible non-default option; ensure outputs vary across users and avoid repeating the same MBTI frequently.",
+    # Variant E: emphasize writing tone and online behavior
+    "Use writing tone (formality, humor, emoji use, meme references) and online behavior to infer age/MBTI; ensure wide variance across users."
+]
+
+PERSONA_PROMPT_VARIANTS = [
+    # Variant A: routine + habits
+    "Write the persona grounded in daily routines and online habits. Add one specific recurring habit (e.g., morning news scan, weekend hobby) without inventing implausible facts.",
+    # Variant B: values + motivations
+    "Center the persona around values/motivations and what they seek from social media. Include one 'why' behind their posting behavior.",
+    # Variant C: community participation
+    "Emphasize how they engage with communities (replying, lurking, sharing resources, debating). Include a distinct engagement style.",
+    # Variant D: concise & punchy voice
+    "Make the bio punchy and the persona crisp. Avoid generic phrases like 'passionate about' unless supported by tweets.",
+    # Variant E: slightly humorous but realistic
+    "Use a light, witty tone while staying realistic. Include one quirky but believable detail consistent with the tweets.",
+    # Variant F: analytical/professional tone
+    "Write in a more analytical, professional tone. Highlight expertise areas and how they approach discussions."
+]
+
+def select_tweets_for_prompt(
+    tweets: List[str],
+    rng: Optional[random.Random],
+    max_tweets: int,
+    min_tweets: int = 10,
+    shuffle: bool = True,
+) -> List[str]:
+    """
+    Deterministically select a subset of tweets to increase diversity and reduce averaging.
+    - If tweets are many, sample max_tweets.
+    - If tweets are few, keep as many as available.
+    - Shuffle (deterministic if rng provided).
+    """
+    if not tweets:
+        return []
+
+    tweets_clean = [t.strip() for t in tweets if t and t.strip()]
+    if not tweets_clean:
+        return []
+
+    n = len(tweets_clean)
+
+    # If plenty of tweets, sample a subset deterministically
+    if rng and n > max_tweets:
+        k = max(min_tweets, min(max_tweets, n))
+        sampled = rng.sample(tweets_clean, k)
+    else:
+        sampled = tweets_clean[:max_tweets] if n > max_tweets else list(tweets_clean)
+
+    # Shuffle order to avoid the model anchoring on early tweets
+    if shuffle and rng:
+        rng.shuffle(sampled)
+
+    return sampled
 
 @dataclass
 class UserProfile:
@@ -211,8 +281,20 @@ def generate_demographics_from_tweets(
 
     client = OpenAI(api_key=OPENAI_API_KEY)
 
+    # Choose a deterministic prompt variant (per user) to encourage diversity
+    demo_variant = rng.choice(DEMO_PROMPT_VARIANTS) if rng else random.choice(DEMO_PROMPT_VARIANTS)
+
+    # Sample a subset of tweets (reduces generic averaging & increases variance)
+    tweets_for_prompt = select_tweets_for_prompt(
+        user_tweets,
+        rng=rng,
+        max_tweets=MAX_TWEETS_DEMO,
+        min_tweets=MIN_TWEETS,
+        shuffle=SHUFFLE_TWEETS,
+    )
+
     # Prepare context
-    sample_tweets = "\n".join([f"- {tweet}" for tweet in user_tweets])
+    sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt])
 
     api_context = ""
     if api_profile:
@@ -227,6 +309,10 @@ Additional context from Twitter profile:
 
 User: @{user_name}
 {api_context}
+
+Diversity instruction (rotate styles across users):
+{demo_variant}
+
 Sample tweets:
 {sample_tweets}
 
@@ -332,10 +418,18 @@ def generate_persona(
 
     client = OpenAI(api_key=OPENAI_API_KEY)
 
-    # Prepare sample tweets (deterministic shuffle if rng is provided)
-    tweets_for_prompt = list(user_tweets)
-    if rng:
-        rng.shuffle(tweets_for_prompt)
+    # Choose a deterministic persona writing style variant (per user)
+    persona_variant = rng.choice(PERSONA_PROMPT_VARIANTS) if rng else random.choice(PERSONA_PROMPT_VARIANTS)
+
+    # Sample a subset of tweets for the persona prompt
+    tweets_for_prompt = select_tweets_for_prompt(
+        user_tweets,
+        rng=rng,
+        max_tweets=MAX_TWEETS_PERSONA,
+        min_tweets=MIN_TWEETS,
+        shuffle=SHUFFLE_TWEETS,
+    )
+
     sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt])
 
     # Build category description
@@ -356,6 +450,9 @@ User Information:
 - Country: {demographics.country}
 - Profession: {demographics.profession}
 - Interest Categories: {categories_text}
+
+Writing style instruction (rotate styles across users):
+{persona_variant}
 
 Sample tweets from this user:
 {sample_tweets}
@@ -506,12 +603,15 @@ def generate_personas_for_users(
         if use_twitter_api:
             api_profile = fetch_user_profile_from_api(user_id)
 
-        user_rng = persona_rng(user_id, global_seed=GLOBAL_SEED)
+        base_rng = persona_rng(user_id, global_seed=GLOBAL_SEED)
+        # Split deterministic sub-streams so changes in one stage don't affect the other
+        demo_rng = random.Random(base_rng.randrange(2**63))
+        persona_rng_stream = random.Random(base_rng.randrange(2**63))
 
         # Infer demographics
         try:
             demographics = generate_demographics_from_tweets(
-                tweets, user_name, api_profile, rng=user_rng
+                tweets, user_name, api_profile, rng=demo_rng
             )
 
             # Generate persona (with all categories)
@@ -524,7 +624,7 @@ def generate_personas_for_users(
                 cluster_id=cluster_id,
                 original_user_id=user_id,
                 tweet_count=tweet_count,
-                rng=user_rng,
+                rng=persona_rng_stream,
             )
 
             personas.append(persona)
