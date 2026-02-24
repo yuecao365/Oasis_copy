@@ -374,6 +374,18 @@ async def _perform_manual_probabilistic_action(
     return {"action": "do_nothing", "result": result}
 
 
+def _sample_num_actions_per_agent(
+    max_actions_per_active_agent: int,
+    extra_action_probability: float,
+) -> int:
+    max_actions = max(1, int(max_actions_per_active_agent))
+    p = max(0.0, min(1.0, float(extra_action_probability)))
+    actions = 1
+    while actions < max_actions and random.random() < p:
+        actions += 1
+    return actions
+
+
 async def running(
     db_path: str | None = _DEFAULT_DB,
     csv_path: str | None = _DEFAULT_CSV,
@@ -390,6 +402,8 @@ async def running(
     default_activity_probability: float = 0.1,
     target_posts_per_step: int | None = None,
     auto_target_posts_per_step_from_train: bool = True,
+    max_actions_per_active_agent: int = 1,
+    extra_action_probability: float = 0.0,
     recsys_type: str = "twhin-bert",
     action_selection_mode: str = "manual_probabilistic",
     action_probabilities: dict[str, float] | None = None,
@@ -553,23 +567,28 @@ async def running(
         if action_selection_mode == "manual_probabilistic":
             remaining_post_budget = target_posts_per_step
             for agent in tasks:
-                blocked_actions: set[str] = set()
-                if remaining_post_budget is not None and remaining_post_budget <= 0:
-                    blocked_actions.add("create_post")
-                action_out = await _perform_manual_probabilistic_action(
-                    agent=agent,
-                    action_probs=normalized_action_probs,
-                    blocked_actions=blocked_actions,
+                num_actions = _sample_num_actions_per_agent(
+                    max_actions_per_active_agent=max_actions_per_active_agent,
+                    extra_action_probability=extra_action_probability,
                 )
-                selected_action = str(action_out.get("action", ""))
-                result = action_out.get("result")
-                if (
-                    selected_action == "create_post"
-                    and remaining_post_budget is not None
-                    and isinstance(result, dict)
-                    and result.get("success")
-                ):
-                    remaining_post_budget -= 1
+                for _ in range(num_actions):
+                    blocked_actions: set[str] = set()
+                    if remaining_post_budget is not None and remaining_post_budget <= 0:
+                        blocked_actions.add("create_post")
+                    action_out = await _perform_manual_probabilistic_action(
+                        agent=agent,
+                        action_probs=normalized_action_probs,
+                        blocked_actions=blocked_actions,
+                    )
+                    selected_action = str(action_out.get("action", ""))
+                    result = action_out.get("result")
+                    if (
+                        selected_action == "create_post"
+                        and remaining_post_budget is not None
+                        and isinstance(result, dict)
+                        and result.get("success")
+                    ):
+                        remaining_post_budget -= 1
         else:
             await asyncio.gather(*tasks)
 

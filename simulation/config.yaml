@@ -7,7 +7,7 @@
 
 ---
 data:
-  db_path: data/simu_db/yaml_gpt/False_Business_0.db
+  db_path: data/simu_db/yaml_gpt/sweep_high_posts.db
   csv_path: persona_generation/outputs/user_personas.csv
 
 simulation:
@@ -24,14 +24,19 @@ simulation:
   default_activity_probability: 0.10
   # Per-step post budget. If null and auto_target_posts_per_step_from_train=true,
   # estimate from train data average post rate and timestep_hours.
-  target_posts_per_step: null
-  auto_target_posts_per_step_from_train: true
+  target_posts_per_step: 11
+  auto_target_posts_per_step_from_train: false
+  # Multi-action controls in manual_probabilistic mode:
+  # each active agent performs at least 1 action, up to max_actions_per_active_agent.
+  max_actions_per_active_agent: 3
+  # Probability of adding one more action slot (geometric, evaluated repeatedly).
+  extra_action_probability: 0.5
   # One simulation step represents this many real-world hours.
   timestep_hours: 24.0
   # Value written to clock.time_step each iteration: timestep * clock_step_units.
   clock_step_units: 1
   # Increase autonomous agent action firing rate.
-  agent_activation_multiplier: 1.8
+  agent_activation_multiplier: 2.0
   min_activation_threshold: 0.10
   clock_factor: 60
   recsys_type: twhin-bert
@@ -39,8 +44,8 @@ simulation:
   action_selection_mode: manual_probabilistic
   # Probabilities are normalized automatically.
   action_probabilities:
-    like_post: 0.45
-    create_post: 0.25
+    like_post: 0.60
+    create_post: 0.10
     create_comment: 0.20
     repost: 0.10
   available_actions:

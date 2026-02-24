@@ -425,7 +425,7 @@ def main() -> None:
     parser.add_argument(
         "--timestep_hours",
         type=float,
-        default=1.0,
+        default=24.0,
         help="How many real hours one simulation timestep represents.",
     )
     parser.add_argument(
