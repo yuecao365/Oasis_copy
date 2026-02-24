@@ -16,6 +16,16 @@ simulation:
   num_timesteps: 3
   auto_num_timesteps_from_split: true
   split_info_path: persona_generation/outputs/split_info.json
+  # Source train split used to estimate user activity probabilities.
+  train_activity_csv_path: persona_generation/outputs/train_tweets.csv
+  # Use "weekly" (7-dim) or "hourly" (24-dim) activity profile.
+  activity_granularity: weekly
+  # Fallback activity probability if a user has sparse data.
+  default_activity_probability: 0.10
+  # Per-step post budget. If null and auto_target_posts_per_step_from_train=true,
+  # estimate from train data average post rate and timestep_hours.
+  target_posts_per_step: null
+  auto_target_posts_per_step_from_train: true
   # One simulation step represents this many real-world hours.
   timestep_hours: 24.0
   # Value written to clock.time_step each iteration: timestep * clock_step_units.
@@ -25,14 +35,19 @@ simulation:
   min_activation_threshold: 0.10
   clock_factor: 60
   recsys_type: twhin-bert
+  # "manual_probabilistic" samples actions from distribution below.
+  action_selection_mode: manual_probabilistic
+  # Probabilities are normalized automatically.
+  action_probabilities:
+    like_post: 0.45
+    create_post: 0.25
+    create_comment: 0.20
+    repost: 0.10
   available_actions:
     - create_post
     - create_comment
-    - do_nothing
     - repost
-    - quote_post
     - like_post
-    - follow
 
 inference:
   model_type: gpt-4o-mini

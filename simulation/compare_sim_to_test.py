@@ -10,10 +10,13 @@ import csv
 import json
 import math
 import sqlite3
+import re
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
+
+from yaml import safe_load
 
 
 def _safe_float(v, default=0.0) -> float:
@@ -354,6 +357,37 @@ def cumulative_curve_from_steps(steps: List[float], bins: int = 24) -> List[floa
     return out
 
 
+def _slug(v: object) -> str:
+    s = str(v)
+    s = re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
+    return s or "na"
+
+
+def _build_archive_stem(db_path: Path, timestep_hours: float, sim_config_path: Path) -> str:
+    db_stem = _slug(db_path.stem)
+    parts = [f"db-{db_stem}", f"ts-{_slug(timestep_hours)}"]
+
+    try:
+        cfg = safe_load(sim_config_path.read_text(encoding="utf-8")) or {}
+        sim = cfg.get("simulation", {}) or {}
+        wanted = {
+            "gran": sim.get("activity_granularity"),
+            "sel": sim.get("action_selection_mode"),
+            "mult": sim.get("agent_activation_multiplier"),
+            "min": sim.get("min_activation_threshold"),
+            "clock": sim.get("clock_factor"),
+            "recsys": sim.get("recsys_type"),
+            "posts": sim.get("target_posts_per_step"),
+            "posts_auto": sim.get("auto_target_posts_per_step_from_train"),
+        }
+        for k, v in wanted.items():
+            parts.append(f"{k}-{_slug(v)}")
+    except Exception:
+        parts.append("cfg-unavailable")
+
+    return "__".join(parts)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compare OASIS simulation DB vs test split.")
     parser.add_argument("--db", required=True, type=Path, help="Path to simulation SQLite DB.")
@@ -387,6 +421,24 @@ def main() -> None:
         "--output_md",
         default=Path("simulation/metrics_report.md"),
         type=Path,
+    )
+    parser.add_argument(
+        "--archive_dir",
+        default=Path("simulation/metrics_history"),
+        type=Path,
+        help="Directory to store per-run archived reports with hyperparameter-tagged filenames.",
+    )
+    parser.add_argument(
+        "--sim_config",
+        default=Path("simulation/config.yaml"),
+        type=Path,
+        help="Simulation config path used to build hyperparameter tags in archive filenames.",
+    )
+    parser.add_argument(
+        "--run_tag",
+        default="",
+        type=str,
+        help="Optional suffix tag for archive filenames (e.g., experiment id).",
     )
     args = parser.parse_args()
 
@@ -535,8 +587,20 @@ def main() -> None:
     ]
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")
 
+    # Also write a historical, hyperparameter-labeled artifact for comparison over time.
+    args.archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_stem = _build_archive_stem(args.db, args.timestep_hours, args.sim_config)
+    if args.run_tag:
+        archive_stem = f"{archive_stem}__tag-{_slug(args.run_tag)}"
+    archive_json = args.archive_dir / f"{archive_stem}.json"
+    archive_md = args.archive_dir / f"{archive_stem}.md"
+    archive_json.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    archive_md.write_text("\n".join(md_lines), encoding="utf-8")
+
     print(f"Wrote {args.output_json}")
     print(f"Wrote {args.output_md}")
+    print(f"Wrote {archive_json}")
+    print(f"Wrote {archive_md}")
 
 
 if __name__ == "__main__":

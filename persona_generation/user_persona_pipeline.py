@@ -14,6 +14,7 @@ import json
 import math
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
 
@@ -28,12 +29,17 @@ from config import (
     FILTERED_TWEETS_PATH,
     MIN_TEST_TWEETS,
     MIN_TRAIN_TWEETS,
+    MAX_FOLLOWEES,
     OUTPUT_DIR,
     OUTPUT_FORMAT,
     TEST_MONTH,
+    TEST_END_DATE,
+    TEST_START_DATE,
     TEST_YEAR,
     TOP_N,
     TRAIN_MONTH,
+    TRAIN_END_DATE,
+    TRAIN_START_DATE,
     TRAIN_YEAR,
     TWEET_POPULARITY_PATH,
     USE_TWITTER_API,
@@ -58,6 +64,15 @@ from rank_users_by_category import (
 )
 
 REPO_ROOT = _REPO_ROOT
+
+
+def _parse_iso_utc(value: str):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except Exception:
+        return None
 
 
 def load_cluster_assignments(path: Path) -> Dict[str, int]:
@@ -364,13 +379,32 @@ def main():
     all_tweets = load_tweets_with_timestamps(FILTERED_TWEETS_PATH)
     print(f"Loaded {len(all_tweets)} tweets")
 
-    train_tweets, test_tweets = split_tweets_by_time(
-        all_tweets,
-        train_year=TRAIN_YEAR,
-        train_month=TRAIN_MONTH,
-        test_year=TEST_YEAR,
-        test_month=TEST_MONTH,
-    )
+    train_start_dt = _parse_iso_utc(TRAIN_START_DATE)
+    train_end_dt = _parse_iso_utc(TRAIN_END_DATE)
+    test_start_dt = _parse_iso_utc(TEST_START_DATE)
+    test_end_dt = _parse_iso_utc(TEST_END_DATE)
+
+    if all([train_start_dt, train_end_dt, test_start_dt, test_end_dt]):
+        train_tweets = [
+            t for t in all_tweets if train_start_dt <= t.timestamp < train_end_dt
+        ]
+        test_tweets = [
+            t for t in all_tweets if test_start_dt <= t.timestamp < test_end_dt
+        ]
+        print(
+            "Using explicit date windows: "
+            f"train=[{train_start_dt.isoformat()} -> {train_end_dt.isoformat()}) "
+            f"test=[{test_start_dt.isoformat()} -> {test_end_dt.isoformat()})"
+        )
+    else:
+        train_tweets, test_tweets = split_tweets_by_time(
+            all_tweets,
+            train_year=TRAIN_YEAR,
+            train_month=TRAIN_MONTH,
+            test_year=TEST_YEAR,
+            test_month=TEST_MONTH,
+        )
+        print("Using month-based split from TRAIN_/TEST_ config values.")
     print(f"Initial split - Train: {len(train_tweets)}, Test: {len(test_tweets)}")
 
     train_filtered, test_filtered = filter_active_users_in_both_periods(
@@ -453,7 +487,7 @@ def main():
         direct_reply_map=reply_follow_map,
         user_all_train_tweets=user_all_train_tweets,
         user_cluster_mix=user_cluster_mix,
-        max_followees=15,
+        max_followees=MAX_FOLLOWEES,
     )
     nonempty = sum(1 for uid in follow_map if follow_map[uid])
     print(

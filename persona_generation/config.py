@@ -17,6 +17,10 @@ TRAIN_YEAR = 2025
 TRAIN_MONTH = 7  # July
 TEST_YEAR = 2025
 TEST_MONTH = 8   # August
+TRAIN_START_DATE = "2025-05-01T00:00:00+00:00"
+TRAIN_END_DATE = "2025-08-01T00:00:00+00:00"
+TEST_START_DATE = "2025-08-01T00:00:00+00:00"
+TEST_END_DATE = "2025-09-01T00:00:00+00:00"
 MIN_TRAIN_TWEETS = 1
 MIN_TEST_TWEETS = 1
 
@@ -48,3 +52,6 @@ BLEND_ALPHA: float = 0.6
 
 # Optional lower bound on mixture weight to reduce noise
 MIN_MIX_WEIGHT: float = 0.0
+
+# Follow-graph density control for generated personas
+MAX_FOLLOWEES: int = 4
