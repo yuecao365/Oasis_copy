@@ -11,8 +11,8 @@ import json
 import math
 import sqlite3
 import re
-from collections import Counter, defaultdict
-from datetime import datetime
+from collections import Counter
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
@@ -153,7 +153,7 @@ def load_persona_mapping(personas_csv: Path) -> Dict[int, str]:
 
 def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
     per_user_posts = Counter()
-    gt_hour = [0] * 24
+    gt_weekday = [0] * 7
     gt_posts_ts: List[datetime] = []
     likes = []
     retweets = []
@@ -169,7 +169,7 @@ def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
                 per_user_posts[uname] += 1
                 ts = _parse_ts(row.get("timestamp", ""))
                 if ts is not None:
-                    gt_hour[ts.hour] += 1
+                    gt_weekday[ts.weekday()] += 1
                     gt_posts_ts.append(ts)
                 likes.append(_safe_int(row.get("likes"), 0))
                 retweets.append(_safe_int(row.get("retweets"), 0))
@@ -177,7 +177,7 @@ def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
                 quotes.append(_safe_int(row.get("quotes"), 0))
     return {
         "per_user_posts": dict(per_user_posts),
-        "hour_hist": gt_hour,
+        "weekday_hist": gt_weekday,
         "post_timestamps": gt_posts_ts,
         "likes": likes,
         "retweets": retweets,
@@ -285,36 +285,6 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     }
 
 
-def load_gt_reply_edges(filtered_jsonl: Path, test_csv: Path, persona_usernames: set[str]) -> set[Tuple[str, str]]:
-    test_ids = set()
-    with test_csv.open("r", encoding="utf-8", newline="") as f:
-        for row in csv.DictReader(f):
-            tid = (row.get("id") or "").strip()
-            if tid:
-                test_ids.add(tid)
-
-    edges = set()
-    with filtered_jsonl.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            tid = str(obj.get("id", ""))
-            if tid not in test_ids:
-                continue
-            if not bool(obj.get("isReply", False)):
-                continue
-            a = str((obj.get("author") or {}).get("userName", "")).strip().lower()
-            b = str(obj.get("inReplyToUsername", "")).strip().lower()
-            if a and b and a != b and a in persona_usernames and b in persona_usernames:
-                edges.add((a, b))
-    return edges
-
-
 def cumulative_curve_from_datetimes(ts_list: List[datetime], bins: int = 24) -> List[float]:
     if not ts_list:
         return [0.0] * bins
@@ -355,6 +325,52 @@ def cumulative_curve_from_steps(steps: List[float], bins: int = 24) -> List[floa
         run += h
         out.append(float(run))
     return out
+
+
+def cumulative_curve_from_day_offsets(day_offsets: List[int], bins: int) -> List[float]:
+    if bins <= 0:
+        return []
+    hist = [0] * bins
+    for d in day_offsets:
+        pos = max(0, min(bins - 1, int(d)))
+        hist[pos] += 1
+    out = []
+    run = 0
+    for h in hist:
+        run += h
+        out.append(float(run))
+    return out
+
+
+def day_offsets_from_datetimes(ts_list: List[datetime]) -> List[int]:
+    if not ts_list:
+        return []
+    tmin = min(ts_list)
+    return [max(0, int((t - tmin).total_seconds() // 86400)) for t in ts_list]
+
+
+def day_offsets_from_steps(steps: List[float], timestep_hours: float) -> List[int]:
+    if not steps:
+        return []
+    smin = min(steps)
+    return [
+        max(0, int(math.floor(((s - smin) * timestep_hours) / 24.0)))
+        for s in steps
+    ]
+
+
+def weekday_hist_from_steps(
+    steps: List[float],
+    timestep_hours: float,
+    simulation_start: datetime | None,
+) -> List[int]:
+    hist = [0] * 7
+    if not steps or simulation_start is None:
+        return hist
+    for s in steps:
+        dt = simulation_start + timedelta(hours=float(s) * timestep_hours)
+        hist[dt.weekday()] += 1
+    return hist
 
 
 def _slug(v: object) -> str:
@@ -413,6 +429,12 @@ def main() -> None:
         help="How many real hours one simulation timestep represents.",
     )
     parser.add_argument(
+        "--split_info",
+        default=Path("persona_generation/outputs/split_info.json"),
+        type=Path,
+        help="Split info JSON to recover simulation start date for weekday metrics.",
+    )
+    parser.add_argument(
         "--output_json",
         default=Path("simulation/metrics_report.json"),
         type=Path,
@@ -447,7 +469,18 @@ def main() -> None:
 
     gt = load_test(args.test_csv, persona_usernames)
     sim = load_sim(args.db, agent_to_username, args.timestep_hours)
-    gt_reply_edges = load_gt_reply_edges(args.filtered_jsonl, args.test_csv, persona_usernames)
+
+    sim_start = None
+    if args.split_info.exists():
+        try:
+            split_info = json.loads(args.split_info.read_text(encoding="utf-8"))
+            test_start_raw = ((split_info or {}).get("test_period", {}) or {}).get("start")
+            if test_start_raw:
+                sim_start = datetime.fromisoformat(str(test_start_raw))
+        except Exception:
+            sim_start = None
+    if sim_start is None and gt["post_timestamps"]:
+        sim_start = min(gt["post_timestamps"])
 
     users = sorted(persona_usernames)
     gt_vec = [float(gt["per_user_posts"].get(u, 0.0)) for u in users]
@@ -458,19 +491,20 @@ def main() -> None:
     top10_overlap = topk_overlap(sim["per_user_posts"], gt["per_user_posts"], 10)
     top20_overlap = topk_overlap(sim["per_user_posts"], gt["per_user_posts"], 20)
 
-    hour_jsd = js_divergence(sim["hour_hist"], gt["hour_hist"])
+    sim_weekday_hist = weekday_hist_from_steps(sim["post_steps"], args.timestep_hours, sim_start)
+    weekday_jsd = js_divergence(sim_weekday_hist, gt["weekday_hist"])
 
-    sim_curve = cumulative_curve_from_steps(sim["post_steps"], bins=24)
-    gt_curve = cumulative_curve_from_datetimes(gt["post_timestamps"], bins=24)
+    sim_day_offsets = day_offsets_from_steps(sim["post_steps"], args.timestep_hours)
+    gt_day_offsets = day_offsets_from_datetimes(gt["post_timestamps"])
+    day_bins = max(
+        (max(sim_day_offsets) + 1) if sim_day_offsets else 0,
+        (max(gt_day_offsets) + 1) if gt_day_offsets else 0,
+        1,
+    )
+    sim_curve = cumulative_curve_from_day_offsets(sim_day_offsets, bins=day_bins)
+    gt_curve = cumulative_curve_from_day_offsets(gt_day_offsets, bins=day_bins)
     curve_rmse = rmse(sim_curve, gt_curve)
     curve_nrmse = nrmse(sim_curve, gt_curve)
-
-    sim_edges = sim["follow_edges"]
-    gt_edges = gt_reply_edges
-    inter = len(sim_edges & gt_edges)
-    p = inter / len(sim_edges) if sim_edges else 0.0
-    r = inter / len(gt_edges) if gt_edges else 0.0
-    f1 = (2 * p * r / (p + r)) if (p + r) > 0 else 0.0
 
     report = {
         "inputs": {
@@ -479,6 +513,7 @@ def main() -> None:
             "personas_csv": str(args.personas_csv),
             "filtered_jsonl": str(args.filtered_jsonl),
             "timestep_hours": args.timestep_hours,
+            "split_info": str(args.split_info),
         },
         "coverage": {
             "persona_user_count": len(users),
@@ -492,9 +527,9 @@ def main() -> None:
             "top20_overlap": top20_overlap,
         },
         "temporal_fit": {
-            "hour_of_day_jsd": hour_jsd,
-            "cumulative_posts_rmse": curve_rmse,
-            "cumulative_posts_nrmse": curve_nrmse,
+            "day_of_week_jsd": weekday_jsd,
+            "cumulative_posts_daily_rmse": curve_rmse,
+            "cumulative_posts_daily_nrmse": curve_nrmse,
         },
         "engagement_fit": {
             "gt_mean_likes_per_post": (sum(gt["likes"]) / len(gt["likes"])) if gt["likes"] else 0.0,
@@ -512,19 +547,6 @@ def main() -> None:
             "sim_total_quotes": sum(sim["quotes"]) if sim["quotes"] else 0,
             "gt_total_posts": len(gt["post_timestamps"]),
             "sim_total_posts": len(sim["post_steps"]),
-        },
-        "graph_fit": {
-            "sim_nodes": len(users),
-            "sim_edges": len(sim_edges),
-            "gt_reply_nodes": len(users),
-            "gt_reply_edges": len(gt_edges),
-            "sim_density": graph_density(len(users), len(sim_edges), directed=True),
-            "gt_reply_density": graph_density(len(users), len(gt_edges), directed=True),
-            "sim_reciprocity": graph_reciprocity(sim_edges),
-            "gt_reply_reciprocity": graph_reciprocity(gt_edges),
-            "edge_precision_sim_vs_gt_reply": p,
-            "edge_recall_sim_vs_gt_reply": r,
-            "edge_f1_sim_vs_gt_reply": f1,
         },
     }
 
@@ -550,9 +572,9 @@ def main() -> None:
         f"- Top-20 overlap: {top20_overlap:.4f}",
         "",
         "## Temporal Fit",
-        f"- Hour-of-day JSD: {hour_jsd:.4f}",
-        f"- Cumulative posts RMSE: {curve_rmse:.4f}",
-        f"- Cumulative posts NRMSE: {curve_nrmse:.4f}",
+        f"- Day-of-week JSD: {weekday_jsd:.4f}",
+        f"- Cumulative daily posts RMSE: {curve_rmse:.4f}",
+        f"- Cumulative daily posts NRMSE: {curve_nrmse:.4f}",
         "",
         "## Engagement Fit",
         f"- GT mean likes/retweets/replies/quotes per post: "
@@ -573,16 +595,6 @@ def main() -> None:
         f"- Sim total reposts/quotes: "
         f"{report['engagement_fit']['sim_total_reposts']} / "
         f"{report['engagement_fit']['sim_total_quotes']}",
-        "",
-        "## Graph Fit",
-        f"- Sim edges: {report['graph_fit']['sim_edges']}",
-        f"- GT reply edges: {report['graph_fit']['gt_reply_edges']}",
-        f"- Sim density / GT reply density: "
-        f"{report['graph_fit']['sim_density']:.5f} / {report['graph_fit']['gt_reply_density']:.5f}",
-        f"- Sim reciprocity / GT reply reciprocity: "
-        f"{report['graph_fit']['sim_reciprocity']:.5f} / {report['graph_fit']['gt_reply_reciprocity']:.5f}",
-        f"- Edge precision / recall / F1: "
-        f"{p:.5f} / {r:.5f} / {f1:.5f}",
         "",
     ]
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")

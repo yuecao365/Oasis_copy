@@ -1,26 +1,27 @@
 {
   "inputs": {
-    "db": "data/simu_db/yaml_gpt/smoke_twhin.db",
+    "db": "data/simu_db/yaml_gpt/False_Business_0.db",
     "test_csv": "persona_generation/outputs/test_tweets.csv",
     "personas_csv": "persona_generation/outputs/user_personas.csv",
     "filtered_jsonl": "data/processed/filtered_tweets.jsonl",
-    "timestep_hours": 24.0
+    "timestep_hours": 24.0,
+    "split_info": "persona_generation/outputs/split_info.json"
   },
   "coverage": {
     "persona_user_count": 60,
     "gt_active_users": 51,
-    "sim_active_users": 0
+    "sim_active_users": 41
   },
   "user_activity_fit": {
-    "spearman_posts_per_user": 0.0,
-    "jsd_posts_per_user": 0.22641480694032867,
-    "top10_overlap": 0.0,
-    "top20_overlap": 0.0
+    "spearman_posts_per_user": -0.18908180617794765,
+    "jsd_posts_per_user": 0.44572464390608457,
+    "top10_overlap": 0.1,
+    "top20_overlap": 0.25
   },
   "temporal_fit": {
-    "hour_of_day_jsd": 0.05959477371514052,
-    "cumulative_posts_rmse": 161.52257324184342,
-    "cumulative_posts_nrmse": 0.6334218558503664
+    "day_of_week_jsd": 0.01733750875431922,
+    "cumulative_posts_daily_rmse": 103.06041080774939,
+    "cumulative_posts_daily_nrmse": 0.401013271625484
   },
   "engagement_fit": {
     "gt_mean_likes_per_post": 1.5919117647058822,
@@ -29,27 +30,14 @@
     "gt_mean_quotes_per_post": 0.022058823529411766,
     "gt_total_retweets": 112,
     "gt_total_quotes": 6,
-    "sim_mean_likes_per_post": 0.0,
-    "sim_mean_shares_per_post": 0.0,
-    "sim_mean_replies_per_post": 0.0,
-    "sim_mean_reposts_per_post": 0.0,
+    "sim_mean_likes_per_post": 0.16129032258064516,
+    "sim_mean_shares_per_post": 0.010752688172043012,
+    "sim_mean_replies_per_post": 0.010752688172043012,
+    "sim_mean_reposts_per_post": 0.010752688172043012,
     "sim_mean_quotes_per_post": 0.0,
-    "sim_total_reposts": 0,
+    "sim_total_reposts": 1,
     "sim_total_quotes": 0,
     "gt_total_posts": 272,
-    "sim_total_posts": 0
-  },
-  "graph_fit": {
-    "sim_nodes": 60,
-    "sim_edges": 600,
-    "gt_reply_nodes": 60,
-    "gt_reply_edges": 1,
-    "sim_density": 0.1694915254237288,
-    "gt_reply_density": 0.0002824858757062147,
-    "sim_reciprocity": 0.9833333333333333,
-    "gt_reply_reciprocity": 0.0,
-    "edge_precision_sim_vs_gt_reply": 0.0,
-    "edge_recall_sim_vs_gt_reply": 0.0,
-    "edge_f1_sim_vs_gt_reply": 0.0
+    "sim_total_posts": 93
   }
 }
