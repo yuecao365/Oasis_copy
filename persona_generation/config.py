@@ -20,7 +20,7 @@ TEST_MONTH = 8   # August
 MIN_TRAIN_TWEETS = 1
 MIN_TEST_TWEETS = 1
 
-DRY_RUN = False   # If True, skip all OpenAI and Twitter API calls
+DRY_RUN = True   # If True, skip all OpenAI and Twitter API calls
 
 # Ranking and persona
 TOP_N = 10  # Number of top users per cluster

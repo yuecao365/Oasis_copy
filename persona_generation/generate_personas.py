@@ -88,6 +88,68 @@ DIVERSITY REQUIREMENT (critical):
 
 INVALID_CATEGORIES = {"", "unspecified", "unknown", "n/a", "none", "null"}
 
+AVAILABLE_ACTIONS = [
+    "create_post",
+    "create_comment",
+    "do_nothing",
+    "repost",
+    "quote_post",
+    "like_post",
+    "follow",
+]
+
+# Optional: baseline behavioral priors (tweak as you like)
+DEFAULT_ACTION_PRIORS = {
+    "create_post": 0.10,
+    "create_comment": 0.14,
+    "do_nothing": 0.42,
+    "repost": 0.06,
+    "quote_post": 0.04,
+    "like_post": 0.20,
+    "follow": 0.04,
+}
+
+def sample_action_probabilities(
+    rng: random.Random,
+    priors: Optional[Dict[str, float]] = None,
+    actions: Optional[List[str]] = None,
+    concentration: float = 30.0,
+) -> Dict[str, float]:
+    """
+    Sample a probability distribution over actions.
+    Deterministic given rng.
+
+    Uses a Dirichlet-like approach via Gamma sampling:
+      alpha_i = concentration * prior_i (or uniform if no priors)
+      p_i ~ Gamma(alpha_i, 1); normalize.
+
+    Higher concentration => closer to priors (less variance).
+    Lower concentration => more diverse behavior per persona.
+    """
+    actions = actions or AVAILABLE_ACTIONS
+    if priors is None:
+        priors = {a: 1.0 for a in actions}
+
+    # Ensure all actions present and positive
+    weights = []
+    for a in actions:
+        w = float(priors.get(a, 0.0))
+        if w <= 0:
+            w = 1e-6
+        weights.append(w)
+
+    s = sum(weights)
+    base = [w / s for w in weights]
+
+    # Dirichlet(alpha) via Gamma draws
+    alphas = [max(1e-3, concentration * b) for b in base]
+    draws = [rng.gammavariate(alpha, 1.0) for alpha in alphas]
+    total = sum(draws)
+    probs = [d / total for d in draws]
+
+    return {a: float(p) for a, p in zip(actions, probs)}
+
+
 def normalize_category(cat: Optional[str]) -> Optional[str]:
     """Return a cleaned category string, or None if invalid/unspecified."""
     if cat is None:
@@ -194,7 +256,7 @@ class Persona:
     original_user_id: str
     tweet_count: int
     sample_tweets: List[str]  # Tweet texts for previous_tweets (OASIS simulation)
-
+    action_probs: Dict[str, float]
 
 def pick_with_priors(options, priors, rng, noise_eps: float = 0.05):
     """
@@ -454,6 +516,14 @@ def generate_persona(
     # DRY RUN MODE: dummy persona
     # -----------------------------
     if DRY_RUN:
+        
+        action_probs = sample_action_probabilities(
+            rng=rng or random.Random(),
+            priors=DEFAULT_ACTION_PRIORS,
+            actions=AVAILABLE_ACTIONS,
+            concentration=30.0,
+        )
+
         return Persona(
             username=user_name,
             realname=user_name,
@@ -471,6 +541,7 @@ def generate_persona(
             original_user_id=original_user_id,
             tweet_count=tweet_count,
             sample_tweets=user_tweets,
+            action_probs=action_probs,
         )
 
     if not OPENAI_API_KEY:
@@ -559,6 +630,13 @@ Output ONLY valid JSON in this exact format:
 
     persona_dict = json.loads(content)
 
+    action_probs = sample_action_probabilities(
+        rng=rng or random.Random(),
+        priors=DEFAULT_ACTION_PRIORS,
+        actions=AVAILABLE_ACTIONS,
+        concentration=30.0,
+    )
+
     # Use the REAL username from the data for both display name and handle.
     # We ignore any AI-generated names/usernames to keep personas grounded in the original dataset.
     return Persona(
@@ -578,6 +656,7 @@ Output ONLY valid JSON in this exact format:
         original_user_id=original_user_id,
         tweet_count=tweet_count,
         sample_tweets=user_tweets,
+        action_probs=action_probs,
     )
 
 
@@ -808,6 +887,13 @@ def save_personas(
                 "previous_tweets",
                 "user_char",
                 "description",
+                "p_create_post",
+                "p_create_comment",
+                "p_do_nothing",
+                "p_repost",
+                "p_quote_post",
+                "p_like_post",
+                "p_follow",
             ])
             user_id_to_agent_idx = {
                 persona.original_user_id: idx for idx, persona in enumerate(personas)
@@ -845,6 +931,7 @@ def save_personas(
                 # previous_tweets: Python list literal for agents_generator.ast.literal_eval
                 tweets_str = json.dumps(persona.sample_tweets) if persona.sample_tweets else "[]"
 
+                ap = persona.action_probs or {}
                 writer.writerow([
                     idx,
                     persona.realname,
@@ -856,6 +943,16 @@ def save_personas(
                     tweets_str,
                     persona.persona,
                     persona.bio,
+
+                    #NEW Values (default 0.0 if missing)
+                    ap.get("create_post", 0.0),
+                    ap.get("create_comment", 0.0),
+                    ap.get("do_nothing", 0.0),
+                    ap.get("repost", 0.0),
+                    ap.get("quote_post", 0.0),
+                    ap.get("like_post", 0.0),
+                    ap.get("follow", 0.0),
+
                 ])
 
     else:
