@@ -47,20 +47,44 @@ DEMO_PROMPT_VARIANTS = [
     "Use writing tone (formality, humor, emoji use, meme references) and online behavior to infer age/MBTI; ensure wide variance across users."
 ]
 
-PERSONA_PROMPT_VARIANTS = [
-    # Variant A: routine + habits
-    "Write the persona grounded in daily routines and online habits. Add one specific recurring habit (e.g., morning news scan, weekend hobby) without inventing implausible facts.",
-    # Variant B: values + motivations
-    "Center the persona around values/motivations and what they seek from social media. Include one 'why' behind their posting behavior.",
-    # Variant C: community participation
-    "Emphasize how they engage with communities (replying, lurking, sharing resources, debating). Include a distinct engagement style.",
-    # Variant D: concise & punchy voice
-    "Make the bio punchy and the persona crisp. Avoid generic phrases like 'passionate about' unless supported by tweets.",
-    # Variant E: slightly humorous but realistic
-    "Use a light, witty tone while staying realistic. Include one quirky but believable detail consistent with the tweets.",
-    # Variant F: analytical/professional tone
-    "Write in a more analytical, professional tone. Highlight expertise areas and how they approach discussions."
-]
+# -----------------------------
+# Persona prompt: single polished instruction (no random variants)
+# Combines all prior variants + adds explicit diversity constraints
+# -----------------------------
+PERSONA_PROMPT_MASTER = """
+You must satisfy ALL of the following requirements in the bio + persona:
+
+1) Grounding in routine & habits:
+- Ground the persona in plausible daily routines and online habits.
+- Include exactly one specific recurring habit (e.g., morning news scan, weekend hobby) that is consistent with the tweets.
+- Do not invent implausible life facts.
+
+2) Values & motivations:
+- Center part of the persona around values/motivations and what they seek from social media.
+- Include one explicit “why” behind their posting behavior.
+
+3) Community participation:
+- Describe how they engage with communities (replying, lurking, sharing resources, debating).
+- Include a distinct engagement style (e.g., “helpful explainer,” “debate-driven,” “signal booster,” “quiet lurker who posts threads”).
+
+4) Concise, punchy bio:
+- Make the bio punchy and specific.
+- Avoid generic phrases like “passionate about” unless strongly supported by the tweets.
+- Prefer concrete topics, signals, and tone that match the user’s writing.
+
+5) Light humor + realism:
+- Use a light, witty tone where it fits the user’s tweets (don’t force humor if their tweets are formal).
+- Include one quirky but believable detail consistent with the tweets.
+
+6) Analytical/professional signal:
+- Also incorporate an analytical/professional angle: highlight expertise areas and how they approach discussions (e.g., “evidence-driven,” “hands-on builder,” “big-picture strategist”), as supported by tweets.
+
+DIVERSITY REQUIREMENT (critical):
+- Do not use a fixed template. Vary sentence structure and voice across users.
+- Let the user’s tweet tone drive the voice (more formal vs. meme-y vs. earnest).
+- Prefer specific details anchored to the tweets over broad labels.
+- Avoid repeating the same phrasing patterns across different personas (e.g., do not always start with “This user is…”).
+"""
 
 def select_tweets_for_prompt(
     tweets: List[str],
@@ -418,9 +442,6 @@ def generate_persona(
 
     client = OpenAI(api_key=OPENAI_API_KEY)
 
-    # Choose a deterministic persona writing style variant (per user)
-    persona_variant = rng.choice(PERSONA_PROMPT_VARIANTS) if rng else random.choice(PERSONA_PROMPT_VARIANTS)
-
     # Sample a subset of tweets for the persona prompt
     tweets_for_prompt = select_tweets_for_prompt(
         user_tweets,
@@ -451,8 +472,8 @@ User Information:
 - Profession: {demographics.profession}
 - Interest Categories: {categories_text}
 
-Writing style instruction (rotate styles across users):
-{persona_variant}
+Persona writing requirements (single polished instruction)
+{PERSONA_PROMPT_MASTER}
 
 Sample tweets from this user:
 {sample_tweets}
@@ -461,7 +482,7 @@ Generate:
 1. A bio (1-2 sentences, similar to Twitter bio style) that reflects their interests in {category_instruction}
 2. A detailed persona description (2-3 sentences describing personality, interests, background, and how they engage with {category_instruction})
 
-IMPORTANT: Do NOT generate names or usernames. Use the provided username @{user_name} in your description if needed.
+IMPORTANT: Do NOT generate names or usernames. Use the provided username @{user_name} in your description if needed. Stay consistent with the tweets; do not invent major life events.
 
 Output ONLY valid JSON in this exact format:
 {{
@@ -470,6 +491,7 @@ Output ONLY valid JSON in this exact format:
 }}
 """
 
+    seed_int = rng.randrange(0, 2**31 - 1) if rng else None
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[
@@ -479,8 +501,9 @@ Output ONLY valid JSON in this exact format:
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=0.8,
+        temperature=0.9,
         max_tokens=400,
+        **({"seed": seed_int} if seed_int is not None else {}),
     )
 
     content = response.choices[0].message.content.strip()
