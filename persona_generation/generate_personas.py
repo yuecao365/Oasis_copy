@@ -86,6 +86,42 @@ DIVERSITY REQUIREMENT (critical):
 - Avoid repeating the same phrasing patterns across different personas (e.g., do not always start with “This user is…”).
 """
 
+INVALID_CATEGORIES = {"", "unspecified", "unknown", "n/a", "none", "null"}
+
+def normalize_category(cat: Optional[str]) -> Optional[str]:
+    """Return a cleaned category string, or None if invalid/unspecified."""
+    if cat is None:
+        return None
+    c = str(cat).strip()
+    if not c:
+        return None
+    if c.lower() in INVALID_CATEGORIES:
+        return None
+    return c
+
+def dedupe_preserve_order(items: List[str]) -> List[str]:
+    seen = set()
+    out = []
+    for x in items:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+def category_label_from_topic(topic: str) -> str:
+    """
+    Extract a short category label from a long topic description.
+    """
+    if not topic:
+        return "general"
+    # Take text before em dash or colon
+    for sep in ["—", ":", "-"]:
+        if sep in topic:
+            return topic.split(sep)[0].strip()
+    return topic[:50].strip()
+
+
+
 def select_tweets_for_prompt(
     tweets: List[str],
     rng: Optional[random.Random],
@@ -442,6 +478,13 @@ def generate_persona(
 
     client = OpenAI(api_key=OPENAI_API_KEY)
 
+    category_topic = normalize_category(category_topic) or "general"
+    all_categories = [normalize_category(c) for c in all_categories]
+    all_categories = [c for c in all_categories if c]
+    all_categories = dedupe_preserve_order(all_categories)
+    if category_topic not in all_categories:
+        all_categories.insert(0, category_topic)
+
     # Sample a subset of tweets for the persona prompt
     tweets_for_prompt = select_tweets_for_prompt(
         user_tweets,
@@ -554,7 +597,16 @@ def generate_personas_for_users(
 
     for cluster_data in user_rankings:
         cluster_id = cluster_data["cluster_id"]
-        topic = cluster_data.get("topic", "")
+
+        # Try multiple possible keys (depending on how rankings are produced)
+        raw_topic = (
+            cluster_data.get("topic")
+            or cluster_data.get("category")
+            or cluster_data.get("label")
+            or cluster_data.get("cluster_topic")
+            or ""
+        )
+        topic = normalize_category(raw_topic) or "general"
 
         for rank, user_data in enumerate(cluster_data["top_users"], 1):
             user_id = user_data["user_id"]
@@ -579,7 +631,6 @@ def generate_personas_for_users(
         if user_id in processed_users:
             continue
 
-        # Select primary category: highest tweet count, or highest rank if tied
         primary_appearance = max(
             appearances,
             key=lambda x: (x["user_data"]["tweet_count"], -x["rank"])
@@ -588,13 +639,43 @@ def generate_personas_for_users(
         cluster_data = primary_appearance["cluster_data"]
         user_data = primary_appearance["user_data"]
         cluster_id = primary_appearance["cluster_id"]
-        topic = primary_appearance["topic"]
         user_name = user_data["user_name"]
-        tweets = user_data["sample_tweets"]
         tweet_count = user_data["tweet_count"]
 
-        # Collect ALL categories this user appears in
-        all_categories = [a["topic"] for a in appearances]
+        # Collect and sanitize ALL categories this user appears in
+        raw_all_categories = [a.get("topic") for a in appearances]
+        clean_all_categories = [normalize_category(c) for c in raw_all_categories]
+        clean_all_categories = [c for c in clean_all_categories if c]  # drop None/invalid
+        clean_all_categories = dedupe_preserve_order(clean_all_categories)
+
+        # Determine primary topic:
+        # 1) Use the primary appearance's topic if valid
+        primary_topic = normalize_category(primary_appearance.get("topic"))
+
+        # 2) Else choose best valid topic among appearances (same scoring: tweet_count, rank)
+        if not primary_topic:
+            best_valid = None
+            best_score = None
+            for a in appearances:
+                t = normalize_category(a.get("topic"))
+                if not t:
+                    continue
+                score = (a["user_data"]["tweet_count"], -a["rank"])
+                if best_score is None or score > best_score:
+                    best_score = score
+                    best_valid = t
+            primary_topic = best_valid
+
+        # 3) Final fallback (guaranteed non-unspecified)
+        if not primary_topic:
+            primary_topic = "general"
+
+        # Ensure primary is present in all_categories and never empty
+        if primary_topic not in clean_all_categories:
+            clean_all_categories.insert(0, primary_topic)
+
+        topic = primary_topic
+        all_categories = clean_all_categories
 
         # Prefer full train-split tweet context for this user when available.
         # Fallback to merged ranking samples if full context is not provided.
@@ -692,8 +773,10 @@ def save_personas(
                 "mbti": persona.mbti,
                 "country": persona.country,
                 "profession": persona.profession,
-                "category": persona.category,
-                "all_categories": persona.all_categories,
+                "category": normalize_category(persona.category) or "general",
+                "all_categories": dedupe_preserve_order(
+                    [c for c in (normalize_category(x) for x in persona.all_categories) if c]
+                ) or [normalize_category(persona.category) or "general"],
                 "cluster_id": persona.cluster_id,
                 "original_user_name": persona.original_user_name,
                 "original_user_id": persona.original_user_id,
@@ -718,6 +801,9 @@ def save_personas(
                 "user_id",
                 "name",
                 "username",
+                "category_label",
+                "category_description",
+                "all_categories",
                 "following_agentid_list",
                 "previous_tweets",
                 "user_char",
@@ -763,6 +849,9 @@ def save_personas(
                     idx,
                     persona.realname,
                     persona.username,
+                    category_label_from_topic(persona.category),
+                    persona.category,
+                    json.dumps(persona.all_categories),
                     json.dumps(following_list),
                     tweets_str,
                     persona.persona,

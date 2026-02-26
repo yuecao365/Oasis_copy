@@ -78,6 +78,14 @@ def normalize_csv_personas(rows: List[Dict]) -> List[Dict]:
         following = parse_json_list(r.get("following_agentid_list", "[]"))
         tweets = parse_json_list(r.get("previous_tweets", "[]"))
 
+        category = r.get("category", "Unspecified")
+
+        all_categories = r.get("all_categories")
+        if isinstance(all_categories, str):
+            all_categories = parse_json_list(all_categories)
+        if not isinstance(all_categories, list) or not all_categories:
+            all_categories = [category]
+
         personas.append(
             {
                 "id": str(r.get("user_id", idx)),
@@ -85,8 +93,8 @@ def normalize_csv_personas(rows: List[Dict]) -> List[Dict]:
                 "username": str(r.get("username", "unknown")),
                 "bio": str(r.get("description", "")),
                 "persona": str(r.get("user_char", "")),
-                "category": "Unspecified",
-                "all_categories": ["Unspecified"],
+                "category": str(category),
+                "all_categories": [str(c) for c in all_categories],
                 "age": "",
                 "gender": "",
                 "mbti": "",
