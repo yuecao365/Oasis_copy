@@ -149,6 +149,49 @@ def sample_action_probabilities(
 
     return {a: float(p) for a, p in zip(actions, probs)}
 
+def infer_action_priors_from_tweets(tweets: List[str]) -> Dict[str, float]:
+    """
+    Infer per-user action priors from tweet text heuristics.
+    """
+    if not tweets:
+        return DEFAULT_ACTION_PRIORS.copy()
+
+    n = len(tweets)
+    replies = 0
+    reposts = 0
+    originals = 0
+
+    for t in tweets:
+        s = t.strip()
+        if not s:
+            continue
+        if s.startswith("RT ") or " RT @" in s or "via @" in s:
+            reposts += 1
+        elif s.startswith("@"):
+            replies += 1
+        else:
+            originals += 1
+
+    reply_ratio = replies / n
+    repost_ratio = reposts / n
+    post_ratio = originals / n
+
+    # Base priors from observed behavior
+    priors = {
+        "create_post": post_ratio,
+        "create_comment": reply_ratio,
+        "repost": repost_ratio,
+        "quote_post": repost_ratio * 0.4,
+        "like_post": 0.15 + 0.5 * (reply_ratio + repost_ratio),
+        "follow": 0.05 + 0.2 * reply_ratio,
+        "do_nothing": max(0.05, 1.0 - (reply_ratio + repost_ratio + post_ratio)),
+    }
+
+    # Clamp and normalize
+    priors = {k: max(1e-6, float(v)) for k, v in priors.items()}
+    s = sum(priors.values())
+    return {k: v / s for k, v in priors.items()}
+
 
 def normalize_category(cat: Optional[str]) -> Optional[str]:
     """Return a cleaned category string, or None if invalid/unspecified."""
@@ -517,9 +560,11 @@ def generate_persona(
     # -----------------------------
     if DRY_RUN:
         
+        tweet_based_priors = infer_action_priors_from_tweets(user_tweets)
+
         action_probs = sample_action_probabilities(
             rng=rng or random.Random(),
-            priors=DEFAULT_ACTION_PRIORS,
+            priors=tweet_based_priors,
             actions=AVAILABLE_ACTIONS,
             concentration=30.0,
         )
@@ -630,9 +675,10 @@ Output ONLY valid JSON in this exact format:
 
     persona_dict = json.loads(content)
 
+    tweet_based_priors = infer_action_priors_from_tweets(user_tweets)
     action_probs = sample_action_probabilities(
         rng=rng or random.Random(),
-        priors=DEFAULT_ACTION_PRIORS,
+        priors=tweet_based_priors,
         actions=AVAILABLE_ACTIONS,
         concentration=30.0,
     )
