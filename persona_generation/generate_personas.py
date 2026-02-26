@@ -907,6 +907,7 @@ def save_personas(
                 "original_user_id": persona.original_user_id,
                 "tweet_count": persona.tweet_count,
                 "sample_tweets": persona.sample_tweets,
+                "action_probs": persona.action_probs,
             })
 
         with output_path.open("w", encoding="utf-8") as f:
