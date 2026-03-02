@@ -13,7 +13,7 @@ from sklearn.decomposition import PCA
 INPUT_DIR = "data/processed"
 OUTPUT_DIR = "data/processed"
 
-INPUT_FILE = "filtered_tweets.jsonl"
+INPUT_FILE = "filtered_tweets_train_2025-04_to_07.jsonl"
 
 TOP_K = 10
 BOTTOM_K = 5
