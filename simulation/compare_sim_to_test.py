@@ -140,6 +140,45 @@ def graph_reciprocity(edge_set: set[Tuple[str, str]]) -> float:
     return mutual / len(edge_set)
 
 
+def top_share_curve(values: List[float], cutoffs: List[float]) -> List[float]:
+    arr = [max(0.0, float(v)) for v in values]
+    n = len(arr)
+    if n == 0:
+        return [0.0] * len(cutoffs)
+    arr_sorted = sorted(arr, reverse=True)
+    total = sum(arr_sorted)
+    if total <= 0.0:
+        return [0.0] * len(cutoffs)
+    out = []
+    for c in cutoffs:
+        frac = max(0.0, min(1.0, float(c)))
+        k = max(1, int(math.ceil(frac * n)))
+        out.append(sum(arr_sorted[:k]) / total)
+    return out
+
+
+def percentile_rank_histogram(values: List[float], bins: int = 10) -> List[int]:
+    vals = [max(0.0, float(v)) for v in values]
+    n = len(vals)
+    if bins <= 0:
+        return []
+    if n == 0:
+        return [0] * bins
+
+    ranks = _rankdata(vals)
+    if n == 1:
+        percentiles = [0.0]
+    else:
+        percentiles = [(r - 1.0) / (n - 1.0) for r in ranks]
+
+    hist = [0] * bins
+    for p in percentiles:
+        idx = int(math.floor(p * bins))
+        idx = max(0, min(bins - 1, idx))
+        hist[idx] += 1
+    return hist
+
+
 def load_persona_mapping(personas_csv: Path) -> Dict[int, str]:
     out: Dict[int, str] = {}
     with personas_csv.open("r", encoding="utf-8", newline="") as f:
@@ -506,6 +545,34 @@ def main() -> None:
     curve_rmse = rmse(sim_curve, gt_curve)
     curve_nrmse = nrmse(sim_curve, gt_curve)
 
+    engagement_cutoffs = [0.01, 0.05, 0.10, 0.20, 0.50]
+    engagement_pairs = {
+        "likes": (gt["likes"], sim["likes"]),
+        "retweets_reposts": (gt["retweets"], sim["reposts"]),
+        "replies": (gt["replies"], sim["replies"]),
+        "quotes": (gt["quotes"], sim["quotes"]),
+    }
+    engagement_concentration = {}
+    engagement_percentile_jsd = {}
+    for metric_name, (gt_vals, sim_vals) in engagement_pairs.items():
+        gt_curve_top = top_share_curve(gt_vals, engagement_cutoffs)
+        sim_curve_top = top_share_curve(sim_vals, engagement_cutoffs)
+        engagement_concentration[metric_name] = {
+            "cutoffs": engagement_cutoffs,
+            "gt_top_share_curve": gt_curve_top,
+            "sim_top_share_curve": sim_curve_top,
+            "top_share_curve_rmse": rmse(gt_curve_top, sim_curve_top),
+        }
+
+        gt_hist = percentile_rank_histogram(gt_vals, bins=10)
+        sim_hist = percentile_rank_histogram(sim_vals, bins=10)
+        engagement_percentile_jsd[metric_name] = {
+            "bins": 10,
+            "gt_percentile_hist": gt_hist,
+            "sim_percentile_hist": sim_hist,
+            "percentile_hist_jsd": js_divergence(gt_hist, sim_hist),
+        }
+
     report = {
         "inputs": {
             "db": str(args.db),
@@ -532,21 +599,10 @@ def main() -> None:
             "cumulative_posts_daily_nrmse": curve_nrmse,
         },
         "engagement_fit": {
-            "gt_mean_likes_per_post": (sum(gt["likes"]) / len(gt["likes"])) if gt["likes"] else 0.0,
-            "gt_mean_retweets_per_post": (sum(gt["retweets"]) / len(gt["retweets"])) if gt["retweets"] else 0.0,
-            "gt_mean_replies_per_post": (sum(gt["replies"]) / len(gt["replies"])) if gt["replies"] else 0.0,
-            "gt_mean_quotes_per_post": (sum(gt["quotes"]) / len(gt["quotes"])) if gt["quotes"] else 0.0,
-            "gt_total_retweets": sum(gt["retweets"]) if gt["retweets"] else 0,
-            "gt_total_quotes": sum(gt["quotes"]) if gt["quotes"] else 0,
-            "sim_mean_likes_per_post": (sum(sim["likes"]) / len(sim["likes"])) if sim["likes"] else 0.0,
-            "sim_mean_shares_per_post": (sum(sim["shares"]) / len(sim["shares"])) if sim["shares"] else 0.0,
-            "sim_mean_replies_per_post": (sum(sim["replies"]) / len(sim["replies"])) if sim["replies"] else 0.0,
-            "sim_mean_reposts_per_post": (sum(sim["reposts"]) / len(sim["reposts"])) if sim["reposts"] else 0.0,
-            "sim_mean_quotes_per_post": (sum(sim["quotes"]) / len(sim["quotes"])) if sim["quotes"] else 0.0,
-            "sim_total_reposts": sum(sim["reposts"]) if sim["reposts"] else 0,
-            "sim_total_quotes": sum(sim["quotes"]) if sim["quotes"] else 0,
             "gt_total_posts": len(gt["post_timestamps"]),
             "sim_total_posts": len(sim["post_steps"]),
+            "top_share_curve": engagement_concentration,
+            "percentile_rank_jsd": engagement_percentile_jsd,
         },
     }
 
@@ -577,24 +633,25 @@ def main() -> None:
         f"- Cumulative daily posts NRMSE: {curve_nrmse:.4f}",
         "",
         "## Engagement Fit",
-        f"- GT mean likes/retweets/replies/quotes per post: "
-        f"{report['engagement_fit']['gt_mean_likes_per_post']:.3f} / "
-        f"{report['engagement_fit']['gt_mean_retweets_per_post']:.3f} / "
-        f"{report['engagement_fit']['gt_mean_replies_per_post']:.3f} / "
-        f"{report['engagement_fit']['gt_mean_quotes_per_post']:.3f}",
-        f"- Sim mean likes/shares/replies per post: "
-        f"{report['engagement_fit']['sim_mean_likes_per_post']:.3f} / "
-        f"{report['engagement_fit']['sim_mean_shares_per_post']:.3f} / "
-        f"{report['engagement_fit']['sim_mean_replies_per_post']:.3f}",
-        f"- Sim mean reposts/quotes per post: "
-        f"{report['engagement_fit']['sim_mean_reposts_per_post']:.3f} / "
-        f"{report['engagement_fit']['sim_mean_quotes_per_post']:.3f}",
-        f"- GT total retweets/quotes: "
-        f"{report['engagement_fit']['gt_total_retweets']} / "
-        f"{report['engagement_fit']['gt_total_quotes']}",
-        f"- Sim total reposts/quotes: "
-        f"{report['engagement_fit']['sim_total_reposts']} / "
-        f"{report['engagement_fit']['sim_total_quotes']}",
+        f"- GT total posts: {report['engagement_fit']['gt_total_posts']}",
+        f"- Sim total posts: {report['engagement_fit']['sim_total_posts']}",
+        "",
+        f"- Top-share curve RMSE (likes): "
+        f"{report['engagement_fit']['top_share_curve']['likes']['top_share_curve_rmse']:.4f}",
+        f"- Top-share curve RMSE (retweets vs reposts): "
+        f"{report['engagement_fit']['top_share_curve']['retweets_reposts']['top_share_curve_rmse']:.4f}",
+        f"- Top-share curve RMSE (replies): "
+        f"{report['engagement_fit']['top_share_curve']['replies']['top_share_curve_rmse']:.4f}",
+        f"- Top-share curve RMSE (quotes): "
+        f"{report['engagement_fit']['top_share_curve']['quotes']['top_share_curve_rmse']:.4f}",
+        f"- Percentile-rank JSD (likes): "
+        f"{report['engagement_fit']['percentile_rank_jsd']['likes']['percentile_hist_jsd']:.4f}",
+        f"- Percentile-rank JSD (retweets vs reposts): "
+        f"{report['engagement_fit']['percentile_rank_jsd']['retweets_reposts']['percentile_hist_jsd']:.4f}",
+        f"- Percentile-rank JSD (replies): "
+        f"{report['engagement_fit']['percentile_rank_jsd']['replies']['percentile_hist_jsd']:.4f}",
+        f"- Percentile-rank JSD (quotes): "
+        f"{report['engagement_fit']['percentile_rank_jsd']['quotes']['percentile_hist_jsd']:.4f}",
         "",
     ]
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")

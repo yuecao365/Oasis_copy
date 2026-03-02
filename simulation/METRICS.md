@@ -46,13 +46,18 @@ Graph-structure metrics are not included in the current report.
 - `cumulative_posts_daily_nrmse`: normalized RMSE (lower is better).
 
 4. Engagement Fit
-- GT means per root post:
-  - likes, retweets, replies, quotes
-- Sim means per original post:
-  - likes (`num_likes`), shares/reposts (`num_shares`), replies/comments
-- Also includes totals:
-  - repost/quote totals
+- Includes post totals for reference:
   - total posts in GT vs Sim
+- Rank-based engagement metrics (scale-robust):
+  - `top_share_curve`:
+    - For each metric (likes, retweets/reposts, replies, quotes), compute
+      share of total engagement captured by top x% posts at
+      cutoffs `[1%, 5%, 10%, 20%, 50%]` in GT and Sim.
+    - Report `top_share_curve_rmse` between GT and Sim curves.
+  - `percentile_rank_jsd`:
+    - For each metric, convert post engagement values to within-dataset
+      percentile ranks, bin into 10 bins (deciles), and compare GT vs Sim
+      histograms with JSD (`percentile_hist_jsd`).
 
 ## Default Timestep Assumption
 
