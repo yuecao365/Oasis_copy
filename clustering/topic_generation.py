@@ -14,8 +14,9 @@ import os
 
 INPUT_DIR = "data/processed"
 OUTPUT_DIR = "data/processed"
-REP_POSTS_FILE = "representative_posts_hdbscan.json"
-FILTERED_TWEETS_FILE = "filtered_tweets.jsonl"
+REP_POSTS_FILE = "representative_posts_kmeans.json"
+# Use train-only filtered tweets (2025-04 to 2025-07) for topic generation.
+FILTERED_TWEETS_FILE = "filtered_tweets_train_2025-04_to_07.jsonl"
 OUTPUT_FILE = "cluster_topics.json"
 
 # LLM config
@@ -77,14 +78,17 @@ def get_cluster_texts(rep_posts, id_to_text, max_posts=MAX_POSTS_PER_CLUSTER):
 
 
 def generate_topic_for_cluster(cluster_id, texts, model=OPENAI_MODEL):
-    """Call LLM to generate a brief topic for the cluster."""
+    """Call LLM to generate a brief, direct topic sentence for the cluster."""
     if not texts:
         return "No posts available."
 
     posts_block = "\n".join(f"- {t}" for t in texts[:MAX_POSTS_PER_CLUSTER])
     prompt = f"""Below are sample posts from a Twitter cluster (conversation threads about similar topics).
-Generate a SHORT topic label (1-2 sentences, under 100 words) that describes what this cluster is about.
-Be specific and concise. Output only the topic description, no preamble.
+Write a SHORT description in 1–2 sentences (max 40 words total).
+- First sentence: the high-level topic (e.g. "VeChain ecosystem upgrades and community sentiment").
+- Second sentence (optional): what is distinctive about this cluster (specific apps, campaigns, mechanisms, events, or behaviors).
+- Start directly with the key subject (do NOT start with phrases like "This cluster focuses on" or "This cluster is about").
+- Be specific and concise. Output only these 1–2 sentences, no preamble or extra commentary.
 
 Cluster ID: {cluster_id}
 

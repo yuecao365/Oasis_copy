@@ -1,14 +1,15 @@
 """
 Step 5: Clustering (root tweets only) + representative posts per cluster.
 
-- Embeds root tweets (sentence-transformers). UMAP (n_components=10, n_neighbors=15, cosine);
-  HDBSCAN (euclidean on UMAP output).
+- Uses precomputed root embeddings from root_tweet_embeddings.csv (no model call here).
+- KMeans(n_clusters=20) on L2-normalized root embeddings.
+- Representative posts: from ALL tweets in each cluster (roots + replies), top % by popularity.
 - Optional: exclude low-content roots (MIN_CONTENT_TOKENS).
-- Outputs: cluster_assignments_roots.csv, cluster_size_report.json, representative_posts_hdbscan.json,
-  noise sample, excluded roots, parameter rationale, hyperparameters.
+- Outputs: cluster_assignments_roots.csv, representative_posts_kmeans.json,
+  excluded roots (optional). (Noise outputs skipped for KMeans.)
 
-Requires: sentence-transformers, hdbscan, umap-learn
-  pip install sentence-transformers hdbscan umap-learn
+Requires: sentence-transformers, sklearn
+  pip install sentence-transformers scikit-learn
 """
 
 import json
@@ -18,7 +19,7 @@ import random
 import numpy as np
 from collections import defaultdict
 
-from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import normalize
 
 # =========================
@@ -29,46 +30,26 @@ INPUT_DIR = "data/processed"
 OUTPUT_DIR = "data/processed"
 
 # Inputs (from previous pipeline steps)
-FILTERED_TWEETS_FILE = "filtered_tweets.jsonl"
+# Use train-only subset (2025-04 to 2025-07) for clustering roots.
+FILTERED_TWEETS_FILE = "filtered_tweets_train_2025-04_to_07.jsonl"
 REPLY_CHAIN_FILE = "reply_chain.jsonl"
 POPULARITY_SCORES_FILE = "tweet_popularity_scores.csv"
 
-# Embedding
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # local, ~80MB
-EMBEDDING_CACHE = "root_embeddings.npy"   # under OUTPUT_DIR
-EMBEDDING_META_CACHE = "root_embedding_meta.json"  # tweet_id order for embeddings
+# Embedding: precomputed root embeddings CSV (one row per root tweet)
+EMBEDDING_CSV = "root_tweet_embeddings.csv"
 
-# Dimensionality reduction before clustering
-# REDUCE_METHOD: "umap" (cosine, good for text) or "pca". None = no reduction (cluster on raw 384-d).
-REDUCE_METHOD = "umap"
-REDUCE_DIM = 50  # used when REDUCE_METHOD == "pca" (number of components)
-# UMAP (fixed): n_components=10, n_neighbors=15; cosine for text; HDBSCAN uses euclidean on UMAP output
-UMAP_N_COMPONENTS = 10
-UMAP_N_NEIGHBORS = 15
-UMAP_METRIC = "cosine"
-UMAP_RANDOM_STATE = 42
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Clustering (used for cluster_assignments + representative_posts)
-# Target ~10–30 clusters for interpretable topic generation.
-# HDBSCAN
-HDBSCAN_MIN_CLUSTER_SIZE = 100    # larger → fewer clusters, used as primary
-HDBSCAN_MIN_SAMPLES = 3
-# Use "euclidean" (BallTree supports it). We L2-normalize X_cluster so euclidean = cosine semantics.
-HDBSCAN_METRIC = "euclidean"
-HDBSCAN_CLUSTER_SELECTION_METHOD = "eom"
-HDBSCAN_CLUSTER_SELECTION_EPSILON = 0.0
+# Clustering: KMeans on L2-normalized embeddings (no UMAP)
+KMEANS_N_CLUSTERS = 20
+KMEANS_RANDOM_STATE = 42
+KMEANS_N_INIT = 10
 
-# Representative posts: top fraction by popularity per cluster
+# Representative posts: top fraction by popularity per cluster (from ALL tweets in cluster, incl. replies)
 REP_TOP_PCT = 0.10  # top 10%
 
 # Exclude low-information roots from clustering (e.g. mostly @mentions, "URL", very short).
-# Only roots with at least this many "content" tokens (after dropping @mentions and "URL") are clustered.
-# Set to 0 to disable and cluster all roots.
 MIN_CONTENT_TOKENS = 3
-
-# Soft clustering: reassign noise points to clusters when membership prob >= threshold.
-# 0 = disabled (hard clustering only).
-SOFT_CLUSTERING_NOISE_THRESHOLD = 0.15
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -170,144 +151,94 @@ def filter_substantive_roots(root_tweets, min_tokens=None):
 # Step 1: Embeddings (root tweets only)
 # =========================
 
+def _load_precomputed_embeddings(csv_path):
+    """
+    Load precomputed root embeddings from CSV.
+    Expects columns:
+      - root_tweet_id
+      - embedding  (JSON-like list string)
+    Returns dict[str, np.ndarray].
+    """
+    import ast
+
+    mapping = {}
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            tid = row.get("root_tweet_id") or row.get("tweet_id") or row.get("id")
+            if not tid:
+                continue
+            emb_str = row.get("embedding")
+            if not emb_str:
+                continue
+            try:
+                # embedding is stored as a stringified Python/JSON list
+                vec = ast.literal_eval(emb_str)
+            except Exception:
+                try:
+                    vec = json.loads(emb_str)
+                except Exception:
+                    continue
+            try:
+                arr = np.asarray(vec, dtype=np.float32)
+            except Exception:
+                continue
+            mapping[str(tid)] = arr
+    return mapping
+
+
 def get_embeddings(root_tweets, cache_dir):
     """
-    Get sentence embeddings for root tweet texts. Cache to disk so we can skip
-    re-encoding when tuning clustering only.
+    Get embeddings for root tweets using precomputed CSV.
+    Only roots that have an embedding row are kept; others are skipped.
     """
-    cache_path = os.path.join(cache_dir, EMBEDDING_CACHE)
-    meta_path = os.path.join(cache_dir, EMBEDDING_META_CACHE)
+    csv_path = os.path.join(cache_dir, EMBEDDING_CSV)
+    if not os.path.isfile(csv_path):
+        raise FileNotFoundError(f"Precomputed embeddings CSV not found: {csv_path}")
 
-    texts = []
+    print(f"  Loading precomputed embeddings from {csv_path} ...")
+    emb_map = _load_precomputed_embeddings(csv_path)
+    print(f"  Loaded {len(emb_map)} embedding vectors from CSV.")
+
+    X_list = []
     tweet_ids = []
+    missing = 0
+
     for t in root_tweets:
-        text = (t.get("clean_text") or t.get("text") or "").strip()
-        texts.append(text or " ")
-        tweet_ids.append(str(t.get("id")))
+        tid = str(t.get("id"))
+        if not tid:
+            continue
+        emb = emb_map.get(tid)
+        if emb is None:
+            missing += 1
+            continue
+        tweet_ids.append(tid)
+        X_list.append(emb)
 
-    if os.path.isfile(cache_path) and os.path.isfile(meta_path):
-        with open(meta_path, "r", encoding="utf-8") as f:
-            meta = json.load(f)
-        if meta.get("tweet_ids") == tweet_ids and meta.get("model") == EMBEDDING_MODEL:
-            X = np.load(cache_path)
-            print(f"  Loaded cached embeddings from {cache_path} ({X.shape[0]} x {X.shape[1]})")
-            return X, tweet_ids
+    if not X_list:
+        raise RuntimeError("No embeddings found for any root tweets; check IDs and CSV.")
 
-    from sentence_transformers import SentenceTransformer
-    print(f"  Encoding with {EMBEDDING_MODEL}...")
-    model = SentenceTransformer(EMBEDDING_MODEL)
-    X = model.encode(texts, show_progress_bar=True)
-    np.save(cache_path, X)
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump({"tweet_ids": tweet_ids, "model": EMBEDDING_MODEL}, f, indent=2)
-    print(f"  Saved embeddings to {cache_path}")
+    if missing:
+        print(f"  Warning: {missing} root tweets had no embedding in {EMBEDDING_CSV} and were skipped.")
+
+    X = np.vstack(X_list)
+    print(f"  Using embeddings for {len(tweet_ids)} root tweets (matrix shape {X.shape[0]} x {X.shape[1]}).")
     return X, tweet_ids
 
 
 # =========================
-# Step 2: Dimensionality reduction (optional)
+# Step 2: Clustering (KMeans on L2-normalized embeddings)
 # =========================
 
-def reduce_dim_pca(X):
-    """PCA to REDUCE_DIM components. Returns (X_reduced, X_2d)."""
-    n_components = min(REDUCE_DIM, X.shape[0] - 1, X.shape[1])
-    pca = PCA(n_components=n_components, random_state=42)
-    X_reduced = pca.fit_transform(X)
-    explained = pca.explained_variance_ratio_.sum()
-    print(f"  PCA: {X.shape[1]} -> {n_components} components, explained variance: {explained:.2%}")
-    X_2d = X_reduced[:, :2] if X_reduced.shape[1] >= 2 else X_reduced
-    return X_reduced, X_2d
-
-
-def reduce_dim_umap(X, n_components=None, n_neighbors=None, metric=None):
-    """
-    UMAP with cosine (good for text). Returns (X_reduced, X_2d).
-    HDBSCAN on output typically uses euclidean (common practice).
-    """
-    import umap
-    n_components = n_components or UMAP_N_COMPONENTS
-    n_neighbors = n_neighbors or UMAP_N_NEIGHBORS
-    metric = metric or UMAP_METRIC
-    n_components = min(n_components, X.shape[0] - 1, X.shape[1])
-    reducer = umap.UMAP(
-        n_components=n_components,
-        n_neighbors=n_neighbors,
-        metric=metric,
-        random_state=UMAP_RANDOM_STATE,
+def run_kmeans(X):
+    """Run KMeans. Returns (labels,) with labels in 0..n_clusters-1."""
+    kmeans = KMeans(
+        n_clusters=KMEANS_N_CLUSTERS,
+        random_state=KMEANS_RANDOM_STATE,
+        n_init=KMEANS_N_INIT,
     )
-    X_reduced = reducer.fit_transform(X)
-    print(f"  UMAP: {X.shape[1]} -> {n_components} components, n_neighbors={n_neighbors}, metric={metric}")
-    X_2d = X_reduced[:, :2] if X_reduced.shape[1] >= 2 else X_reduced
-    return X_reduced, X_2d
-
-
-def reduce_dim_for_clustering(X):
-    """Dispatch to PCA or UMAP based on REDUCE_METHOD. Returns X_reduced (or None)."""
-    if REDUCE_METHOD == "umap":
-        X_red, _ = reduce_dim_umap(X)
-        return X_red
-    if REDUCE_METHOD == "pca" and REDUCE_DIM is not None:
-        X_red, _ = reduce_dim_pca(X)
-        return X_red
-    return None
-
-
-# =========================
-# Step 3: Clustering
-# =========================
-
-def run_hdbscan(X, min_cluster_size=None, min_samples=None, metric=None,
-                cluster_selection_method=None, cluster_selection_epsilon=None,
-                prediction_data=True):
-    """Run HDBSCAN. Returns (labels, clusterer). labels: noise=-1.
-    prediction_data=True enables soft clustering via all_points_membership_vectors."""
-    import hdbscan
-    clusterer = hdbscan.HDBSCAN(
-        min_cluster_size=min_cluster_size or HDBSCAN_MIN_CLUSTER_SIZE,
-        min_samples=min_samples or HDBSCAN_MIN_SAMPLES,
-        metric=metric or HDBSCAN_METRIC,
-        cluster_selection_method=cluster_selection_method or HDBSCAN_CLUSTER_SELECTION_METHOD,
-        cluster_selection_epsilon=cluster_selection_epsilon if cluster_selection_epsilon is not None else HDBSCAN_CLUSTER_SELECTION_EPSILON,
-        prediction_data=prediction_data,
-    )
-    labels = np.array(clusterer.fit_predict(X), dtype=np.intp)
-    return labels, clusterer
-
-
-def apply_soft_clustering_to_noise(labels, clusterer, root_tweet_ids, threshold):
-    """
-    Reassign noise points (label=-1) to clusters when soft membership prob >= threshold.
-    Uses hdbscan.prediction.all_points_membership_vectors.
-    Returns (updated_labels, reassignments) where reassignments is list of
-    (tweet_id, new_cluster_id, membership_prob).
-    """
-    if threshold <= 0:
-        return labels, []
-
-    try:
-        from hdbscan import prediction as hdbscan_prediction
-        soft = hdbscan_prediction.all_points_membership_vectors(clusterer)
-    except (ImportError, AttributeError):
-        return labels, []
-
-    clusters = np.array(sorted([c for c in np.unique(clusterer.labels_) if c >= 0])).astype(np.intp)
-    if clusters.size == 0:
-        return labels, []
-
-    # Column j in soft corresponds to clusters[j]
-    updated = labels.copy()
-    reassignments = []
-    for i in range(len(labels)):
-        if labels[i] != -1:
-            continue
-        probs = soft[i]
-        best_idx = int(np.argmax(probs))
-        best_prob = float(probs[best_idx])
-        if best_prob >= threshold:
-            new_label = int(clusters[best_idx])
-            updated[i] = new_label
-            reassignments.append((root_tweet_ids[i], new_label, best_prob))
-    return updated, reassignments
+    labels = np.array(kmeans.fit_predict(X), dtype=np.intp)
+    return labels
 
 
 # =========================
@@ -354,7 +285,8 @@ def build_tweet_to_root(reply_chain):
 def assign_all_tweets_to_cluster(reply_chain, root_tweet_ids, root_labels, excluded_root_ids=None):
     """
     root_tweet_ids: list of root tweet ids in same order as root_labels.
-    Returns dict tweet_id_str -> cluster_id (int). -1 = HDBSCAN noise, -2 = root excluded from clustering.
+    Returns dict tweet_id_str -> cluster_id (int). -2 = root excluded from clustering.
+    All tweets (roots + replies) get a cluster via their root_tweet_id.
     """
     root_to_cluster = {}
     for tid, lab in zip(root_tweet_ids, root_labels):
@@ -391,21 +323,53 @@ def select_representative_posts(tweet_to_cluster, popularity_scores, top_pct=0.1
 # Save outputs
 # =========================
 
-def save_root_cluster_assignments(root_tweet_ids, labels_hdbscan, out_dir):
-    """Save CSV: tweet_id, cluster_hdbscan (roots only)."""
+def save_root_cluster_assignments(root_tweet_ids, labels_cluster, out_dir):
+    """Save CSV: tweet_id, cluster (roots only)."""
     path = os.path.join(out_dir, "cluster_assignments_roots.csv")
     with open(path, "w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["tweet_id", "cluster_hdbscan"])
-        for tid, lh in zip(root_tweet_ids, labels_hdbscan):
-            w.writerow([tid, lh])
+        w.writerow(["tweet_id", "cluster"])
+        for tid, lab in zip(root_tweet_ids, labels_cluster):
+            w.writerow([tid, lab])
     print(f"  Saved {path}")
 
 
-def save_cluster_size_report(stats_hdbscan, out_dir):
+def save_all_tweet_cluster_assignments_json(tweet_to_cluster, filtered_tweets, out_dir):
+    """
+    Save JSON with cluster assignments for all tweets (roots + replies) that:
+    - appear in the filtered_tweets train subset, and
+    - have a non-negative cluster_id (0..K-1).
+
+    Format is a list of objects like:
+      { "tweet_id": "...", "cluster_id": 3 }
+
+    This mirrors the semantics of cluster_assignments_k4.csv, but in JSON.
+    """
+    # Restrict to tweets in the current (train) filtered_tweets file
+    valid_ids = {
+        str(t.get("id"))
+        for t in filtered_tweets
+        if t.get("id") is not None
+    }
+
+    rows = []
+    for tid, cid in tweet_to_cluster.items():
+        if cid < 0:
+            continue
+        if tid not in valid_ids:
+            continue
+        rows.append({"tweet_id": str(tid), "cluster_id": int(cid)})
+
+    path = os.path.join(out_dir, "cluster_assignments_kmeans.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(rows, f, ensure_ascii=False, indent=2)
+    print(f"  Saved {path} ({len(rows)} tweet-level assignments)")
+
+
+def save_cluster_size_report(stats, out_dir):
     path = os.path.join(out_dir, "cluster_size_report.json")
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"hdbscan": stats_hdbscan}, f, indent=2)
+        json.dump({"kmeans": stats}, f, indent=2)
     print(f"  Saved {path}")
 
 
@@ -486,34 +450,19 @@ def save_representative_posts(rep_by_method, out_dir):
 
 def save_parameter_rationale(out_dir):
     path = os.path.join(out_dir, "parameter_rationale.md")
-    reduce_desc = (
-        f"- **REDUCE_METHOD**: {REDUCE_METHOD}. "
-        + (f"UMAP: n_components={UMAP_N_COMPONENTS}, n_neighbors={UMAP_N_NEIGHBORS}, metric={UMAP_METRIC} (good for text). "
-           f"HDBSCAN then uses euclidean on UMAP output (common practice)." if REDUCE_METHOD == "umap" else
-           f"PCA: REDUCE_DIM={REDUCE_DIM} components, then L2-normalize so euclidean = cosine-like.")
-    )
     lines = [
         "# Clustering parameter rationale",
         "",
-        f"- **Embedding**: {EMBEDDING_MODEL} (sentence-transformers).",
+        f"- **Embedding**: {EMBEDDING_MODEL} (sentence-transformers). L2-normalized; no UMAP.",
         "",
-        "## Dimensionality reduction (before clustering)",
-        reduce_desc,
+        "## Clustering",
+        f"- **KMeans** n_clusters={KMEANS_N_CLUSTERS}, on root-tweet embeddings only.",
         "",
-        "## Excluding low-information roots from clustering",
-        f"- **MIN_CONTENT_TOKENS** = {MIN_CONTENT_TOKENS}: only root tweets with at least this many \"content\" tokens are clustered (tokens after dropping @mentions, \"URL\", and http(s) links). 0 = cluster all roots.",
-        "- Reduces \"garbage\" clusters of short / mention-only tweets. Excluded root IDs are written to `excluded_root_ids_from_clustering.txt` when non-empty.",
-        "",
-        "## Soft clustering (noise reassignment)",
-        f"- **SOFT_CLUSTERING_NOISE_THRESHOLD** = {SOFT_CLUSTERING_NOISE_THRESHOLD}: after HDBSCAN, noise points (label=-1) are reassigned when their soft membership prob (from `all_points_membership_vectors`) >= this threshold. 0 = disabled.",
-        "",
-        "## HDBSCAN (primary)",
-        f"- `min_cluster_size={HDBSCAN_MIN_CLUSTER_SIZE}`, `min_samples={HDBSCAN_MIN_SAMPLES}`.",
-        f"- `metric={HDBSCAN_METRIC}` (euclidean on UMAP output, or on L2-normalized PCA output).",
-        f"- `cluster_selection_method={HDBSCAN_CLUSTER_SELECTION_METHOD}`, `cluster_selection_epsilon={HDBSCAN_CLUSTER_SELECTION_EPSILON}`.",
+        "## Excluding low-information roots",
+        f"- **MIN_CONTENT_TOKENS** = {MIN_CONTENT_TOKENS}: only root tweets with at least this many \"content\" tokens are clustered. Excluded root IDs in `excluded_root_ids_from_clustering.txt` when non-empty.",
         "",
         "## Representative posts",
-        f"- Top {REP_TOP_PCT*100:.0f}% by popularity within each cluster.",
+        f"- Top {REP_TOP_PCT*100:.0f}% by popularity within each cluster. Selected from **all tweets** in the cluster (roots + replies).",
         "",
         "See **clustering_hyperparameters.json** for full config.",
     ]
@@ -526,18 +475,12 @@ def save_hyperparameters_json(out_dir):
     """Save clustering hyperparameters for reference."""
     data = {
         "embedding": {"model": EMBEDDING_MODEL},
-        "reduce_method": REDUCE_METHOD,
-        "reduce_dim": REDUCE_DIM,
-        "umap": {"n_components": UMAP_N_COMPONENTS, "n_neighbors": UMAP_N_NEIGHBORS, "metric": UMAP_METRIC} if REDUCE_METHOD == "umap" else None,
-        "hdbscan": {
-            "min_cluster_size": HDBSCAN_MIN_CLUSTER_SIZE,
-            "min_samples": HDBSCAN_MIN_SAMPLES,
-            "metric": HDBSCAN_METRIC,
-            "cluster_selection_method": HDBSCAN_CLUSTER_SELECTION_METHOD,
-            "cluster_selection_epsilon": HDBSCAN_CLUSTER_SELECTION_EPSILON,
+        "kmeans": {
+            "n_clusters": KMEANS_N_CLUSTERS,
+            "random_state": KMEANS_RANDOM_STATE,
+            "n_init": KMEANS_N_INIT,
         },
         "min_content_tokens": MIN_CONTENT_TOKENS,
-        "soft_clustering_noise_threshold": SOFT_CLUSTERING_NOISE_THRESHOLD,
         "rep_top_pct": REP_TOP_PCT,
     }
     path = os.path.join(out_dir, "clustering_hyperparameters.json")
@@ -577,63 +520,28 @@ def main():
     X, root_tweet_ids = get_embeddings(root_tweets, OUTPUT_DIR)
     print(f"  Embedding shape: {X.shape}")
 
-    # ---------- Dimensionality reduction ----------
-    if REDUCE_METHOD and (REDUCE_METHOD == "umap" or (REDUCE_METHOD == "pca" and REDUCE_DIM is not None)):
-        print("\nReducing dimension ({}: n_components={}, n_neighbors={})...".format(
-            REDUCE_METHOD.upper(),
-            UMAP_N_COMPONENTS if REDUCE_METHOD == "umap" else REDUCE_DIM,
-            UMAP_N_NEIGHBORS if REDUCE_METHOD == "umap" else "N/A"))
-        X_cluster = reduce_dim_for_clustering(X)
-        if X_cluster is None:
-            X_cluster = X
-    else:
-        X_cluster = X
+    # L2-normalize for cosine-like distance in KMeans
+    X_cluster = normalize(X, norm="l2", axis=1)
 
-    # L2-normalize only for PCA so euclidean = cosine-like; UMAP output is used as-is with euclidean HDBSCAN
-    if REDUCE_METHOD == "pca" and X_cluster is not None:
-        X_cluster = normalize(X_cluster, norm="l2", axis=1)
+    # ---------- KMeans ----------
+    print("\n--- KMeans (n_clusters={}) ---".format(KMEANS_N_CLUSTERS))
+    labels = run_kmeans(X_cluster)
+    stats = cluster_size_stats(labels, "KMeans")
 
-    # ---------- HDBSCAN ----------
-    print("\n--- HDBSCAN ---")
-    labels_hdbscan, clusterer = run_hdbscan(X_cluster)
-    n_noise_original = int(np.sum(labels_hdbscan == -1))
-    stats_hdbscan = cluster_size_stats(labels_hdbscan, "HDBSCAN")
+    # ---------- Save cluster assignments ----------
+    save_root_cluster_assignments(root_tweet_ids, labels, OUTPUT_DIR)
 
-    # ---------- Soft clustering: reassign noise to clusters when prob >= threshold ----------
-    if SOFT_CLUSTERING_NOISE_THRESHOLD > 0:
-        print("\n--- Soft clustering (noise -> cluster when membership >= {}) ---".format(SOFT_CLUSTERING_NOISE_THRESHOLD))
-        labels_hdbscan, reassignments = apply_soft_clustering_to_noise(
-            labels_hdbscan, clusterer, root_tweet_ids, SOFT_CLUSTERING_NOISE_THRESHOLD
-        )
-        n_noise_after = int(np.sum(labels_hdbscan == -1))
-        save_noise_to_cluster_reassignments(reassignments, root_tweets, OUTPUT_DIR)
-        print("  Noise: {} -> {} (reassigned {} tweets to clusters)".format(
-            n_noise_original, n_noise_after, n_noise_original - n_noise_after))
-    else:
-        n_noise_after = n_noise_original
-        print("  Soft clustering disabled (SOFT_CLUSTERING_NOISE_THRESHOLD=0)")
-        print("  Noise: {}".format(n_noise_original))
+    # ---------- Representative posts (from ALL tweets in each cluster: roots + replies) ----------
+    print("\nRepresentative posts per cluster (top {}% by popularity, from all tweets in cluster)...".format(int(REP_TOP_PCT * 100)))
+    tweet_to_cluster = assign_all_tweets_to_cluster(reply_chain, root_tweet_ids, labels, excluded_root_ids=excluded_root_ids)
+    rep = select_representative_posts(tweet_to_cluster, popularity_scores, REP_TOP_PCT)
+    save_representative_posts({"kmeans": rep}, OUTPUT_DIR)
 
-    stats_hdbscan = cluster_size_stats(labels_hdbscan, "HDBSCAN", quiet=True)
-    save_noise_tweets_sample(root_tweets, root_tweet_ids, labels_hdbscan, OUTPUT_DIR, sample_size=100)
-
-    # ---------- Save cluster assignments and reports ----------
-    save_root_cluster_assignments(root_tweet_ids, labels_hdbscan, OUTPUT_DIR)
-    save_cluster_size_report(stats_hdbscan, OUTPUT_DIR)
-    save_parameter_rationale(OUTPUT_DIR)
-    save_hyperparameters_json(OUTPUT_DIR)
-
-    # ---------- Representative posts (HDBSCAN only) ----------
-    print("\nRepresentative posts per cluster (top {}% by popularity)...".format(int(REP_TOP_PCT * 100)))
-    tweet_to_cluster_h = assign_all_tweets_to_cluster(reply_chain, root_tweet_ids, labels_hdbscan, excluded_root_ids=excluded_root_ids)
-    rep_hdbscan = select_representative_posts(tweet_to_cluster_h, popularity_scores, REP_TOP_PCT)
-    save_representative_posts({"hdbscan": rep_hdbscan}, OUTPUT_DIR)
+    # ---------- Save full tweet-level assignments (train subset only) ----------
+    save_all_tweet_cluster_assignments_json(tweet_to_cluster, filtered_tweets, OUTPUT_DIR)
 
     print("\nDONE.")
-    print("  noise (original): {}, noise (after soft clustering): {}".format(n_noise_original, n_noise_after))
-    print("Outputs: cluster_assignments_roots.csv, cluster_size_report.json, clustering_hyperparameters.json,")
-    print("  parameter_rationale.md, noise_to_cluster_reassignments.csv, noise_tweet_ids_primary.txt,")
-    print("  noise_tweets_sample_100.jsonl/csv, representative_posts_hdbscan.json")
+    print("Outputs: cluster_assignments_roots.csv, cluster_assignments_kmeans.json, representative_posts_kmeans.json")
 
 
 if __name__ == "__main__":
