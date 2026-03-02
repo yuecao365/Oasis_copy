@@ -631,7 +631,7 @@ def main() -> None:
 
     gt_top_shares = top_share_curve(gt_eng_total_vec, [0.10, 0.20])
     sim_top_shares = top_share_curve(sim_eng_total_vec, [0.10, 0.20])
-    engagement_rank_fit = {
+    engagement_user_level = {
         "scope": "user",
         "components": ["likes", "replies", "reposts", "quotes"],
         "topk_values": [10, 20],
@@ -683,10 +683,12 @@ def main() -> None:
         "engagement_fit": {
             "gt_total_posts": len(gt["post_timestamps"]),
             "sim_total_posts": len(sim["post_steps"]),
-            "top_share_curve": engagement_concentration,
-            "percentile_rank_jsd": engagement_percentile_jsd,
+            "post_level": {
+                "top_share_curve": engagement_concentration,
+                "percentile_rank_jsd": engagement_percentile_jsd,
+            },
+            "user_level": engagement_user_level,
         },
-        "engagement_rank_fit": engagement_rank_fit,
     }
 
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -719,48 +721,49 @@ def main() -> None:
         f"- GT total posts: {report['engagement_fit']['gt_total_posts']}",
         f"- Sim total posts: {report['engagement_fit']['sim_total_posts']}",
         "",
-        "## Engagement Rank Fit (User-level)",
-        f"- Components: {', '.join(report['engagement_rank_fit']['components'])}",
-        f"- Top-K values: {', '.join(str(k) for k in report['engagement_rank_fit']['topk_values'])}",
+        "### User-level",
+        f"- Components: {', '.join(report['engagement_fit']['user_level']['components'])}",
+        f"- Top-K values: {', '.join(str(k) for k in report['engagement_fit']['user_level']['topk_values'])}",
         f"- Spearman (total engagement/user): "
-        f"{report['engagement_rank_fit']['spearman_total_engagement_per_user']:.4f}",
+        f"{report['engagement_fit']['user_level']['spearman_total_engagement_per_user']:.4f}",
         f"- JSD (total engagement/user): "
-        f"{report['engagement_rank_fit']['jsd_total_engagement_per_user']:.4f}",
+        f"{report['engagement_fit']['user_level']['jsd_total_engagement_per_user']:.4f}",
         f"- Spearman (engagement-per-post per user): "
-        f"{report['engagement_rank_fit']['spearman_engagement_per_post_per_user']:.4f}",
+        f"{report['engagement_fit']['user_level']['spearman_engagement_per_post_per_user']:.4f}",
         f"- JSD (engagement-per-post per user): "
-        f"{report['engagement_rank_fit']['jsd_engagement_per_post_per_user']:.4f}",
+        f"{report['engagement_fit']['user_level']['jsd_engagement_per_post_per_user']:.4f}",
         f"- Top-10 overlap (total engagement/user): "
-        f"{report['engagement_rank_fit']['topk_overlap_total_engagement_per_user']['top10']:.4f}",
+        f"{report['engagement_fit']['user_level']['topk_overlap_total_engagement_per_user']['top10']:.4f}",
         f"- Top-20 overlap (total engagement/user): "
-        f"{report['engagement_rank_fit']['topk_overlap_total_engagement_per_user']['top20']:.4f}",
+        f"{report['engagement_fit']['user_level']['topk_overlap_total_engagement_per_user']['top20']:.4f}",
         f"- Top-10 overlap (engagement-per-post/user): "
-        f"{report['engagement_rank_fit']['topk_overlap_engagement_per_post_per_user']['top10']:.4f}",
+        f"{report['engagement_fit']['user_level']['topk_overlap_engagement_per_post_per_user']['top10']:.4f}",
         f"- Top-20 overlap (engagement-per-post/user): "
-        f"{report['engagement_rank_fit']['topk_overlap_engagement_per_post_per_user']['top20']:.4f}",
+        f"{report['engagement_fit']['user_level']['topk_overlap_engagement_per_post_per_user']['top20']:.4f}",
         f"- GT/Sim top-10% share of total engagement: "
-        f"{report['engagement_rank_fit']['gt_top10pct_share_total_engagement']:.4f} / "
-        f"{report['engagement_rank_fit']['sim_top10pct_share_total_engagement']:.4f}",
+        f"{report['engagement_fit']['user_level']['gt_top10pct_share_total_engagement']:.4f} / "
+        f"{report['engagement_fit']['user_level']['sim_top10pct_share_total_engagement']:.4f}",
         f"- GT/Sim top-20% share of total engagement: "
-        f"{report['engagement_rank_fit']['gt_top20pct_share_total_engagement']:.4f} / "
-        f"{report['engagement_rank_fit']['sim_top20pct_share_total_engagement']:.4f}",
+        f"{report['engagement_fit']['user_level']['gt_top20pct_share_total_engagement']:.4f} / "
+        f"{report['engagement_fit']['user_level']['sim_top20pct_share_total_engagement']:.4f}",
         "",
+        "### Post-level",
         f"- Top-share curve RMSE (likes): "
-        f"{report['engagement_fit']['top_share_curve']['likes']['top_share_curve_rmse']:.4f}",
+        f"{report['engagement_fit']['post_level']['top_share_curve']['likes']['top_share_curve_rmse']:.4f}",
         f"- Top-share curve RMSE (retweets vs reposts): "
-        f"{report['engagement_fit']['top_share_curve']['retweets_reposts']['top_share_curve_rmse']:.4f}",
+        f"{report['engagement_fit']['post_level']['top_share_curve']['retweets_reposts']['top_share_curve_rmse']:.4f}",
         f"- Top-share curve RMSE (replies): "
-        f"{report['engagement_fit']['top_share_curve']['replies']['top_share_curve_rmse']:.4f}",
+        f"{report['engagement_fit']['post_level']['top_share_curve']['replies']['top_share_curve_rmse']:.4f}",
         f"- Top-share curve RMSE (quotes): "
-        f"{report['engagement_fit']['top_share_curve']['quotes']['top_share_curve_rmse']:.4f}",
+        f"{report['engagement_fit']['post_level']['top_share_curve']['quotes']['top_share_curve_rmse']:.4f}",
         f"- Percentile-rank JSD (likes): "
-        f"{report['engagement_fit']['percentile_rank_jsd']['likes']['percentile_hist_jsd']:.4f}",
+        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['likes']['percentile_hist_jsd']:.4f}",
         f"- Percentile-rank JSD (retweets vs reposts): "
-        f"{report['engagement_fit']['percentile_rank_jsd']['retweets_reposts']['percentile_hist_jsd']:.4f}",
+        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['retweets_reposts']['percentile_hist_jsd']:.4f}",
         f"- Percentile-rank JSD (replies): "
-        f"{report['engagement_fit']['percentile_rank_jsd']['replies']['percentile_hist_jsd']:.4f}",
+        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['replies']['percentile_hist_jsd']:.4f}",
         f"- Percentile-rank JSD (quotes): "
-        f"{report['engagement_fit']['percentile_rank_jsd']['quotes']['percentile_hist_jsd']:.4f}",
+        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['quotes']['percentile_hist_jsd']:.4f}",
         "",
     ]
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")

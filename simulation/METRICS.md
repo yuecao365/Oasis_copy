@@ -48,7 +48,7 @@ Graph-structure metrics are not included in the current report.
 4. Engagement Fit
 - Includes post totals for reference:
   - total posts in GT vs Sim
-- Rank-based engagement metrics (scale-robust):
+- Post-level rank metrics (scale-robust) under `engagement_fit.post_level`:
   - `top_share_curve`:
     - For each metric (likes, retweets/reposts, replies, quotes), compute
       share of total engagement captured by top x% posts at
@@ -58,6 +58,11 @@ Graph-structure metrics are not included in the current report.
     - For each metric, convert post engagement values to within-dataset
       percentile ranks, bin into 10 bins (deciles), and compare GT vs Sim
       histograms with JSD (`percentile_hist_jsd`).
+- User-level rank metrics under `engagement_fit.user_level`:
+  - Components: likes + replies + reposts + quotes
+  - Correlation/divergence for total engagement per user and engagement-per-post per user.
+  - Top-k overlap (`top10`, `top20`) for user rankings.
+  - Top-share diagnostics for user-level total engagement concentration (top 10% and top 20% users).
 
 ## Default Timestep Assumption
 
