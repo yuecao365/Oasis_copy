@@ -9,7 +9,7 @@ from typing import Dict, List, Set
 # Config
 # =========================
 
-INPUT_DIR = "/Users/sichengxu/Downloads/twitter"
+INPUT_DIR = "data/raw/twitter"
 OUTPUT_DIR = "data/processed"
 
 MIN_TOKEN_LEN = 20          # skip very short tweets
@@ -74,15 +74,60 @@ def get_likes(tw: Dict) -> int:
 # Load tweets
 # =========================
 
+def _normalize_generic_message(msg: Dict) -> Dict:
+    """
+    Convert a generic_messages v1.1 record into the tweet_collection-style dict
+    that the rest of this script expects.
+    """
+    engagement = msg.get("engagement") or {}
+    extra = msg.get("extra_data") or {}
+
+    author = {
+        "type": "user",
+        "userName": extra.get("user_name"),
+        "id": msg.get("user_id"),
+        "url": extra.get("user_url") or None,
+    }
+
+    tw = {
+        "type": msg.get("type", "tweet"),
+        "id": msg.get("id"),
+        "url": msg.get("url"),
+        "text": msg.get("text") or "",
+        "createdAt": msg.get("creation_time"),
+        "conversationId": msg.get("topic_id"),
+        "inReplyToId": msg.get("reply_to"),
+        "author": author,
+        "likeCount": engagement.get("likes", 0),
+        "retweetCount": engagement.get("retweets", 0),
+        "replyCount": engagement.get("replies", 0),
+        "quoteCount": engagement.get("quotes", 0),
+        "viewCount": engagement.get("impressions", 0),
+    }
+
+    return tw
+
+
 def load_all_tweets(input_dir: str) -> List[Dict]:
-    tweets = []
+    tweets: List[Dict] = []
     for root, _, files in os.walk(input_dir):
         for fn in files:
-            if fn.endswith(".json"):
-                fp = os.path.join(root, fn)
-                with open(fp, "r", encoding="utf-8", errors="ignore") as f:
-                    obj = json.load(f)
-                    tweets.extend(obj.get("tweets", []))
+            if not fn.endswith(".json"):
+                continue
+            fp = os.path.join(root, fn)
+            with open(fp, "r", encoding="utf-8", errors="ignore") as f:
+                obj = json.load(f)
+
+            # Old schema: tweet_collection with "tweets"
+            if "tweets" in obj:
+                tweets.extend(obj.get("tweets") or [])
+
+            # New schema: generic_messages with "messages"
+            if "messages" in obj:
+                msgs = obj.get("messages") or []
+                for m in msgs:
+                    tweets.append(_normalize_generic_message(m))
+
     return tweets
 
 # =========================
@@ -162,7 +207,7 @@ def deduplicate_tweets(tweets: List[Dict]):
                             "clean_text": tw["clean_text"],
                         })
                 else:
-                    # 簇里人气都低 → 两条都删，记代表进 dropped_reps
+                    # both low popularity in cluster -> drop both, add rep to dropped_reps
                     dropped.append({
                         "tweet_id": tid,
                         "reason": "near_duplicate",
