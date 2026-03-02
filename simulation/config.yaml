@@ -28,7 +28,7 @@ simulation:
   auto_target_posts_per_step_from_train: false
   # Multi-action controls in manual_probabilistic mode:
   # each active agent performs at least 1 action, up to max_actions_per_active_agent.
-  max_actions_per_active_agent: 3
+  max_actions_per_active_agent: 1
   # Probability of adding one more action slot (geometric, evaluated repeatedly).
   extra_action_probability: 0.5
   # One simulation step represents this many real-world hours.

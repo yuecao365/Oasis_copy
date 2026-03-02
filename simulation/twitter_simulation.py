@@ -124,6 +124,58 @@ def _normalize_action_probabilities(
     return {k: v / total for k, v in probs.items()}
 
 
+def _extract_action_probabilities_by_username(
+    csv_path: str,
+    available_actions: list[ActionType] | None,
+) -> dict[str, dict[str, float]]:
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception:
+        return {}
+
+    if "username" not in df.columns:
+        return {}
+
+    action_columns = {
+        "p_create_post": "create_post",
+        "p_create_comment": "create_comment",
+        "p_do_nothing": "do_nothing",
+        "p_repost": "repost",
+        "p_quote_post": "quote_post",
+        "p_like_post": "like_post",
+        "p_follow": "follow",
+    }
+    present_cols = [c for c in action_columns if c in df.columns]
+    if not present_cols:
+        return {}
+
+    out: dict[str, dict[str, float]] = {}
+    for _, row in df.iterrows():
+        username = str(row.get("username", "")).strip().lower()
+        if not username:
+            continue
+
+        raw_probs: dict[str, float] = {}
+        for col in present_cols:
+            raw_val = row.get(col)
+            if pd.isna(raw_val):
+                continue
+            try:
+                raw_probs[action_columns[col]] = float(raw_val)
+            except Exception:
+                continue
+
+        if not raw_probs:
+            continue
+
+        out[username] = _normalize_action_probabilities(
+            action_probabilities=raw_probs,
+            available_actions=available_actions,
+        )
+
+    return out
+
+
 def _extract_previous_tweets_by_username(csv_path: str) -> dict[str, list[str]]:
     try:
         df = pd.read_csv(csv_path)
@@ -300,6 +352,14 @@ def _make_comment_content(agent) -> str:
     ])
 
 
+def _make_quote_content(agent) -> str:
+    other = agent.user_info.profile.get("other_info", {})
+    seeds = other.get("previous_tweets") or []
+    if seeds:
+        return f"My take: {random.choice(seeds)[:160]}"
+    return "Adding context to this."
+
+
 async def _try_action_on_feed_posts(agent, action_name: str, feed_posts: list[dict[str, Any]], *extra_args):
     if not feed_posts:
         return {"success": False, "error": "No feed posts"}
@@ -318,6 +378,48 @@ async def _try_action_on_feed_posts(agent, action_name: str, feed_posts: list[di
     return {"success": False, "error": f"No valid candidate for {action_name}"}
 
 
+async def _try_follow_on_feed_posts(agent, feed_posts: list[dict[str, Any]]):
+    if not feed_posts:
+        return {"success": False, "error": "No feed posts"}
+
+    own_user_id = None
+    try:
+        own_user_id = int(agent.social_agent_id)
+    except Exception:
+        own_user_id = None
+
+    candidates = []
+    for post in feed_posts:
+        user_id = post.get("user_id")
+        if user_id is None:
+            continue
+        try:
+            uid = int(user_id)
+        except Exception:
+            continue
+        if own_user_id is not None and uid == own_user_id:
+            continue
+        candidates.append(uid)
+
+    if not candidates:
+        return {"success": False, "error": "No valid follow candidate"}
+
+    random.shuffle(candidates)
+    seen = set()
+    for uid in candidates:
+        if uid in seen:
+            continue
+        seen.add(uid)
+        try:
+            result = await agent.perform_action_by_data("follow", uid)
+        except Exception as e:
+            result = {"success": False, "error": str(e)}
+        if isinstance(result, dict) and result.get("success"):
+            return result
+
+    return {"success": False, "error": "No valid follow candidate"}
+
+
 async def _perform_manual_probabilistic_action(
     agent,
     action_probs: dict[str, float],
@@ -333,7 +435,7 @@ async def _perform_manual_probabilistic_action(
             continue
         if action_name in blocked:
             continue
-        if action_name in {"like_post", "create_comment", "repost"} and not feed_posts:
+        if action_name in {"like_post", "create_comment", "repost", "quote_post", "follow"} and not feed_posts:
             continue
         candidates.append((action_name, prob))
 
@@ -363,8 +465,19 @@ async def _perform_manual_probabilistic_action(
     if action_name == "repost":
         result = await _try_action_on_feed_posts(agent, "repost", feed_posts)
         return {"action": action_name, "result": result}
+    if action_name == "quote_post":
+        result = await _try_action_on_feed_posts(
+            agent,
+            "quote_post",
+            feed_posts,
+            _make_quote_content(agent),
+        )
+        return {"action": action_name, "result": result}
     if action_name == "like_post":
         result = await _try_action_on_feed_posts(agent, "like_post", feed_posts)
+        return {"action": action_name, "result": result}
+    if action_name == "follow":
+        result = await _try_follow_on_feed_posts(agent, feed_posts)
         return {"action": action_name, "result": result}
     if action_name == "do_nothing":
         result = await agent.perform_action_by_data("do_nothing")
@@ -472,6 +585,10 @@ async def running(
     )
 
     prev_tweets_by_username = _extract_previous_tweets_by_username(csv_path)
+    action_probs_by_username = _extract_action_probabilities_by_username(
+        csv_path=csv_path,
+        available_actions=available_actions,
+    )
     usernames = {
         str(agent.user_info.name).strip().lower()
         for _node_id, agent in agent_graph.get_agents()
@@ -487,6 +604,8 @@ async def running(
         uname = str(agent.user_info.name).strip().lower()
         other = agent.user_info.profile.setdefault("other_info", {})
         other["previous_tweets"] = prev_tweets_by_username.get(uname, [])
+        if uname in action_probs_by_username:
+            other["action_probabilities"] = action_probs_by_username[uname]
         if uname in activity_profiles:
             if activity_granularity == "hourly":
                 other["activity_hourly"] = activity_profiles[uname]
@@ -575,9 +694,13 @@ async def running(
                     blocked_actions: set[str] = set()
                     if remaining_post_budget is not None and remaining_post_budget <= 0:
                         blocked_actions.add("create_post")
+                    per_agent_probs = (
+                        agent.user_info.profile.get("other_info", {}).get("action_probabilities")
+                        or normalized_action_probs
+                    )
                     action_out = await _perform_manual_probabilistic_action(
                         agent=agent,
-                        action_probs=normalized_action_probs,
+                        action_probs=per_agent_probs,
                         blocked_actions=blocked_actions,
                     )
                     selected_action = str(action_out.get("action", ""))
