@@ -1,207 +1,141 @@
-#!/usr/bin/env python3
 """
-Pipeline (no external API for embeddings):
-- Load non-duplicate, root tweets from tweet_December.txt (Nov+Dec combined).
-- Compute log(1+c) popularity score using PCA-derived weights.
-- Embed texts locally with Sentence-BERT (no API).
-- Cluster embeddings with HDBSCAN.
-- For each cluster, take top-20 tweets by popularity, build a prompt, and optionally call OpenAI
-  to generate a topic label.
+Step 6: Topic generation per cluster via LLM.
 
-Notes:
-- Requires hdbscan + scikit-learn (`pip install hdbscan scikit-learn` if missing).
-- If OPENAI_API_KEY is set, will call OpenAI chat for topic labels; otherwise only prompts are written.
-- This script writes JSONL with one record per cluster: {cluster_id, prompt, top_tweets, topic?}.
+Reads representative posts (from tweet_clustering) and generates a brief topic
+description for each cluster using an LLM (OpenAI API).
+
+Run: python topic_generation.py
+Requires: pip install openai, set OPENAI_API_KEY env
+Output: data/processed/cluster_topics.json
 """
 
-import csv
 import json
-import math
 import os
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
 
-import hdbscan
-import numpy as np
-from openai import OpenAI
-from sentence_transformers import SentenceTransformer
+INPUT_DIR = "data/processed"
+OUTPUT_DIR = "data/processed"
+REP_POSTS_FILE = "representative_posts_hdbscan.json"
+FILTERED_TWEETS_FILE = "filtered_tweets.jsonl"
+OUTPUT_FILE = "cluster_topics.json"
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_FILE = REPO_ROOT / "tweet_processing" / "tweet_Nov+Dec.txt"
-OUTPUT_JSONL = REPO_ROOT / "tweet_processing" / "cluster_topics.jsonl"
-PCA_STATS_FILE = REPO_ROOT / "tweet_processing" / "pca_stats.json"
-
-# PCA-derived positive weights (abs-normalized first component).
-PCA_WEIGHTS = {
-    "likes": 0.220255,
-    "retweets": 0.214415,
-    "replies": 0.201749,
-    "quotes": 0.180303,
-    "impressions": 0.183278,
-}
-PCA_MEANS = None
-PCA_STDS = None
-
-MAX_TWEETS = 20
-OPENAI_MODEL = "gpt-4o-mini"
-SBERT_MODEL = "all-MiniLM-L6-v2"
-TFIDF_MAX_FEATURES = 4096
-SVD_COMPONENTS = 128
+# LLM config
+OPENAI_MODEL = "gpt-4o-mini"  # cost-efficient
+MAX_POSTS_PER_CLUSTER = 50    # cap to avoid token limit
+MAX_CHARS_PER_POST = 280      # truncate long tweets
 
 
-@dataclass
-class TweetRow:
-    text: str
-    popularity: float
-    id: str
-    topic_id: str
-    user_name: str
-
-
-def load_pca_stats():
-    global PCA_WEIGHTS, PCA_MEANS, PCA_STDS
-    if not PCA_STATS_FILE.exists():
-        return
-    with PCA_STATS_FILE.open() as f:
-        stats = json.load(f)
-    PCA_WEIGHTS = stats.get("weights", PCA_WEIGHTS)
-    PCA_MEANS = stats.get("means")
-    PCA_STDS = stats.get("stds")
-
-
-def load_tweets() -> List[TweetRow]:
-    load_pca_stats()
-    rows: List[TweetRow] = []
-    with DATA_FILE.open() as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row.get("dup") != "0":
-                continue
-            if row.get("is_root") != "1":
-                continue
-            metrics = {
-                k: float(row.get(k, 0) or 0)
-                for k in ["likes", "retweets", "replies", "quotes", "impressions"]
-            }
-            logs = {k: math.log1p(v) for k, v in metrics.items()}
-            if PCA_MEANS and PCA_STDS:
-                popularity = sum(
-                    PCA_WEIGHTS[k]
-                    * (
-                        (logs[k] - PCA_MEANS.get(k, 0))
-                        / (PCA_STDS.get(k, 1) or 1)
-                    )
-                    for k in PCA_WEIGHTS.keys()
-                )
-            else:
-                popularity = sum(
-                    PCA_WEIGHTS[k] * logs[k] for k in PCA_WEIGHTS.keys()
-                )
-            rows.append(
-                TweetRow(
-                    text=row["text"],
-                    popularity=popularity,
-                    id=row.get("id", ""),
-                    topic_id=row.get("topic_id", ""),
-                    user_name=row.get("user_name", ""),
-                )
-            )
+def load_jsonl(path):
+    rows = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                rows.append(json.loads(line))
     return rows
 
 
-def embed_texts(texts: Sequence[str]) -> np.ndarray:
-    model = SentenceTransformer(SBERT_MODEL)
-    embeddings = model.encode(
-        texts, convert_to_numpy=True, normalize_embeddings=True, batch_size=64
-    )
-    return embeddings.astype(float)
+def load_id_to_text(filtered_tweets_path):
+    """Build tweet_id -> text from filtered_tweets (clean_text or text)."""
+    out = {}
+    with open(filtered_tweets_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            tid = row.get("id")
+            if tid is None:
+                continue
+            tid = str(tid).strip()
+            text = (row.get("clean_text") or row.get("text") or "").strip()
+            if text:
+                if len(text) > MAX_CHARS_PER_POST:
+                    text = text[:MAX_CHARS_PER_POST] + "..."
+                out[tid] = text
+    return out
 
 
-def cluster_embeddings(embeddings: np.ndarray) -> np.ndarray:
-    clusterer = hdbscan.HDBSCAN(
-        min_cluster_size=500,
-        min_samples=None,
-        metric="euclidean",
-        cluster_selection_method="eom",
-    )
-    return clusterer.fit_predict(embeddings)
+def load_representative_posts(path):
+    """cluster_id -> list of (tweet_id,) - order is already top-by-popularity from clustering."""
+    with open(path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    out = {}
+    for cid_str, posts in raw.items():
+        out[int(cid_str)] = [p["tweet_id"] for p in posts]
+    return out
 
 
-def build_prompt(cluster_id: int, tweets: List[TweetRow]) -> Dict[str, object]:
-    header = (
-        "Given the following tweets from the same discussion, generate a concise topic label.\n"
-        "Generate a concise topic label that summarizes their shared core idea.\n\n"
-        "Requirements:\n"
-        "- Use a noun or noun phrase only\n"
-        "- 3–6 words maximum\n"
-        "- No verbs, no opinions, no sentiment\n"
-        "- Capture the shared core topic\n\n"
-        "Tweets:"
-    )
-    body_lines = []
-    for idx, tw in enumerate(tweets, 1):
-        body_lines.append(f"{idx}. {tw.text}")
-    prompt = header + "\n" + "\n".join(body_lines)
-    return {
-        "cluster_id": int(cluster_id),
-        "prompt": prompt,
-        "top_tweets": [
-            {
-                "id": tw.id,
-                "topic_id": tw.topic_id,
-                "user_name": tw.user_name,
-                "popularity": tw.popularity,
-                "text": tw.text,
-            }
-            for tw in tweets
-        ],
-    }
+def get_cluster_texts(rep_posts, id_to_text, max_posts=MAX_POSTS_PER_CLUSTER):
+    """For each cluster, return list of post texts (first max_posts, already ranked by popularity)."""
+    cluster_texts = {}
+    for cid, tweet_ids in rep_posts.items():
+        texts = []
+        for tid in tweet_ids[:max_posts]:
+            t = id_to_text.get(str(tid))
+            if t and t.strip():
+                texts.append(t)
+        cluster_texts[cid] = texts
+    return cluster_texts
 
 
-def maybe_call_openai(prompt: str) -> str:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return ""
-    client = OpenAI(api_key=api_key)
-    resp = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a topic labeling assistant. Output a short noun phrase only.",
-            },
-            {"role": "user", "content": prompt},
-        ],
-        max_tokens=20,
-    )
-    return resp.choices[0].message.content.strip()
+def generate_topic_for_cluster(cluster_id, texts, model=OPENAI_MODEL):
+    """Call LLM to generate a brief topic for the cluster."""
+    if not texts:
+        return "No posts available."
+
+    posts_block = "\n".join(f"- {t}" for t in texts[:MAX_POSTS_PER_CLUSTER])
+    prompt = f"""Below are sample posts from a Twitter cluster (conversation threads about similar topics).
+Generate a SHORT topic label (1-2 sentences, under 100 words) that describes what this cluster is about.
+Be specific and concise. Output only the topic description, no preamble.
+
+Cluster ID: {cluster_id}
+
+Sample posts:
+{posts_block}
+"""
+
+    try:
+        from openai import OpenAI
+        client = OpenAI()
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=200,
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except Exception as e:
+        return f"[Error: {e}]"
 
 
 def main():
-    tweets = load_tweets()
-    if not tweets:
-        raise SystemExit("No tweets loaded.")
-    embeddings = embed_texts([t.text for t in tweets])
-    labels = cluster_embeddings(embeddings)
+    rep_path = os.path.join(INPUT_DIR, REP_POSTS_FILE)
+    tweets_path = os.path.join(INPUT_DIR, FILTERED_TWEETS_FILE)
+    if not os.path.isfile(rep_path):
+        print("ERROR: {} not found. Run tweet_clustering.py first.".format(rep_path))
+        return
+    if not os.path.isfile(tweets_path):
+        print("ERROR: {} not found.".format(tweets_path))
+        return
 
-    clusters: Dict[int, List[TweetRow]] = {}
-    for label, tw in zip(labels, tweets):
-        if label == -1:
-            continue  # noise
-        clusters.setdefault(label, []).append(tw)
+    print("Loading representative posts and filtered_tweets...")
+    rep_posts = load_representative_posts(rep_path)
+    id_to_text = load_id_to_text(tweets_path)
+    cluster_texts = get_cluster_texts(rep_posts, id_to_text)
+    cluster_ids = sorted(rep_posts.keys())
+    print("  Clusters: {}".format(len(cluster_ids)))
 
-    outputs: List[Dict[str, object]] = []
-    for cid, tws in clusters.items():
-        sorted_tws = sorted(tws, key=lambda t: t.popularity, reverse=True)[:MAX_TWEETS]
-        record = build_prompt(cid, sorted_tws)
-        topic = maybe_call_openai(record["prompt"])
-        outputs.append({"cluster_id": record["cluster_id"], "topic": topic or ""})
+    print("Generating topics via {}...".format(OPENAI_MODEL))
+    topics = {}
+    for i, cid in enumerate(cluster_ids):
+        texts = cluster_texts.get(cid, [])
+        topic = generate_topic_for_cluster(cid, texts)
+        topics[str(cid)] = topic
+        print("  cluster {}: {}".format(cid, topic[:80] + "..." if len(topic) > 80 else topic))
 
-    with OUTPUT_JSONL.open("w", encoding="utf-8") as f:
-        for rec in outputs:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-    print(f"Wrote {len(outputs)} cluster prompts to {OUTPUT_JSONL}")
+    out_path = os.path.join(OUTPUT_DIR, OUTPUT_FILE)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(topics, f, ensure_ascii=False, indent=2)
+    print("\nSaved {}".format(out_path))
 
 
 if __name__ == "__main__":

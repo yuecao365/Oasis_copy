@@ -1,0 +1,1287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Persona Dashboard</title>
+  <style>
+    :root {
+      --bg: #f6f7f2;
+      --panel: #fffdf7;
+      --ink: #11212d;
+      --muted: #5d6b75;
+      --accent: #0d9488;
+      --accent-2: #f59e0b;
+      --line: #d8ddd2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1000px 400px at 10% -10%, #c5f5ef 0%, transparent 60%),
+        radial-gradient(900px 300px at 100% 0%, #ffe4b0 0%, transparent 55%),
+        var(--bg);
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .hero { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+    h1 { margin: 0 0 8px; font-size: 2rem; }
+    .sub { color: var(--muted); margin-bottom: 14px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .stat { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+    .stat .n { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+    .controls {
+      margin: 18px 0;
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 10px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 0.95rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 6px 18px rgba(17, 33, 45, 0.06);
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: start;
+    }
+    h2 { margin: 0; font-size: 1.1rem; }
+    .handle { color: var(--muted); font-size: 0.9rem; }
+    .pill {
+      background: linear-gradient(120deg, var(--accent), #14b8a6);
+      color: #fff;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.76rem;
+      white-space: nowrap;
+    }
+    .bio { margin: 12px 0 8px; color: #22313d; }
+    .persona { margin: 0 0 10px; color: #22313d; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .tag {
+      font-size: 0.75rem;
+      background: #ecfeff;
+      border: 1px solid #99f6e4;
+      color: #134e4a;
+      border-radius: 999px;
+      padding: 3px 8px;
+    }
+    .tag.muted { background: #f6f7f2; border-color: var(--line); color: var(--muted); }
+    .categories { font-size: 0.86rem; color: var(--muted); margin-bottom: 8px; }
+    .tweets strong { display: block; margin-bottom: 5px; }
+    ul { margin: 0; padding-left: 18px; color: #2f3e48; }
+    li { margin: 4px 0; }
+    .hidden { display: none; }
+    @media (max-width: 760px) {
+      .controls { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Persona Dashboard</h1>
+      <p class="sub">Interactive view of generated personas.</p>
+      <div class="stats">
+        <div class="stat"><div class="n">60</div><div>Personas</div></div>
+        <div class="stat"><div class="n">1</div><div>Primary Categories</div></div>
+        <div class="stat"><div class="n">2.65</div><div>Avg Sample Tweets</div></div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <input id="searchBox" placeholder="Search name, username, bio, persona..." />
+      <select id="categoryFilter">
+        <option value="all">All categories</option>
+<option value="Unspecified">Unspecified</option>
+      </select>
+    </section>
+
+    <section class="grid" id="cards">
+      
+        <article class="card" data-category="Unspecified" data-search="restify_app restify_app vechain advocate committed to community engagement and sustainable tech. let&#x27;s innovate together! this user is a 34-year-old marketing professional with an enfj personality, known for her enthusiasm and leadership in community-driven initiatives. passionate about the vechain ecosystem, she actively participates in giveaways, shares updates, and promotes technological advancements, fostering a sense of belonging among community members. her ability to connect people and drive positive change makes her an influential voice in discussions surrounding blockchain and sustainability.">
+          <div class="header-row">
+            <div>
+              <h2>Restify_App</h2>
+              <div class="handle">@Restify_App</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">VeChain advocate committed to community engagement and sustainable tech. Let&#x27;s innovate together!</p>
+          <p class="persona">This user is a 34-year-old marketing professional with an ENFJ personality, known for her enthusiasm and leadership in community-driven initiatives. Passionate about the VeChain ecosystem, she actively participates in giveaways, shares updates, and promotes technological advancements, fostering a sense of belonging among community members. Her ability to connect people and drive positive change makes her an influential voice in discussions surrounding blockchain and sustainability.</p>
+          <div class="meta"><span class="tag">following:4</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>How’s your week starting? Be honest… did you put the phone down at all? If not, that’s what Restify is here for — your gentle nudge to pause, breathe, and be present. Less scrolling. More living. Don’t forget to vote for us on vebetterDAO — and maybe get your family on board too. Rest feels better when it’s shared. @vechainofficial</li><li>It’s almost time to switch off. Friday’s here — your gentle reminder to enjoy the weekend, step away from the screen and reconnect with what matters. Use Restify to make space for calm. And don’t forget to vote for us on vebetterDAO — your support helps bring mindful tech to more people. Breathe. Disconnect. Repeat. @vechainofficial</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="meter_mate meter_mate tech enthusiast passionate about blockchain and sustainability. engaging with the vechain community to power a cleaner future. this user is a driven it professional with an entj personality, leveraging their leadership skills to foster engagement within the vechain community. at 35, they are deeply invested in sustainable technology and actively participate in discussions about platform updates, community initiatives, and the technological advancements of vechain. their commitment to promoting sustainability and clean energy solutions showcases their forward-thinking mindset and dedication to a better planet.">
+          <div class="header-row">
+            <div>
+              <h2>meter_mate</h2>
+              <div class="handle">@meter_mate</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Tech enthusiast passionate about blockchain and sustainability. Engaging with the VeChain community to power a cleaner future.</p>
+          <p class="persona">This user is a driven IT professional with an ENTJ personality, leveraging their leadership skills to foster engagement within the VeChain community. At 35, they are deeply invested in sustainable technology and actively participate in discussions about platform updates, community initiatives, and the technological advancements of VeChain. Their commitment to promoting sustainability and clean energy solutions showcases their forward-thinking mindset and dedication to a better planet.</p>
+          <div class="meta"><span class="tag">following:7</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>MULTIPLIERS ARE COMING TO METERMATE! Starting Monday, your votes on the VeBetterDAO ecosystem won&#x27;t just boost the integrity of the DAO — they&#x27;ll also multiply your meter reading rewards! Here&#x27;s the breakdown: 100 – 999 VOT3 110% 1,000 – 2,499 VOT3 120% 2,500 – 4,999 VOT3 130% 5,000+ VOT3 150% And remember - voting doesn&#x27;t cost you anything, it actually earns you extra B3TR rewards directly from the DAO! You don&#x27;t have to vote for us, but we&#x27;d like you to consider which apps best reflect the ethos of VeBetter in your decision... Which apps reliably reward sustainable behaviour vs bots/farmers? Which apps encourage actions which actually make a useful difference? Which apps care about their users, their platform, and the planet we share? The choice is yours, make it count! Cast your vote here: URL Vote. Multiply. Earn More. Don&#x27;t miss your shot to supercharge your sustainable actions #MeterMate #vechain #vechainthor #b3tr #VeBetterDAO #SolarEnergy #SustainableLiving #sustainabilityforfuture</li><li>Sun is shining. Make use of it. If you’re producing clean energy, you deserve bigger rewards. Vote MeterMate to power up your payouts while the sun powers your home. #MeterMate #vechain #vechainthor #b3tr #VeBetterDAO #SolarEnergy URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="worldofv_art worldofv_art marketing pro diving into the future of blockchain with vechain! join me for updates, events, and community vibes. this user is a 34-year-old female enfj who thrives on connecting with others and fostering community engagement within the vechain ecosystem. with a strong background in marketing, she actively participates in discussions about technological advancements and sustainability initiatives, sharing insights and encouraging others to join the vechain community through giveaways and collaborative efforts.">
+          <div class="header-row">
+            <div>
+              <h2>worldofv_art</h2>
+              <div class="handle">@worldofv_art</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing pro diving into the future of blockchain with VeChain! Join me for updates, events, and community vibes.</p>
+          <p class="persona">This user is a 34-year-old female ENFJ who thrives on connecting with others and fostering community engagement within the VeChain ecosystem. With a strong background in marketing, she actively participates in discussions about technological advancements and sustainability initiatives, sharing insights and encouraging others to join the VeChain community through giveaways and collaborative efforts.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>WoV Fam! A new #VeBetterDAO voting round is just around the corner! If you want to support our ecosystem, make sure to set your @veDelegate preference now. The more votes we get, the bigger the $B3TR rewards when you collect your favorite VNFTs on URL URL</li><li>The next VeBetterDAO round is almost live! You’ve got just over 24h to set your @veDelegate preference and back the WoV Ecosystem in the upcoming VeBetterDAO voting round. More votes, more $B3TR. Let’s go! URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="buddyherbnft buddyherbnft vechain enthusiast dedicated to community engagement and sustainability efforts. join me in exploring the future of blockchain! at 34, this male user embodies the entj personality type, known for their leadership and strategic thinking. with a background in business management &amp; administration, he actively participates in the vechain community, sharing insights on initiatives, technological advancements, and events. his passion for blockchain technology drives him to engage with fellow members, ensuring the community stays informed and involved in various projects, giveaways, and voting opportunities.">
+          <div class="header-row">
+            <div>
+              <h2>BuddyHerbNFT</h2>
+              <div class="handle">@BuddyHerbNFT</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">VeChain enthusiast dedicated to community engagement and sustainability efforts. Join me in exploring the future of blockchain!</p>
+          <p class="persona">At 34, this male user embodies the ENTJ personality type, known for their leadership and strategic thinking. With a background in Business Management &amp; Administration, he actively participates in the VeChain community, sharing insights on initiatives, technological advancements, and events. His passion for blockchain technology drives him to engage with fellow members, ensuring the community stays informed and involved in various projects, giveaways, and voting opportunities.</p>
+          <div class="meta"><span class="tag">following:1</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Last day to get voting for Round 53 Got my #VOT3&#x27;s done @Bubbles2Earn @TurtleLabsV Nice even split. Now if you haven&#x27;t voted yet head on over to URL And get voting now. #B3TR #VeBetterDAO #Vechain URL</li><li>Final day to get your vote in for Round 55 of the VeBetterDao Don&#x27;t let your votes go to waste. Earn more B3TR just for VOT3ing My Votes are going on @Bubbles2Earn &amp;amp; @TurtleLabsV Make sure you give them some love too.</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="ve_lottery ve_lottery vechain advocate sharing insights on community initiatives and innovations. let&#x27;s build a sustainable future together! this user is a 34-year-old male with an entj personality, deeply engaged in the vechain ecosystem. with a background in business management and administration, he leverages his expertise to drive discussions about community events, technological advancements, and sustainable practices within the vechain platform. his leadership qualities make him a central figure in initiatives aimed at fostering community participation and growth.">
+          <div class="header-row">
+            <div>
+              <h2>Ve_lottery</h2>
+              <div class="handle">@Ve_lottery</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">VeChain advocate sharing insights on community initiatives and innovations. Let&#x27;s build a sustainable future together!</p>
+          <p class="persona">This user is a 34-year-old male with an ENTJ personality, deeply engaged in the VeChain ecosystem. With a background in business management and administration, he leverages his expertise to drive discussions about community events, technological advancements, and sustainable practices within the VeChain platform. His leadership qualities make him a central figure in initiatives aimed at fostering community participation and growth.</p>
+          <div class="meta"><span class="tag">following:4</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Congratulations to the round 53 of the #VeBetterDAO by @vechainofficial winners! Check out the transaction here: URL Congratulations to the winners and good luck to the competitors next round ! URL URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="b3trtradze b3trtradze tech advocate focused on vechain&#x27;s sustainable future. join me as we explore innovative solutions and community initiatives. at 34, this male intj thrives in the intersection of technology and sustainability. with a background in information technology, he dives deep into the vechain community, sharing insights on governance, eco-projects, and technological advancements. his strategic thinking and commitment to sustainability drive his engagement, making him a valuable contributor to discussions and initiatives within the vechain ecosystem.">
+          <div class="header-row">
+            <div>
+              <h2>B3TRTRADZE</h2>
+              <div class="handle">@B3TRTRADZE</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Tech advocate focused on VeChain&#x27;s sustainable future. Join me as we explore innovative solutions and community initiatives.</p>
+          <p class="persona">At 34, this male INTJ thrives in the intersection of technology and sustainability. With a background in Information Technology, he dives deep into the VeChain community, sharing insights on governance, eco-projects, and technological advancements. His strategic thinking and commitment to sustainability drive his engagement, making him a valuable contributor to discussions and initiatives within the VeChain ecosystem.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Today’s spotlight: VeBetterDAO — the future of sustainable governance on $VET What it’s about: Vote on real eco-projects Power decisions with $VOT3 + $B3TR On-chain rewards for participating Backed by VeChain’s green vision Build. Vote. Earn. Repeat. Explore the ecosystem: URL #VeChain #VeBetterDAO #Web3Governance #Sustainability #B3TRTRADZE #CoolStuffOnVeChain</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="monthlyearthday monthlyearthday marketing pro dedicated to promoting sustainability through blockchain. join me in exploring the vechain community! this user is a 34-year-old female marketing professional with an enfj personality, driven by a passion for community engagement and environmental sustainability. she actively participates in vechain initiatives, sharing insights on technological advancements and promoting events that highlight community involvement. her charismatic nature makes her a key connector within the vechain ecosystem, as she collaborates with various stakeholders to showcase their efforts towards a more sustainable future.">
+          <div class="header-row">
+            <div>
+              <h2>MonthlyEarthDay</h2>
+              <div class="handle">@MonthlyEarthDay</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing pro dedicated to promoting sustainability through blockchain. Join me in exploring the VeChain community!</p>
+          <p class="persona">This user is a 34-year-old female marketing professional with an ENFJ personality, driven by a passion for community engagement and environmental sustainability. She actively participates in VeChain initiatives, sharing insights on technological advancements and promoting events that highlight community involvement. Her charismatic nature makes her a key connector within the VeChain ecosystem, as she collaborates with various stakeholders to showcase their efforts towards a more sustainable future.</p>
+          <div class="meta"><span class="tag">following:6</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Alright @sunshinelu24, lets get your awesome ecosystem of #vebetterdao on board with Monthly Earth Day and showcase what you all are doing as a blockchain for the environment! Check out my new website URL and let&#x27;s work together on showcasing your efforts! URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="bluekv7_ga bluekv7_ga tech enthusiast with a passion for vechain and community engagement. committed to advancing sustainability in blockchain. this user is a 32-year-old it professional with an intj personality, deeply invested in the vechain community. he actively participates in initiatives that promote technological advancements and sustainability efforts within the ecosystem. his analytical skills and strategic thinking drive his contributions, making him a valuable member of the vechain community, where he shares updates, engages in discussions, and promotes community involvement.">
+          <div class="header-row">
+            <div>
+              <h2>bluekv7_GA</h2>
+              <div class="handle">@bluekv7_GA</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Tech enthusiast with a passion for VeChain and community engagement. Committed to advancing sustainability in blockchain.</p>
+          <p class="persona">This user is a 32-year-old IT professional with an INTJ personality, deeply invested in the VeChain community. He actively participates in initiatives that promote technological advancements and sustainability efforts within the ecosystem. His analytical skills and strategic thinking drive his contributions, making him a valuable member of the VeChain community, where he shares updates, engages in discussions, and promotes community involvement.</p>
+          <div class="meta"><span class="tag">following:1</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>The vechain community #VeFam will be more than happy to have valuable contributors and I’m committed to seeing this through in any way I can. #VeChain #VeFam #VeBetterDao URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="green_commuter green_commuter passionate about blockchain and sustainability. engaging with the vechain community for a greener future. this user is a 34-year-old marketing professional with an enfj personality, dedicated to promoting sustainability through blockchain technology. with a strong interest in the vechain ecosystem, @green_commuter actively participates in community initiatives, sharing updates and engaging in discussions about technological advancements and sustainability efforts. her enthusiasm for collaboration and community engagement drives her involvement in various vechain projects and events.">
+          <div class="header-row">
+            <div>
+              <h2>green_commuter</h2>
+              <div class="handle">@green_commuter</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Passionate about blockchain and sustainability. Engaging with the VeChain community for a greener future.</p>
+          <p class="persona">This user is a 34-year-old marketing professional with an ENFJ personality, dedicated to promoting sustainability through blockchain technology. With a strong interest in the VeChain ecosystem, @green_commuter actively participates in community initiatives, sharing updates and engaging in discussions about technological advancements and sustainability efforts. Her enthusiasm for collaboration and community engagement drives her involvement in various VeChain projects and events.</p>
+          <div class="meta"><span class="tag">following:0</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>After much consideration we have decided to sun-set GC. Its been an amazing experience, and we wish all dApps much success. For full details at: URL Many thanks to all our users, our endorser and you the VBD community #VeBetterDAO URL</li><li>Thanks to the community for raising your security issues — we’ll be posting our security update plan this Friday to keep you informed of our idea&#x27;s on that! Thanks #VeBetterDAO</li><li>Your vote means the world to us—literally. Thank you for supporting #GreenCommuter! #VeChain #VeBetterDAO #Sustainability URL</li><li>Voting is open! Choose #GreenCommuter on #VeBetterDAO and help us build a cleaner tomorrow. #VeChain #Sustainability URL</li><li>Thanks for helping us pedal toward a greener future. #GreenCommuter appreciates your vote! #VeChain #VeBetterDAO #Sustainability URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="_bagsolutions_ _bagsolutions_ marketing pro dedicated to promoting sustainability through blockchain. proud member of the vechain community. this user is a vibrant and engaging female marketing professional in her early 30s with an enfj personality. she&#x27;s deeply committed to the vechain community, actively sharing insights about initiatives that promote sustainability and technological advancements within the ecosystem. her enthusiasm for community involvement drives her to participate in events, support fellow members, and advocate for eco-friendly solutions powered by blockchain.">
+          <div class="header-row">
+            <div>
+              <h2>_BagSolutions_</h2>
+              <div class="handle">@_BagSolutions_</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing pro dedicated to promoting sustainability through blockchain. Proud member of the VeChain community.</p>
+          <p class="persona">This user is a vibrant and engaging female marketing professional in her early 30s with an ENFJ personality. She&#x27;s deeply committed to the VeChain community, actively sharing insights about initiatives that promote sustainability and technological advancements within the ecosystem. Her enthusiasm for community involvement drives her to participate in events, support fellow members, and advocate for eco-friendly solutions powered by blockchain.</p>
+          <div class="meta"><span class="tag">following:10</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Round 54 - VeBetterDAO URL Thank you all for your continued support. we can&#x27;t say it enough We are working hard behind the scenes and can&#x27;t wait to share more... #EcoBag #VoteEcoBag #B3TR #dApps #Web3Community #SaturdayVibes URL</li><li>@ReUse_vet Congrats on getting endorsed on VeBetterDAO! We wish you all the best for the future. URL</li><li>Big thanks to @cboundy22, @vechainofficial, and @PaullyTVvet for hosting the VeChain Update Spaces! It was great to jump in and share a bit about what we&#x27;re building with the EcoBag team. Always inspiring to hear updates from across the VeChain ecosystem and see how all the dApps are evolving. Props to @mugshot_vet for joining the Spaces. It&#x27;s always great to hear a voice behind the account. Shoutout to @cleanify_vet for the sleek new UI, upgraded submission flow, and wider variety of options—awesome work. Also, welcome to @B3DTIME_VET and @ReUse_vet for joining VDAO! And finally, thank you @vechainofficial @sunshinelu24 for making this all possible. We truly appreciate it and loved being a part of it.</li><li>How often do you carry your reusable bag with you even when you&#x27;re not planning to shop? #EcoBag #Web3 #Sustainability #VeChain #BetterDAO</li><li>Vote for ECOBAG. Own the change. Support a cleaner future by backing reusable bags powered by blockchain. Every vote counts. Every bag matters. URL #VoteForEcoBag #Vechain #SustainableFuture #Web3ForGood URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="thecryptoyapper thecryptoyapper bullish on $vet and the future of blockchain! excited about vechain&#x27;s growth and community potential. at 34, this male finance professional embodies the entp personality, using his strong analytical skills to dig deep into the intricacies of vechain and its market movements. his enthusiasm for $vet shines through in his tweets, where he fosters community engagement and shares insights about the crypto landscape, emphasizing trust and optimism for future growth.">
+          <div class="header-row">
+            <div>
+              <h2>TheCryptoYapper</h2>
+              <div class="handle">@TheCryptoYapper</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Bullish on $VET and the future of blockchain! Excited about VeChain&#x27;s growth and community potential.</p>
+          <p class="persona">At 34, this male finance professional embodies the ENTP personality, using his strong analytical skills to dig deep into the intricacies of VeChain and its market movements. His enthusiasm for $VET shines through in his tweets, where he fosters community engagement and shares insights about the crypto landscape, emphasizing trust and optimism for future growth.</p>
+          <div class="meta"><span class="tag">following:0</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>$VET is up for 43% since breaking out ! next stop for #Vechain is $0.045 This horizontal resistance will be the make or break level for #VET URL</li><li>#Vechain Bouncing from Critical Support ! Now PUMP $VET back up ! What is your cycle top prediction for #VET ? URL</li><li>$VET Bullish Retest ! #VET broke important horizontal resistance and is currently retesting it as support If this level holds, we can aim for more upside #Vechain looks ready to EXPLODE ! URL</li><li>#Vechain at Critical Support ! Can we see a similar move for $VET ? URL</li><li>#Vechain Breaking Bullish ! The next big resistance for #VET is at $0.043 What do you think about $VET ? URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="chris06902330 chris06902330 intj techie with a bullish outlook on #vechain. excited for the future of blockchain and its potential. at 34, this user is an analytical and strategic thinker who thrives in the information technology field. with a strong interest in vechain, he frequently shares optimistic insights and market predictions, emphasizing community trust and growth potential. his intj personality drives him to engage thoughtfully with the crypto community, seeking to educate others while fostering discussions around the future of blockchain technologies.">
+          <div class="header-row">
+            <div>
+              <h2>Chris06902330</h2>
+              <div class="handle">@Chris06902330</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">INTJ techie with a bullish outlook on #VeChain. Excited for the future of blockchain and its potential.</p>
+          <p class="persona">At 34, this user is an analytical and strategic thinker who thrives in the Information Technology field. With a strong interest in VeChain, he frequently shares optimistic insights and market predictions, emphasizing community trust and growth potential. His INTJ personality drives him to engage thoughtfully with the crypto community, seeking to educate others while fostering discussions around the future of blockchain technologies.</p>
+          <div class="meta"><span class="tag">following:3</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>#VeChain $VET $0.025 URL</li><li>#VeChain $VET $VTHO #RWA #VeBetterDAO #B3TR URL URL</li><li>#VeChain $VET $VTHO #RWA URL URL</li><li>#VeChain $VET $VTHO #RWA #ToolChainPartners URL URL</li><li>#VeChain $VET ⌛</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="digitalknol digitalknol finance professional with a bullish outlook on vechain and its potential. always optimistic about the future of crypto. this user is a 32-year-old intj male from the us with a strong background in finance. he is deeply optimistic about vechain&#x27;s future, regularly sharing insights and predictions on price movements and market trends. engaging with the crypto community, he emphasizes the importance of trust and collaboration within the ecosystem, continually seeking to inform and inspire others about the potential of vechain and its associated tokens.">
+          <div class="header-row">
+            <div>
+              <h2>digitalknol</h2>
+              <div class="handle">@digitalknol</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional with a bullish outlook on VeChain and its potential. Always optimistic about the future of crypto.</p>
+          <p class="persona">This user is a 32-year-old INTJ male from the US with a strong background in finance. He is deeply optimistic about VeChain&#x27;s future, regularly sharing insights and predictions on price movements and market trends. Engaging with the crypto community, he emphasizes the importance of trust and collaboration within the ecosystem, continually seeking to inform and inspire others about the potential of VeChain and its associated tokens.</p>
+          <div class="meta"><span class="tag">following:1</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>$VET VeChain Token Price Forecast 2025 #VeChain #CryptoMarket #Crypto #Bullrun2025 URL</li><li>$VET VeChain Crypto Price Predictions 2025-2030 #Web3Community #CryptoNews #crypto #Altseason #alts URL</li><li>$VET Vechain Token Price Predictions For Bullrun 2025-26 #VeChain #Crypto #cryptocurrency #Altseason URL</li><li>$VET VeChain Token Price Predictions For 2025-26 Altcoin Season #CryptoTrading #CryptoWeek #crypto #VeChain URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="btcblackthorne btcblackthorne finance professional with a bullish outlook on vechain. believer in community-driven growth and innovation. at 34, this intj finance expert is deeply invested in the potential of vechain and its tokens. with a strategic mindset, he analyzes market trends and shares his insights on twitter, fostering a sense of community trust and excitement around vechain. his confident and analytical nature draws others to his optimistic predictions, positioning him as a thoughtful leader in the crypto space.">
+          <div class="header-row">
+            <div>
+              <h2>BtcBlackthorne</h2>
+              <div class="handle">@BtcBlackthorne</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional with a bullish outlook on VeChain. Believer in community-driven growth and innovation.</p>
+          <p class="persona">At 34, this INTJ finance expert is deeply invested in the potential of VeChain and its tokens. With a strategic mindset, he analyzes market trends and shares his insights on Twitter, fostering a sense of community trust and excitement around VeChain. His confident and analytical nature draws others to his optimistic predictions, positioning him as a thoughtful leader in the crypto space.</p>
+          <div class="meta"><span class="tag">following:6</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>$VET. More VeChain bad-assery explained. This is the coin of the decade. Not sure why most people are missing this? Oh, well... their loss.</li><li>$VET. This VeChain official has found the best way of dealing with his $B3TR bag. Food for thought.</li><li>$VET. For some reason, unbeknownst to me and many others, people aren&#x27;t bullish on VeChain.</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="altwolfcrypto altwolfcrypto vechain enthusiast driven by bullish sentiment and community trust. believer in the future of blockchain and token growth. this user is a 34-year-old finance professional with an intj personality, characterized by strategic thinking and a passion for innovative technologies. actively engaging in the vechain community, he shares insights and predictions, emphasizing optimism and potential market growth. his analytical approach helps him navigate the complexities of the crypto world, fostering trust and excitement among fellow investors.">
+          <div class="header-row">
+            <div>
+              <h2>AltwolfCrypto</h2>
+              <div class="handle">@AltwolfCrypto</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">VeChain enthusiast driven by bullish sentiment and community trust. Believer in the future of blockchain and token growth.</p>
+          <p class="persona">This user is a 34-year-old finance professional with an INTJ personality, characterized by strategic thinking and a passion for innovative technologies. Actively engaging in the VeChain community, he shares insights and predictions, emphasizing optimism and potential market growth. His analytical approach helps him navigate the complexities of the crypto world, fostering trust and excitement among fellow investors.</p>
+          <div class="meta"><span class="tag">following:8</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>$VET 30% up so far my mid- term targets for 300% pump #VET #vechain #vetusdt URL</li><li>$VET +32% Short-term leverage target hit — profits partially booked. Still holding spot bags aiming for 300%+ rally Key support: $0.026 must hold for the next leg up. Next .034$ #VET #VeChain #VETUSDT #Altwolf #Crypto URL</li><li>$VET .022$ Rejection on point 7%+Profits on shorts Updates on Telegram #VET #vechain #Vetusdt URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="kidcryptoe kidcryptoe vechain believer and finance enthusiast. excited for the future of blockchain and its impact on wealth creation! #vefam this user is a 24-year-old male finance professional with an enfp personality. he is deeply passionate about vechain and frequently expresses his bullish sentiment on social media, emphasizing community trust and market potential. with a lively and optimistic outlook, he actively engages with fellow crypto enthusiasts, sharing insights and fostering a sense of community around vechain and its associated tokens.">
+          <div class="header-row">
+            <div>
+              <h2>kidcryptoe</h2>
+              <div class="handle">@kidcryptoe</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">VeChain believer and finance enthusiast. Excited for the future of blockchain and its impact on wealth creation! #VeFam</p>
+          <p class="persona">This user is a 24-year-old male finance professional with an ENFP personality. He is deeply passionate about VeChain and frequently expresses his bullish sentiment on social media, emphasizing community trust and market potential. With a lively and optimistic outlook, he actively engages with fellow crypto enthusiasts, sharing insights and fostering a sense of community around VeChain and its associated tokens.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>#VeChain #VET #VeFam Can you dig it?!?</li><li>#VeChain #VET #VeFam The only thing I’m smelling right now is generational wealth Can you dig it?!?</li><li>#VeChain #VET #VeFam</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="coinsprobe coinsprobe finance professional with a keen eye on vechain&#x27;s potential. bullish on $vet and its community-driven future. at 35, this intj male is deeply immersed in the finance world, leveraging his analytical skills to explore the promising landscape of vechain and its associated tokens. his strong belief in community trust and market growth drives his optimistic tweets, as he actively engages with fellow crypto enthusiasts to share insights and predictions about $vet&#x27;s trajectory.">
+          <div class="header-row">
+            <div>
+              <h2>CoinsProbe</h2>
+              <div class="handle">@CoinsProbe</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional with a keen eye on VeChain&#x27;s potential. Bullish on $VET and its community-driven future.</p>
+          <p class="persona">At 35, this INTJ male is deeply immersed in the finance world, leveraging his analytical skills to explore the promising landscape of VeChain and its associated tokens. His strong belief in community trust and market growth drives his optimistic tweets, as he actively engages with fellow crypto enthusiasts to share insights and predictions about $VET&#x27;s trajectory.</p>
+          <div class="meta"><span class="tag">following:4</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>$VET is repeating the same fractal that led to rally +300%! Read Details: URL URL</li><li>Vechain $VET to Rally Like $ALGO? Read Details: URL #ALGO #VET #Crypto #Altcoins URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="sjosch sjosch finance professional with a keen interest in blockchain. bullish on vechain and its potential to revolutionize supply chains. at 34 years old, @sjosch embodies the analytical and strategic mindset of an intj. with a solid background in finance, he immerses himself in discussions around vechain, showcasing strong optimism about its future and emphasizing community trust. his tweets reflect a blend of market insights and enthusiasm for the growth of vechain and its tokens, making him a respected voice in the crypto community.">
+          <div class="header-row">
+            <div>
+              <h2>Sjosch</h2>
+              <div class="handle">@Sjosch</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional with a keen interest in blockchain. Bullish on VeChain and its potential to revolutionize supply chains.</p>
+          <p class="persona">At 34 years old, @Sjosch embodies the analytical and strategic mindset of an INTJ. With a solid background in finance, he immerses himself in discussions around VeChain, showcasing strong optimism about its future and emphasizing community trust. His tweets reflect a blend of market insights and enthusiasm for the growth of VeChain and its tokens, making him a respected voice in the crypto community.</p>
+          <div class="meta"><span class="tag">following:7</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>#Vechain #VET #VTHO</li><li>#VeChain #RWA $VET URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="chudnufski18 chudnufski18 blockchain enthusiast and it professional with a bullish outlook on vechain and its future. excited for the growth of decentralized solutions! at 24, this user embodies the entp personality, thriving on innovative ideas and discussions. as an it professional, they delve into the intricacies of blockchain technology, focusing on vechain and its potential for market growth. their optimism and analytical approach allow them to connect with like-minded individuals, fostering a strong sense of community trust and shared anticipation for the future of vechain.">
+          <div class="header-row">
+            <div>
+              <h2>chudnufski18</h2>
+              <div class="handle">@chudnufski18</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain enthusiast and IT professional with a bullish outlook on VeChain and its future. Excited for the growth of decentralized solutions!</p>
+          <p class="persona">At 24, this user embodies the ENTP personality, thriving on innovative ideas and discussions. As an IT professional, they delve into the intricacies of blockchain technology, focusing on VeChain and its potential for market growth. Their optimism and analytical approach allow them to connect with like-minded individuals, fostering a strong sense of community trust and shared anticipation for the future of VeChain.</p>
+          <div class="meta"><span class="tag">following:4</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>well..... #VeChain #VET #B3TR #VeBetterDAO URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="brooktheone brooktheone finance professional with a strong belief in vechain&#x27;s potential. advocating for community trust and market growth. at 32 years old, this user embodies the intj personality type, characterized by strategic thinking and a keen analytical perspective. with a career in finance, they have a deep understanding of market trends and actively engage with the vechain community, sharing insights and fostering optimism about the future performance of vechain and its associated tokens. their tweets reflect a blend of enthusiasm and confidence, aiming to inspire others to trust in the technology&#x27;s potential.">
+          <div class="header-row">
+            <div>
+              <h2>BrookTheOne</h2>
+              <div class="handle">@BrookTheOne</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional with a strong belief in VeChain&#x27;s potential. Advocating for community trust and market growth.</p>
+          <p class="persona">At 32 years old, this user embodies the INTJ personality type, characterized by strategic thinking and a keen analytical perspective. With a career in finance, they have a deep understanding of market trends and actively engage with the VeChain community, sharing insights and fostering optimism about the future performance of VeChain and its associated tokens. Their tweets reflect a blend of enthusiasm and confidence, aiming to inspire others to trust in the technology&#x27;s potential.</p>
+          <div class="meta"><span class="tag">following:8</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Vechain $VET $VTHO URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="drkongrkl drkongrkl marketing pro &amp; eco-warrior 🌍✨ advocating for sustainability through everyday actions &amp; the @mugshot_vet app. join me on this green journey! #vebetterdao this user, aged 34, embodies the enfp personality type, characterized by enthusiasm and a deep commitment to sustainability. with a background in marketing, she leverages her skills to promote environmentally friendly practices and actively engages with the vebetterdao community. her tweets reflect her passion for combining technology and sustainable living, making her a vibrant voice in the sustainable lifestyle movement.">
+          <div class="header-row">
+            <div>
+              <h2>DrKongRKL</h2>
+              <div class="handle">@DrKongRKL</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing pro &amp; eco-warrior 🌍✨ Advocating for sustainability through everyday actions &amp; the @mugshot_vet app. Join me on this green journey! #VeBetterDAO</p>
+          <p class="persona">This user, aged 34, embodies the ENFP personality type, characterized by enthusiasm and a deep commitment to sustainability. With a background in marketing, she leverages her skills to promote environmentally friendly practices and actively engages with the VeBetterDAO community. Her tweets reflect her passion for combining technology and sustainable living, making her a vibrant voice in the sustainable lifestyle movement.</p>
+          <div class="meta"><span class="tag">following:4</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Crypto + Coffee ONLY make sense Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO</li><li>Quick Iced Coffee with the cold foam @7eleven Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp;amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL</li><li>Hold up has anyone tried a LEMON WHITE MOCHA ⁉ Hey @7eleven what’s this?! Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp;amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL</li><li>“Small Actions, Big Rewards” Onchain Everyday Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp;amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="yukarinrin_0813 yukarinrin_0813 sustainability advocate sharing my journey towards a greener lifestyle. proud member of the vebetterdao community! at 34, this user exemplifies the esfj personality with a strong focus on community engagement and collaboration. working in marketing, she actively promotes sustainable initiatives and shares her experiences using the @mugshot_vet app, encouraging others to adopt environmentally friendly practices. her passion for sustainability drives her to connect with like-minded individuals, fostering a supportive community dedicated to making a positive impact.">
+          <div class="header-row">
+            <div>
+              <h2>yukarinrin_0813</h2>
+              <div class="handle">@yukarinrin_0813</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Sustainability advocate sharing my journey towards a greener lifestyle. Proud member of the VeBetterDAO community!</p>
+          <p class="persona">At 34, this user exemplifies the ESFJ personality with a strong focus on community engagement and collaboration. Working in marketing, she actively promotes sustainable initiatives and shares her experiences using the @mugshot_vet app, encouraging others to adopt environmentally friendly practices. Her passion for sustainability drives her to connect with like-minded individuals, fostering a supportive community dedicated to making a positive impact.</p>
+          <div class="meta"><span class="tag">following:0</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I just earned 1.98 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL #continue_salon # # #VeBetterDAOJapanCommnutiy</li><li>I just earned 1.91 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL #continue_salon</li><li>I just earned 2 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL #continue_salon # # #VeBetterDAOJapanCommnutiy</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="samwilkins1987 samwilkins1987 marketing pro on a mission to promote sustainability. sharing my journey with @mugshot_vet and the vebetterdao community! at 30 years old, this enfp individual thrives on creativity and connection, actively seeking out opportunities to engage with and promote sustainable practices. with a background in marketing, they leverage social media to share their experiences using applications like @mugshot_vet, fostering a community around environmentally friendly initiatives. their enthusiasm for sustainable living drives them to inspire others to adopt greener habits and celebrate achievements in the journey towards a more sustainable lifestyle.">
+          <div class="header-row">
+            <div>
+              <h2>SamWilkins1987</h2>
+              <div class="handle">@SamWilkins1987</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing pro on a mission to promote sustainability. Sharing my journey with @mugshot_vet and the VeBetterDAO community!</p>
+          <p class="persona">At 30 years old, this ENFP individual thrives on creativity and connection, actively seeking out opportunities to engage with and promote sustainable practices. With a background in marketing, they leverage social media to share their experiences using applications like @mugshot_vet, fostering a community around environmentally friendly initiatives. Their enthusiasm for sustainable living drives them to inspire others to adopt greener habits and celebrate achievements in the journey towards a more sustainable lifestyle.</p>
+          <div class="meta"><span class="tag">following:3</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Earn 3 #B3TR with @mugshot_vet by sipping sustainably! Prefer a tin cup on these sweltering days. Referral code: Ru8JdvjX and get extra rewards URL #MugshotDapp #Vechain #VeWallet URL</li><li>I just earned 1.69 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeWallet #vechain URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="eno_takako eno_takako marketing enthusiast committed to promoting a sustainable lifestyle. join me in my journey towards eco-friendly living! 🌍💚 at 24, this esfj professional is dedicated to making a positive impact through sustainability initiatives. with a strong background in marketing, she actively shares her experiences with the vebetterdao community and the @mugshot_vet app, encouraging others to adopt environmentally friendly practices. her warm and engaging personality draws fellow users to her discussions about sustainable living and innovative practices.">
+          <div class="header-row">
+            <div>
+              <h2>eno_takako</h2>
+              <div class="handle">@eno_takako</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing enthusiast committed to promoting a sustainable lifestyle. Join me in my journey towards eco-friendly living! 🌍💚</p>
+          <p class="persona">At 24, this ESFJ professional is dedicated to making a positive impact through sustainability initiatives. With a strong background in marketing, she actively shares her experiences with the VeBetterDAO community and the @mugshot_vet app, encouraging others to adopt environmentally friendly practices. Her warm and engaging personality draws fellow users to her discussions about sustainable living and innovative practices.</p>
+          <div class="meta"><span class="tag">following:6</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I just earned 1.84 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL</li><li>I just earned 0.45 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="y_mtbra_128320 y_mtbra_128320 health science advocate promoting sustainability through innovative practices. join me on my journey towards a greener lifestyle! this user is a 34-year-old female with an esfj personality, deeply committed to fostering a sustainable lifestyle. as a professional in health science, she actively engages in community initiatives and discussions around eco-friendly practices, particularly through platforms like @mugshot_vet and the vebetterdao community. her passion for environmental sustainability drives her to share personal experiences and achievements, inspiring others to embrace a greener way of living.">
+          <div class="header-row">
+            <div>
+              <h2>y_mtbra_128320</h2>
+              <div class="handle">@y_mtbra_128320</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Health Science advocate promoting sustainability through innovative practices. Join me on my journey towards a greener lifestyle!</p>
+          <p class="persona">This user is a 34-year-old female with an ESFJ personality, deeply committed to fostering a sustainable lifestyle. As a professional in Health Science, she actively engages in community initiatives and discussions around eco-friendly practices, particularly through platforms like @mugshot_vet and the VeBetterDAO community. Her passion for environmental sustainability drives her to share personal experiences and achievements, inspiring others to embrace a greener way of living.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I just earned 1.49 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL #continue_salon # # #VeBetterDAOJapanCommunity</li><li>I just earned 2 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL #continue_salon #vyvo #</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="koyapeey koyapeey marketing pro dedicated to promoting a sustainable lifestyle. sharing my eco-friendly journey with @mugshot_vet and the vebetterdao community! at 34, this female user embodies the esfj personality type, radiating warmth and a strong sense of community. with a background in marketing, she leverages her skills to engage others in sustainability initiatives, frequently tweeting about her experiences with the @mugshot_vet application and the vebetterdao community. her passion for environmentally friendly practices drives her to inspire others through active participation and sharing her achievements in sustainable living.">
+          <div class="header-row">
+            <div>
+              <h2>koyapeey</h2>
+              <div class="handle">@koyapeey</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing pro dedicated to promoting a sustainable lifestyle. Sharing my eco-friendly journey with @mugshot_vet and the VeBetterDAO community!</p>
+          <p class="persona">At 34, this female user embodies the ESFJ personality type, radiating warmth and a strong sense of community. With a background in marketing, she leverages her skills to engage others in sustainability initiatives, frequently tweeting about her experiences with the @mugshot_vet application and the VeBetterDAO community. Her passion for environmentally friendly practices drives her to inspire others through active participation and sharing her achievements in sustainable living.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I just earned 1.75 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL URL</li><li>Just earned #B3TR with @mugshot_vet by sipping sustainably! URL #MugshotDapp #Vechain #VeBetterDAO URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="thomasnikol thomasnikol marketing pro dedicated to promoting sustainability through innovative solutions. sharing my journey with @mugshot_vet and the vebetterdao community. this user is a 34-year-old male with an enfp personality, embodying a blend of creativity and enthusiasm for sustainable living. working in marketing, he leverages his skills to advocate for environmentally friendly practices, actively engaging with the community through the @mugshot_vet application and sharing personal achievements in sustainability. his passion for a greener lifestyle shines through his tweets, where he motivates others to join the movement.">
+          <div class="header-row">
+            <div>
+              <h2>thomasnikol</h2>
+              <div class="handle">@thomasnikol</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing pro dedicated to promoting sustainability through innovative solutions. Sharing my journey with @mugshot_vet and the VeBetterDAO community.</p>
+          <p class="persona">This user is a 34-year-old male with an ENFP personality, embodying a blend of creativity and enthusiasm for sustainable living. Working in marketing, he leverages his skills to advocate for environmentally friendly practices, actively engaging with the community through the @mugshot_vet application and sharing personal achievements in sustainability. His passion for a greener lifestyle shines through his tweets, where he motivates others to join the movement.</p>
+          <div class="meta"><span class="tag">following:8</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I just earned 1.88 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL</li><li>I just earned 2 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="acuriousba90026 acuriousba90026 health science professional dedicated to promoting sustainability through innovative practices. join me in making the world greener with @mugshot_vet and vebetterdao! at 34 years old, this isfj personality embodies a nurturing spirit and a strong sense of responsibility towards the environment. with a background in health science, she focuses on sustainable lifestyle practices and actively shares her experiences in the vebetterdao community. her tweets reflect her commitment to eco-friendly initiatives and highlight her journey towards a more sustainable future.">
+          <div class="header-row">
+            <div>
+              <h2>aCuriousBa90026</h2>
+              <div class="handle">@aCuriousBa90026</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Health Science professional dedicated to promoting sustainability through innovative practices. Join me in making the world greener with @mugshot_vet and VeBetterDAO!</p>
+          <p class="persona">At 34 years old, this ISFJ personality embodies a nurturing spirit and a strong sense of responsibility towards the environment. With a background in Health Science, she focuses on sustainable lifestyle practices and actively shares her experiences in the VeBetterDAO community. Her tweets reflect her commitment to eco-friendly initiatives and highlight her journey towards a more sustainable future.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I just earned 2 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="opalnut opalnut health science advocate committed to a sustainable future. sharing tips and achievements with @mugshot_vet and the vebetterdao community. this user is a 34-year-old female enfj who thrives on connecting with others and promoting a sustainable lifestyle. with a background in health science, she utilizes her platform to share her journey and encourage environmentally friendly practices through initiatives like @mugshot_vet and the vebetterdao community. her engaging personality and passion for sustainability make her an influential voice in her network.">
+          <div class="header-row">
+            <div>
+              <h2>opalnut</h2>
+              <div class="handle">@opalnut</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Health science advocate committed to a sustainable future. Sharing tips and achievements with @mugshot_vet and the VeBetterDAO community.</p>
+          <p class="persona">This user is a 34-year-old female ENFJ who thrives on connecting with others and promoting a sustainable lifestyle. With a background in health science, she utilizes her platform to share her journey and encourage environmentally friendly practices through initiatives like @mugshot_vet and the VeBetterDAO community. Her engaging personality and passion for sustainability make her an influential voice in her network.</p>
+          <div class="meta"><span class="tag">following:6</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I just earned 1.9 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="neohana1543 neohana1543 sustainability consultant dedicated to promoting eco-friendly practices and sharing achievements within the vebetterdao community. let&#x27;s make the planet greener together! at 35, this user embodies the isfj personality, reflecting a nurturing and dedicated approach to sustainability. as a sustainability consultant in japan, she actively engages with platforms like @mugshot_vet and the vebetterdao community to share her sustainable lifestyle experiences and initiatives. her passion for environmental advocacy drives her to connect with others, inspire change, and celebrate small victories in the journey towards a more sustainable future.">
+          <div class="header-row">
+            <div>
+              <h2>neohana1543</h2>
+              <div class="handle">@neohana1543</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Sustainability consultant dedicated to promoting eco-friendly practices and sharing achievements within the VeBetterDAO community. Let&#x27;s make the planet greener together!</p>
+          <p class="persona">At 35, this user embodies the ISFJ personality, reflecting a nurturing and dedicated approach to sustainability. As a sustainability consultant in Japan, she actively engages with platforms like @mugshot_vet and the VeBetterDAO community to share her sustainable lifestyle experiences and initiatives. Her passion for environmental advocacy drives her to connect with others, inspire change, and celebrate small victories in the journey towards a more sustainable future.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I just earned 1.91 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL #continue_salon # # #VeBetterDAOJapanCommnutiy</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="terumin_369 terumin_369 techie diving deep into vechain partnerships and blockchain innovations. engaging the community one tweet at a time. at 34, this user embodies the strategic and analytical traits of an intj, thriving in the information technology sector. with a keen interest in vechain brand partnerships, they actively discuss collaborations with notable figures like dana white, aiming to educate and involve the community in blockchain advancements. their insights and enthusiasm for technology foster meaningful discussions and connections within the vechain ecosystem.">
+          <div class="header-row">
+            <div>
+              <h2>terumin_369</h2>
+              <div class="handle">@terumin_369</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Techie diving deep into VeChain partnerships and blockchain innovations. Engaging the community one tweet at a time.</p>
+          <p class="persona">At 34, this user embodies the strategic and analytical traits of an INTJ, thriving in the Information Technology sector. With a keen interest in VeChain brand partnerships, they actively discuss collaborations with notable figures like Dana White, aiming to educate and involve the community in blockchain advancements. Their insights and enthusiasm for technology foster meaningful discussions and connections within the VeChain ecosystem.</p>
+          <div class="meta"><span class="tag">following:8</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>1234,740 @HEMJAPAN @cleanify_vet #Vechain #VeBetterDAO #continue_salon #MeGo # URL</li><li>1854,465 20 @HEMJAPAN @cleanify_vet #Vechain #VeBetterDAO #continue_salon #MeGo # URL</li><li>1184,48320 @HEMJAPAN @cleanify_vet #Vechain #VeBetterDAO #continue_salon #MeGo # URL</li><li>11674,907&amp;amp; @HEMJAPAN @cleanify_vet #Vechain #VeBetterDAO #continue_salon #MeGo # URL</li><li>1684,717 @HEMJAPAN @cleanify_vet #Vechain #VeBetterDAO #continue_salon #MeGo # URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="chiarabelmonte_ chiarabelmonte_ arts &amp; tech lover exploring the intersection of creativity and blockchain. proud #vefam member! at 32, this user embodies the enfp spirit, thriving on creativity and innovation. with a background in audio/video technology &amp; communications, @chiarabelmonte_ is deeply invested in vechain&#x27;s brand partnerships, often sharing insights about collaborations with influential figures like dana white. their enthusiasm for community engagement and artistic expression shines through in their tweets, as they create and share unique content that resonates with fellow #vefam members.">
+          <div class="header-row">
+            <div>
+              <h2>chiarabelmonte_</h2>
+              <div class="handle">@chiarabelmonte_</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Arts &amp; tech lover exploring the intersection of creativity and blockchain. Proud #VeFam member!</p>
+          <p class="persona">At 32, this user embodies the ENFP spirit, thriving on creativity and innovation. With a background in Audio/Video Technology &amp; Communications, @chiarabelmonte_ is deeply invested in VeChain&#x27;s brand partnerships, often sharing insights about collaborations with influential figures like Dana White. Their enthusiasm for community engagement and artistic expression shines through in their tweets, as they create and share unique content that resonates with fellow #VeFam members.</p>
+          <div class="meta"><span class="tag">following:8</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Did someone say Italy? #VeFam #balcony #VeChain #illustrationart URL</li><li>GM #VeFam I created a pack of 30 free #Lifeonabalcony stickers to use on Telegram! You can add them via link here: URL And since it&#x27;s Friday, have a great weekend! #VeChain #NFTCommunity #illustration URL</li><li>GM #VeFam Happy #Wednesday #VeChain #illustrations URL</li><li>Happy Saturday #VeFam #VeChain #illustration #illustrationart URL</li><li>“Imagine there&#x27;s no heaven It&#x27;s easy if you try No hell below us Above us, only sky” #illustration #art #VeChain #VeFam URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="smitty8882 smitty8882 finance professional diving deep into vechain&#x27;s brand partnerships and community initiatives. let&#x27;s connect and discuss! this user is a 32-year-old male finance expert with an entp personality, known for his innovative thinking and love for strategic discussions. he actively engages in conversations about vechain&#x27;s collaborations, particularly with high-profile figures like dana white, and enjoys exploring how these partnerships can drive community engagement and awareness in the crypto space.">
+          <div class="header-row">
+            <div>
+              <h2>Smitty8882</h2>
+              <div class="handle">@Smitty8882</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional diving deep into VeChain&#x27;s brand partnerships and community initiatives. Let&#x27;s connect and discuss!</p>
+          <p class="persona">This user is a 32-year-old male finance expert with an ENTP personality, known for his innovative thinking and love for strategic discussions. He actively engages in conversations about VeChain&#x27;s collaborations, particularly with high-profile figures like Dana White, and enjoys exploring how these partnerships can drive community engagement and awareness in the crypto space.</p>
+          <div class="meta"><span class="tag">following:3</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>URL still buying and hodling here #btc #eth #sol #sui #xrp #doge #link #cardano #shib #algo #vechain #bonk #mog #buythedip #hodl</li><li>URL Who&#x27;s with me, waiting on that #ALTSEASON #btc #eth #sol #sui #xrp #doge #link #cardano #shib #algo #vechain #bonk #mog #buythedip #hodl</li><li>URL #btc #eth #sol #sui #xrp #doge #link #cardano #sei #shib #algo #vechain #bonk #buythedip #hodl</li><li>URL Crypto is still growing #btc #eth #sol #sui #xrp #doge #link #cardano #shib #algo #vechain #bonk #mog #buythedip #hodl #gemini</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="bobrxcrypt_tg bobrxcrypt_tg finance professional exploring vechain&#x27;s innovative brand partnerships. sharing insights on the future of blockchain collaborations. at 34, this intj male finance expert has a keen interest in the strategic implications of blockchain technology, particularly in how vechain collaborates with prominent figures like dana white. with a strong analytical mindset, he engages deeply in discussions about brand partnerships and community initiatives, striving to bridge the gap between finance and technology while promoting sustainable practices.">
+          <div class="header-row">
+            <div>
+              <h2>bobrxcrypt_tg</h2>
+              <div class="handle">@bobrxcrypt_tg</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional exploring VeChain&#x27;s innovative brand partnerships. Sharing insights on the future of blockchain collaborations.</p>
+          <p class="persona">At 34, this INTJ male finance expert has a keen interest in the strategic implications of blockchain technology, particularly in how VeChain collaborates with prominent figures like Dana White. With a strong analytical mindset, he engages deeply in discussions about brand partnerships and community initiatives, striving to bridge the gap between finance and technology while promoting sustainable practices.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>VeChain запускает программу стейкинга StarGate на NULL млн после рекомендаций SEC по криптовалютам URL</li><li>Санни Лу: Возрождение VeChain в 2025 году, реальная ценность и путь к децентрализованной устойчивости URL</li><li>Новое партнерство VeChain с BitGo обеспечивает регулируемое хранение для учреждений URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="tagadobtc tagadobtc finance professional sharing insights on vechain partnerships and community initiatives. join the conversation! at 34, this user embodies the strategic and analytical nature typical of an intj. with a background in finance, they are deeply interested in the intersection of cryptocurrency and brand partnerships, particularly those involving vechain. their passion for community engagement drives them to create content that not only informs but also encourages discussion among followers, especially around notable collaborations like those with dana white.">
+          <div class="header-row">
+            <div>
+              <h2>TagadoBTC</h2>
+              <div class="handle">@TagadoBTC</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional sharing insights on VeChain partnerships and community initiatives. Join the conversation!</p>
+          <p class="persona">At 34, this user embodies the strategic and analytical nature typical of an INTJ. With a background in finance, they are deeply interested in the intersection of cryptocurrency and brand partnerships, particularly those involving VeChain. Their passion for community engagement drives them to create content that not only informs but also encourages discussion among followers, especially around notable collaborations like those with Dana White.</p>
+          <div class="meta"><span class="tag">following:2</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>ANALYSE VIDEO Les cryptos vont-elles exploser durant l’été ? Découvrez mon analyse ici URL Comme d&#x27;habitude on regarde les charts de Bitcoin, Ethereum, Solana, Dogecoin et VeChain. Merci à ceux qui partagent pour leur soutien et n&#x27;hésitez pas à me dire quelles cryptos analyser dans les prochaines analyses !</li><li>Je vous en parle depuis des semaines dans mes vidéos, le VET (VeChain) a finalement cassé son accumulation de plusieurs mois par le haut ! Je vise les 0,09$ pour les prochains mois ⏳ URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="kyle03368538 kyle03368538 blockchain enthusiast exploring vechain partnerships and community engagement. excited about the future of tech! this user is a 24-year-old male it professional with an entp personality type, known for being innovative and outgoing. he has a keen interest in the blockchain space, especially in vechain&#x27;s brand partnerships, and follows high-profile collaborations like those with dana white. actively participating in discussions and sharing insights, he connects with others in the crypto community to promote awareness and engagement around sustainable tech solutions.">
+          <div class="header-row">
+            <div>
+              <h2>Kyle03368538</h2>
+              <div class="handle">@Kyle03368538</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain enthusiast exploring VeChain partnerships and community engagement. Excited about the future of tech!</p>
+          <p class="persona">This user is a 24-year-old male IT professional with an ENTP personality type, known for being innovative and outgoing. He has a keen interest in the blockchain space, especially in VeChain&#x27;s brand partnerships, and follows high-profile collaborations like those with Dana White. Actively participating in discussions and sharing insights, he connects with others in the crypto community to promote awareness and engagement around sustainable tech solutions.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>@420_vechain Looking forward to the animated airdrop URL</li><li>@420_vechain Just received my animated airdrops URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="vechaintrust vechaintrust blockchain advocate focused on vechain&#x27;s brand partnerships. excited about the future of sustainable business collaborations! this user is a 34-year-old male it professional with an entj personality type, reflecting strong leadership and strategic thinking. he is deeply interested in vechain&#x27;s brand partnerships, often discussing the impact of collaborations with notable figures like dana white. his analytical approach and enthusiasm for community engagement drive him to actively participate in discussions about vechain&#x27;s initiatives, making him a valuable contributor in the cryptocurrency space.">
+          <div class="header-row">
+            <div>
+              <h2>vechaintrust</h2>
+              <div class="handle">@vechaintrust</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain advocate focused on VeChain&#x27;s brand partnerships. Excited about the future of sustainable business collaborations!</p>
+          <p class="persona">This user is a 34-year-old male IT professional with an ENTJ personality type, reflecting strong leadership and strategic thinking. He is deeply interested in VeChain&#x27;s brand partnerships, often discussing the impact of collaborations with notable figures like Dana White. His analytical approach and enthusiasm for community engagement drive him to actively participate in discussions about VeChain&#x27;s initiatives, making him a valuable contributor in the cryptocurrency space.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Wow incredible i was able to seamlessly swap vtho to btc directly on @MyVechain in the wallet. Ty this is great @sunshinelu24 @Bacco1977Dublin @vechainofficial @solomon_grundle @eisenreich #vechain $vet URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="coins_kid coins_kid finance professional exploring the world of blockchain through vechain partnerships. join me in discussing how brands and figures are collaborating in this space. at 35, this male finance expert embodies the intj personality type, characterized by strategic thinking and a focus on innovation. with a keen interest in vechain&#x27;s brand partnerships, he actively analyzes and shares insights on notable collaborations, such as those involving dana white. his analytical approach combined with a passion for community engagement makes him a valuable contributor in discussions surrounding blockchain advancements.">
+          <div class="header-row">
+            <div>
+              <h2>Coins_Kid</h2>
+              <div class="handle">@Coins_Kid</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional exploring the world of blockchain through VeChain partnerships. Join me in discussing how brands and figures are collaborating in this space.</p>
+          <p class="persona">At 35, this male finance expert embodies the INTJ personality type, characterized by strategic thinking and a focus on innovation. With a keen interest in VeChain&#x27;s brand partnerships, he actively analyzes and shares insights on notable collaborations, such as those involving Dana White. His analytical approach combined with a passion for community engagement makes him a valuable contributor in discussions surrounding blockchain advancements.</p>
+          <div class="meta"><span class="tag">following:8</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>#vechain is dragging it&#x27;s feet, but it could be the perfect setup for a weekly double bottom Best of luck CKC URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="denostradamex denostradamex marketing strategist exploring the world of blockchain through vechain partnerships. always on the lookout for innovative collaborations! a 35-year-old male with an entp personality, this user thrives on engaging discussions about vechain and its impactful collaborations, like those with dana white. with a background in marketing, he leverages his expertise to analyze and promote the potential of blockchain in brand partnerships, actively participating in community initiatives and sharing valuable insights to foster engagement.">
+          <div class="header-row">
+            <div>
+              <h2>DeNostradameX</h2>
+              <div class="handle">@DeNostradameX</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing strategist exploring the world of blockchain through VeChain partnerships. Always on the lookout for innovative collaborations!</p>
+          <p class="persona">A 35-year-old male with an ENTP personality, this user thrives on engaging discussions about VeChain and its impactful collaborations, like those with Dana White. With a background in marketing, he leverages his expertise to analyze and promote the potential of blockchain in brand partnerships, actively participating in community initiatives and sharing valuable insights to foster engagement.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Herkese selam arkadaşlar. #Greencart &#x27;la büyümeye devam. #VeBetterDao &#x27;nun en çok kazandıran dApp&#x27;ı. Alışveriş yap,yükle,kazan URL @greencartai @Vechain</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="artiogoatzclub artiogoatzclub tech aficionado diving deep into vechain partnerships and community engagement. let’s discuss the future of blockchain! this user is a 34-year-old male it professional with an entp personality. he thrives on innovative ideas and enjoys exploring the intricacies of vechain&#x27;s brand partnerships, including collaborations with high-profile individuals like dana white. engaging actively in discussions, he shares insights and celebrates community achievements, fostering a vibrant dialogue around the blockchain space.">
+          <div class="header-row">
+            <div>
+              <h2>ArtioGoatzClub</h2>
+              <div class="handle">@ArtioGoatzClub</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Tech aficionado diving deep into VeChain partnerships and community engagement. Let’s discuss the future of blockchain!</p>
+          <p class="persona">This user is a 34-year-old male IT professional with an ENTP personality. He thrives on innovative ideas and enjoys exploring the intricacies of VeChain&#x27;s brand partnerships, including collaborations with high-profile individuals like Dana White. Engaging actively in discussions, he shares insights and celebrates community achievements, fostering a vibrant dialogue around the blockchain space.</p>
+          <div class="meta"><span class="tag">following:3</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>A massive win today with the 3rd place in the #B33Z competition! S/O to @AsherLand for hosting! And thanks for the amazing rewards! #VeChain #VeFam URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="cryptozone_x cryptozone_x blockchain advocate exploring the vechain ecosystem. excited about innovations in defi and real-world applications. this user is a 35-year-old male it professional with an intj personality, who is deeply invested in the developments of the vechain ecosystem. passionate about technological advancements, he actively follows and shares insights on recent upgrades and community events, believing in the potential of vechain to revolutionize various industries through enhanced defi capabilities and cross-chain solutions.">
+          <div class="header-row">
+            <div>
+              <h2>cryptozone_x</h2>
+              <div class="handle">@cryptozone_x</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain advocate exploring the VeChain ecosystem. Excited about innovations in DeFi and real-world applications.</p>
+          <p class="persona">This user is a 35-year-old male IT professional with an INTJ personality, who is deeply invested in the developments of the VeChain ecosystem. Passionate about technological advancements, he actively follows and shares insights on recent upgrades and community events, believing in the potential of VeChain to revolutionize various industries through enhanced DeFi capabilities and cross-chain solutions.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>VET Spotlight: VeChain ignites 2025 with its Renaissance Roadmap and Galactica upgrade boosting EVM support cross-chain power and spiking VTHO utility Eyes on $0.03 resistance as enterprise momentum builds URL</li><li>VET Spotlight: VeChain gears up for its Galactica mainnet upgrade on July 1 bringing EVM support and new tokenomics Backed by giants like BMW and Walmart China, VET is set to elevate enterprise blockchain to the next level URL</li><li>VET Spotlight: VeChain surges in 2025 with the Galactica mainnet upgrade live since July 1, boosting cross-chain power and staking Backed by giants like BMW and PwC, VET eyes major adoption across real-world industries URL</li><li>VET Spotlight: Big momentum as VeChain gears up for the Galactica mainnet upgrade on July 1 Enhanced cross-chain tech and new staking rewards could fuel a breakout past $0.03 Real-world utility and green initiatives add powerful support URL</li><li>VET Spotlight: VeChain gears up for a game-changing July 2025 with the Galactica upgrade boosting cross-chain power and the Stargate Staking launch offering 9% yields A bullish trend looms as VET nears key resistance levels URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="cryptobusy cryptobusy vechain advocate exploring the future of defi and blockchain innovation. sharing insights on ecosystem developments and staking strategies. this user is a 34-year-old finance professional with an intj personality, deeply invested in the vechain ecosystem and its advancements. with a keen analytical mindset, they stay updated on the latest developments such as the cross-chain bridge launch and staking upgrades, often sharing insights and engaging with the community. their strategic approach to crypto investments and passion for technological growth drives their involvement in discussions surrounding vechain&#x27;s evolution.">
+          <div class="header-row">
+            <div>
+              <h2>CryptoBusy</h2>
+              <div class="handle">@CryptoBusy</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">VeChain advocate exploring the future of DeFi and blockchain innovation. Sharing insights on ecosystem developments and staking strategies.</p>
+          <p class="persona">This user is a 34-year-old finance professional with an INTJ personality, deeply invested in the VeChain ecosystem and its advancements. With a keen analytical mindset, they stay updated on the latest developments such as the cross-chain bridge launch and staking upgrades, often sharing insights and engaging with the community. Their strategic approach to crypto investments and passion for technological growth drives their involvement in discussions surrounding VeChain&#x27;s evolution.</p>
+          <div class="meta"><span class="tag">following:7</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Your edge in the next alt season is clarity. Here’s what I’m watching: $BTC - Because it&#x27;s king. $ETH - So underrated $XRP - Bullish on regulation, post-banking license $INJ - MultiVM DeFi + tokenized infra + L1 x RWA x AI narrative $VET - VeChain Renaissance, RWA, and a whole new tokenomics $PEAQ - DePIN + Machine RWA flywheel $ARB - Biggest L2 x RWA Tokenization x AI Others: - $SUI - $SOL - $S DYOR</li><li>. @vechainofficial just crossed a historic milestone! Galactica, the first phase of the VeChain Renaissance, is now LIVE ON MAINNET! A new era begins with dynamic gas fee burning, upgraded EVM compatibility, and future-proof flexibility. So here&#x27;s why Galactica &amp; StarGate is bullish for $VET 1⃣ $VET Powers $VTHO, which now gets 100% burned every transaction - $VET holders generate $VTHO through holding or staking. - With VIP-251 (Dynamic Fee Market), every transaction on VeChain now burns 100% of VTHO (previously a share was paid to validators). Just like Ethereum’s EIP-1559, this introduces a deflationary mechanism. So why this is a big deal: As the network gets more active, more $VTHO gets burned. This increases demand for $VTHO, which in turn increases demand for $VET, because $VET is the only way to generate $VTHO. 2⃣ Dynamic Fees = More burn during high demand - VIP-251 introduces flexible gas fees based on demand. - Gas fee market = increased $VTHO consumption - In busy periods (like bull markets or high usage spikes), fees increase and more $VTHO is burned. So why it is bullish? This creates cyclical value accrual to $VET holders: - Higher activity → Higher VTHO burn - VTHO becomes scarce → Demand for $VET rises - $VET staking becomes more valuable 3⃣ StarGate launch unlocks real yield for $VET holders - StarGate is VeChain’s new native staking program. - Stake $VET, mint an NFT node, and earn $VTHO rewards + massive bonuses. - 5.48 B VTHO committed to early rewards. - Rewards are non-inflationary, they&#x27;re from a pre-funded pool, not printed. This shifts VeChain from passive $VTHO generation to active yield farming. - Now you can optimize your returns through staking tiers and NFT strategies. - It turns $VET into a productive asset with programmable yield, backed by real usage and utility. 4⃣ Regulatory Advantage: - Staking is protocol-native and does not constitute a security, thanks to SEC guidance. - VeChain is MiCAR compliant, giving it regulatory clarity in the EU. - These upgrades prepare the chain for institutional adoption. As institutions explore staking and tokenized sustainability markets, VeChain is one of the few fully compliant L1s ready to scale.</li><li>BULLISH WEEK AHEAD! ICYMI: VeChain StarGate is Now Open! And Early Staking Has Already Started, kicking off a new era of NFT-powered, decentralized staking for the community. Early birds are already earning from the 5.48B VTHO bonus pool, but it’s not too late to jump in. If you hold $VET and want to participate in the VeChain Renaissance, this guide breaks down everything you need to know to get started with StarGate Including step by step staking, node tiers, multipliers tools, and key decisions to optimize your strategy.</li><li>4 hours to go. @vechainofficial Monthly Updates go LIVE at 9 PM UTC, and this one’s stacked. VeBetterDAO Updates Wanchain Cross-Chain Launch StarGate Staking Breakdown Community Q&amp;A with 40+ builders The ecosystem is evolving in real-time, don’t miss it. Tune in with @cboundy22 , @vechainofficial, @solomon_grundle and the Vefam: 4 PM CST | 9 PM UTC URL $VET | $VTHO</li><li>WEEKEND REMINDER: @vechainofficial went fully cross-chain! You can bridge $VET, $VTHO, $B3TR, and more across 40+ top chains, including Ethereum, Solana, Bitcoin, and BNB Chain, thanks to @wanchain_org Liquidity, users, and builders now have a fast lane into VeChain’s real-world ecosystem. • TVL already surged by $100M post-StarGate launch • DeFi access via Uniswap, PancakeSwap, Raydium, and more • All assets visible directly in VeWorld wallet • Powered by battle-tested sMPC infrastructure $VET is ready, and be part of it.</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="bpaynews bpaynews finance professional diving deep into the vechain ecosystem. analyzing trends and developments to enhance defi capabilities. this user is a 32-year-old male finance professional with an intj personality type. he has a keen interest in the vechain ecosystem, closely following its advancements like cross-chain bridges and staking upgrades. engaging deeply with the community, he shares insightful analyses on recent trends and offers perspectives on the future of vechain, showcasing his commitment to understanding and promoting sustainable blockchain solutions.">
+          <div class="header-row">
+            <div>
+              <h2>bpaynews</h2>
+              <div class="handle">@bpaynews</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional diving deep into the VeChain ecosystem. Analyzing trends and developments to enhance DeFi capabilities.</p>
+          <p class="persona">This user is a 32-year-old male finance professional with an INTJ personality type. He has a keen interest in the VeChain ecosystem, closely following its advancements like cross-chain bridges and staking upgrades. Engaging deeply with the community, he shares insightful analyses on recent trends and offers perspectives on the future of VeChain, showcasing his commitment to understanding and promoting sustainable blockchain solutions.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>#BREAKING #VeChain ($VET) Rallies 4.43% as Renaissance Upgrade Drives Bullish Momentum VET price surges to $0.03 with positive technical signals emerging as #VeChain&#x27;s Renaissance upgrade enhances staking rewards and burns transaction fees. #Bitcoin $BTC</li><li>#BREAKING #VeChain ($VET) Eyes $0.12 Breakout as Price Rebounds 6% From Support VET price trades at $0.03 with bullish momentum emerging after strong support bounce. Technical analysis suggests potential rally to $0.12 target level. #Bitcoin $BTC</li><li>#BREAKING #VeChain ($VET) Shows Mixed Signals at $0.03 as Bulls Fight Key Resistance VET trades at $0.03 (-3.98% today) with RSI at 67.39 showing neutral momentum while technical indicators flash conflicting signals $NEAR critical resistance levels. #Bitcoin $BTC</li><li>#BREAKING #VeChain ($VET) Struggles at $0.03 as Bears Take Control Despite Neutral RSI VET price drops 3.78% to $0.03 with bearish MACD signals emerging, though RSI remains neutral at 52.32 suggesting potential consolidation ahead. #Bitcoin $BTC</li><li>#BREAKING #VeChain ($VET) Consolidates at $0.02 as Bulls and Bears Battle Key Support Levels VET price trades at $0.02 with neutral momentum signals, while #VeChain technical analysis reveals critical support test ahead for traders. #Bitcoin $BTC</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="dmndhnds_07 dmndhnds_07 blockchain advocate focused on vechain&#x27;s innovations. exploring defi potential and community growth. at 34, this user embodies an intj personality, combining strategic thinking with a deep interest in blockchain technology. as a professional in business management &amp; administration, they engage critically with advancements in the vechain ecosystem, particularly its impact on supply chain solutions and defi enhancements. they actively share insights and news on social media, fostering discussions about the future of the vechain network and its role in transforming industries.">
+          <div class="header-row">
+            <div>
+              <h2>DMNDHNDS_07</h2>
+              <div class="handle">@DMNDHNDS_07</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain advocate focused on VeChain&#x27;s innovations. Exploring DeFi potential and community growth.</p>
+          <p class="persona">At 34, this user embodies an INTJ personality, combining strategic thinking with a deep interest in blockchain technology. As a professional in Business Management &amp; Administration, they engage critically with advancements in the VeChain ecosystem, particularly its impact on supply chain solutions and DeFi enhancements. They actively share insights and news on social media, fostering discussions about the future of the VeChain network and its role in transforming industries.</p>
+          <div class="meta"><span class="tag">following:8</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>VeChain’s “Act First, Earn Now” Model Sets It Apart in Web3 URL</li><li>VeChain Earns Praise From Researchers for Solving Supply Chain Issues via Blockchain URL</li><li>VeChain (VET) Joins Revolut’s Learn &amp;amp; Earn Program to Reach 60M+ Users URL</li><li>VeChain Recognized as Key Industry 4.0 Tech for Export Chain Transparency URL</li><li>VeChain Nears StarGate Activation—What It Means for Staking, Governance, and Community Involvement URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="beincrypto beincrypto marketing professional exploring the vechain ecosystem&#x27;s innovations and sustainability efforts. follow for insights on defi advancements. this user is a 32-year-old female marketing expert with an intj personality, deeply invested in the developments within the vechain ecosystem. her analytical nature drives her to stay updated on the latest advancements, such as cross-chain bridges and staking upgrades, while her passion for community engagement reflects her commitment to sustainable decentralized solutions. she actively shares insights and engages in discussions that highlight the importance of real-world applications of blockchain technology.">
+          <div class="header-row">
+            <div>
+              <h2>beincrypto</h2>
+              <div class="handle">@beincrypto</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Marketing professional exploring the VeChain ecosystem&#x27;s innovations and sustainability efforts. Follow for insights on DeFi advancements.</p>
+          <p class="persona">This user is a 32-year-old female marketing expert with an INTJ personality, deeply invested in the developments within the VeChain ecosystem. Her analytical nature drives her to stay updated on the latest advancements, such as cross-chain bridges and staking upgrades, while her passion for community engagement reflects her commitment to sustainable decentralized solutions. She actively shares insights and engages in discussions that highlight the importance of real-world applications of blockchain technology.</p>
+          <div class="meta"><span class="tag">following:2</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>VeChain’s 2025 Renaissance marks a decisive shift toward real-world sustainability and decentralization. Sunny Lu (@sunshinelu24), CEO of @vechainofficial, explains how StarGate and NFT staking are removing barriers and creating real utility for millions. URL</li><li>VeChain Faces Rosa Simeoli (@Rosaaasimeoli), Product Manager (StarGate) at @vechainofficial, on how Stargate drives a more community-led future, giving real ownership back and rewarding those who help build it. VeChain is turning everyday sustainability into measurable impact with VeBetter. By the way, you may already check out the new rewards on the StarGate portal URL</li><li>VeChain Faces Why does StarGate mark a leap for a more inclusive, decentralized VeChain? Antonio Senatore (@Bacco1977Dublin), CTO at @vechainofficial, explains how Stargate and the Galactica hard fork open the VeChain Renaissance with staking that truly rewards active contributors. VeChain’s future: built by and for its community. More to come @vechainofficial</li><li>Stargate Through Their Eyes: Voices Behind VeChain’s Next Chapter @vechainofficial’s StarGate is more than just staking rewards or NFTs, it’s about real people driving the shift to true decentralisation and community rewards. What does StarGate really mean for the ecosystem? Meet the voices behind it. Let’s start with this one</li><li>VeChain Faces Rosa Simeoli (@Rosaaasimeoli), Product Manager (StarGate) at @vechainofficial, on how Stargate drives a more community-led future, giving real ownership back and rewarding those who help build it. VeChain is turning everyday sustainability into measurable impact with VeBetterDAO. Follow for more @vechainofficial</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="wanchain_org wanchain_org blockchain advocate focused on vechain developments and defi innovation. sharing insights on cross-chain solutions. at 34, this intj male professional in information technology thrives on understanding complex systems, particularly within the vechain ecosystem. his analytical mindset drives his interest in recent advancements like cross-chain bridges and staking upgrades, and he actively engages with the community to share insights and discuss the future of decentralized finance. his passion for technology and strategic thinking positions him as a key contributor in conversations surrounding vechain&#x27;s growth.">
+          <div class="header-row">
+            <div>
+              <h2>wanchain_org</h2>
+              <div class="handle">@wanchain_org</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain advocate focused on VeChain developments and DeFi innovation. Sharing insights on cross-chain solutions.</p>
+          <p class="persona">At 34, this INTJ male professional in Information Technology thrives on understanding complex systems, particularly within the VeChain ecosystem. His analytical mindset drives his interest in recent advancements like cross-chain bridges and staking upgrades, and he actively engages with the community to share insights and discuss the future of decentralized finance. His passion for technology and strategic thinking positions him as a key contributor in conversations surrounding VeChain&#x27;s growth.</p>
+          <div class="meta"><span class="tag">following:4</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>#Wanchain launches the first-ever #crosschain bridge to @vechainofficial! This $2 billion chain is now connected to 40+ chains, including Bitcoin and Ethereum. With $BTC, $ETH, $USDC and $USDT, VeChain is ready to enter the DeFi world with a roar! URL URL</li><li>$BTC transfers are powering nearly 50% of all #Wanchain #crosschain volume. Unlock lucrative DeFi opportunities for your BTC on these popular blockchains: Arbitrum Avalanche BNB Chain Bitcoin Cardano Ethereum VeChain + more! URL URL</li><li>#Wanchain is collaborating with @juicyfinance_io, #VeChain’s first lending protocol! Earn juicy APRs by supplying $USDT and $WAN on URL Start today: bridge your $USDT and $WAN to VeChain via URL URL</li><li>The first-ever VeChain Bridge connects this Top 50 blockchain to the Web3 world! Supported chains Bitcoin, Ethereum, Solana, XRP Ledger, Wanchain. Supported assets $BTC, $ETH, $USDC, $USDT, $VET, $VTHO, $B3TR, $SOL, $XRP, $WAN. Try it out at URL URL</li><li>Join @PaullyTVvet as he discusses the newly launched VeChain Bridge with our CEO @TemujinLouie! Just 3 hours to go...</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="johnmorganfl johnmorganfl finance professional exploring the vechain ecosystem and its groundbreaking developments. investing in the future of defi. at 34, this male user embodies the intj personality type, marked by strategic thinking and a keen analytical approach to finance and technology. with a strong interest in the vechain ecosystem, he consistently tracks advancements such as cross-chain bridges and staking upgrades, sharing insights and engaging with the community on the latest trends and events that highlight the network&#x27;s growth potential.">
+          <div class="header-row">
+            <div>
+              <h2>johnmorganFL</h2>
+              <div class="handle">@johnmorganFL</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional exploring the VeChain ecosystem and its groundbreaking developments. Investing in the future of DeFi.</p>
+          <p class="persona">At 34, this male user embodies the INTJ personality type, marked by strategic thinking and a keen analytical approach to finance and technology. With a strong interest in the VeChain ecosystem, he consistently tracks advancements such as cross-chain bridges and staking upgrades, sharing insights and engaging with the community on the latest trends and events that highlight the network&#x27;s growth potential.</p>
+          <div class="meta"><span class="tag">following:4</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>$1.6 trillion Franklin Templeton taps VeChain to expand distribution of its tokenized treasury fund URL</li><li>Best Crypto Coins to Buy Now: BlockDAG, Mantle, SKY, and VeChain Driving Big Moves in 2025 URL</li><li>Vechain (VET) To Rally Higher? This Emerging Fractal Signaling Potential Upside Move URL</li><li>VeChain’s New BitGo Partnership Enables Regulated Custody for Institutions URL</li><li>VeChain (VET) at ‘Massively Strong Support’ as Analyst Eyes 300% Rally URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="quantadel1c quantadel1c blockchain advocate exploring the vechain ecosystem&#x27;s innovations and real-world applications. passionate about defi advancements and sustainability. this user is a 32-year-old intj male working in information technology. with a keen interest in the vechain ecosystem, they delve into its developments such as the stargate staking program and community-driven initiatives. analytical and strategic, they leverage their expertise to contribute to and discuss the practical applications of blockchain technology, emphasizing its potential for real-world impact and sustainable practices.">
+          <div class="header-row">
+            <div>
+              <h2>quantadel1c</h2>
+              <div class="handle">@quantadel1c</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain advocate exploring the VeChain ecosystem&#x27;s innovations and real-world applications. Passionate about DeFi advancements and sustainability.</p>
+          <p class="persona">This user is a 32-year-old INTJ male working in Information Technology. With a keen interest in the VeChain ecosystem, they delve into its developments such as the StarGate staking program and community-driven initiatives. Analytical and strategic, they leverage their expertise to contribute to and discuss the practical applications of blockchain technology, emphasizing its potential for real-world impact and sustainable practices.</p>
+          <div class="meta"><span class="tag">following:10</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>1/ On July 2nd, @vechainofficial launched its long-anticipated StarGate staking program. This marked a major milestone in the #VeChain Renaissance roadmap, introducing protocol-level staking, NFT-based participation, and regulatory alignment. Here’s what happened: 2/ What is StarGate staking? StarGate introduced a new on-chain staking model where users stake $VET directly through the VeChainThor blockchain. Participation is represented by NFTs, making the process transparent and verifiable on-chain. 3/ Regulatory clarity set the stage The launch came shortly after the SEC clarified that protocol staking does not constitute a securities offering. VeChain’s model aligned with this, framing rewards as compensation for providing network services, not investment returns. 4/ Designed for both institutional and retail participants With staking ETFs expected by late 2025 and growing institutional interest in crypto, VeChain&#x27;s model appealed to both large-scale and individual participants. NFT-based staking simplified tracking, compliance, and custody requirements. 5/ Part of the VeChain Renaissance upgrade StarGate was a core component of the broader VeChain Renaissance, the most significant protocol upgrade in the network’s history. Key improvements included EVM equivalence, JSON RPC support, upgraded tokenomics, and a new consensus model. 6/ A new staking model with low entry barriers The Weighted Delegated Proof of Stake (wDPoS) model opened staking to anyone with 10,000 VET. This represented a major shift toward decentralization. Staking tiers were introduced, starting at 10,000 VET and scaling up to Mjolnir X at 15.6 million VET. 7/ $15 million in rewards to boost adoption To incentivize early participation, the VeChain Foundation committed 5.48 billion VTHO, valued at approximately $15 million, to enhance APYs over the first six months of the program. Node operators who migrated early received even higher yields. 8/ Tools for estimating rewards Participants were encouraged to use the VeChainStats $VTHO Estimator and Redeno Staking Simulator to calculate potential APYs and select the most suitable tier for their holdings. 9/ Self-custody was required Only VET held in self-custody wallets such as VeWorld was eligible for staking. Participants needed to transfer tokens off centralized exchanges to receive the staking NFT required to activate rewards. 10/ Why this launch matters StarGate combined regulatory compliance, ease of access, #NFT technology, and strong financial incentives into a single staking platform. It laid the foundation for broader adoption by institutions and individual users alike. 11/ Summary On July 2, 2025, VeChain launched: A direct-from-protocol staking model NFT-based staking tiers Enhanced APYs via a $15 million rewards pool A new, accessible consensus model A fully compliant path forward for institutional adoption More at URL</li><li>1/ Vechain is quietly leading a blockchain revolution for enterprises. From supply chains to luxury goods, it’s reshaping industries with real-world utility. Here&#x27;s a look into what sets VeChain apart and what the future could bring. 2/ Enterprise at its Core VeChain isn&#x27;t just another blockchain project. It was built with business in mind. By focusing on supply chain transparency, traceability, and efficiency, #VeChain is already being used in sectors like logistics, agriculture, and high-end retail. 3/ Solving Real Business Problems VeChain addresses real-world challenges such as counterfeit prevention, supply chain inefficiencies, and lack of transparency. Products are given digital identities that allow real-time verification throughout their lifecycle. 4/ Practical Benefits for Enterprises With real-time tracking and authentication tools, companies can streamline operations, reduce errors, and build greater trust with customers. This isn&#x27;t theoretical blockchain use, it’s practical implementation. 5/ $VET Technical Outlook VeChain’s token VET has shown fluctuating price movement. Key technical indicators present mixed signals. Current support is around $0.022, with resistance near $0.030. A break above the 200-day moving average could signal a longer-term bullish trend. 6/ Strategic Partnerships VeChain has partnered with major global enterprises including BMW, Walmart China, and DHL. These aren’t speculative pilots, they’re active collaborations that prove VeChain’s value in real business environments. 7/ Expanding into Sports and Entertainment VeChain’s partnership with UFC is a standout. They&#x27;re rolling out tokenized UFC gloves authenticated on-chain, showing how the technology can extend beyond supply chains into areas like sports collectibles and fan engagement. 8/ Two-Token Model Explained The VeChain ecosystem runs on a dual-token system. VET is used for value transfer and governance. $VTHO is used to pay for transaction fees. This design keeps gas costs predictable and low, which is crucial for businesses managing large-scale operations. 9/ The Renaissance Upgrade The recent Renaissance upgrade is a major step forward. It improves tokenomics, optimizes gas fees, and enhances compatibility with Ethereum&#x27;s virtual machine. This positions VeChain for greater developer adoption and network scalability. 10/ Built with Sustainability in Mind VeChainThor is designed for low energy consumption. It also offers carbon tracking tools, helping companies reduce their environmental impact. As sustainability becomes a key priority, this gives VeChain an important edge. 11/ Real-World Applications VeChain is delivering results in a range of sectors Logistics: Enhancing transparency through real-time shipment tracking Agriculture: Monitoring food quality and safety throughout the supply chain Luxury Goods: Verifying authenticity and preventing counterfeiting 12/ Looking Ahead With its technical upgrades, expanding partnerships, and a clear focus on solving real enterprise problems, VeChain is positioned as a serious contender in the blockchain-for-business space. Its approach is pragmatic, scalable, and already showing results.</li><li>1/ @VeChain is quietly leading the next phase of blockchain adoption. Not with DeFi or trading, but with real-world apps that reward everyday actions like bringing a mug, working out, or shopping sustainably. Here’s how it works. 2/ Mass adoption won’t come from speculation. It will come from simple, meaningful actions that are easy to verify, easy to reward, and useful in daily life. VeChain is building that infrastructure now, and it’s already working. 3/ The VeBetter platform has logged over 20 million real-world actions. These aren’t token swaps or staking events. They’re on-chain proof of behavior: workouts, coffee runs, grocery shopping. 4/ VeChain built its name through supply chain work with PwC, DNV, Walmart China and others. That foundation is still in place. But in 2025, the focus has shifted to consumer apps that scale with people, not just enterprises. 5/ VeBetter is a platform where developers and brands can launch apps that reward real-world actions. Users don’t need to understand crypto. They just act, and get rewarded through tokenized proof of behavior. 6/ Some of the standout apps so far: Mugshot: 1M users bringing reusable mugs Build Your Body (BYB): UFC-backed fitness tracking Greencart: 1M users buying sustainable groceries There are 35+ live apps already. 7/ The key is in the design. A DAO treasury provides shared funding for apps. Developers don’t need to start from scratch. Brands can connect to a system that verifies actions and rewards values-based behavior. 8/ The tech is invisible to the user. AI, sensors, smartwatches, and mobile apps do the work in the background. There are no wallets to manage or tokenomics to study. Just usable apps that create real value. 9/ The numbers are growing fast: 2.7 million users 20 million actions Expanding across fitness, health, sustainability, education This isn’t hype. It’s product-market fit you can measure. 10/ If you’re a builder, VeBetter is an open launchpad with real users. If you’re a brand, it’s a new way to connect with people through meaningful, measurable engagement. 11/ Crypto doesn’t need to be complex to be powerful. VeChain is showing that adoption happens when tech serves people directly. No speculation. No friction. Just better systems for daily life.</li><li>VeChain is quietly doing what most blockchains promise to do: Creating real-world impact at scale. #VeBetter, their consumer incentives platform, just passed 20M+ real-life actions across apps that reward behavior like: Reusing mugs Exercising Buying healthy groceries All verified using IoT + AI + mobile + blockchain, without users needing to touch or even see crypto. No wallets. No tokens. Just real value. Example apps: Mugshot: 1M users, 14M actions Greencart: Sustainable grocery rewards BYB (Build Your Body): Fitness app backed by @ufc 35+ apps live across wellness, food, sustainability This isn’t a testnet fantasy. VeBetter is DAO-governed, fully deployed, and powered by a shared treasury. No VCs pulling strings. No hype-based tokenomics. This is blockchain proving real-world utility, in loyalty, ESG reporting, and beyond. Feels like a glimpse of what Web3 should look like. #VeChain #vefam $VET</li><li>Exciting news! #VeChain is hosting an AMA on X on July 31st with CEO Sunny Lu! They&#x27;ll dive into StarGate, a new staking framework that tokenizes $VET as utility NFTs and unlocks a $15M reward pool within the Renaissance roadmap! Don’t miss it! URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="0xemanresu 0xemanresu vechain advocate exploring defi advancements and ecosystem growth. tech and innovation enthusiast. at 34, this user embodies the intj personality type, showcasing a keen analytical mindset and a strategic approach to technology. working in information technology, they have a strong interest in the vechain ecosystem, often diving deep into topics like cross-chain bridges and staking upgrades. engaging with the community, they share insights and practical advice, reflecting their commitment to fostering a robust defi landscape.">
+          <div class="header-row">
+            <div>
+              <h2>0xemanresu</h2>
+              <div class="handle">@0xemanresu</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">VeChain advocate exploring DeFi advancements and ecosystem growth. Tech and innovation enthusiast.</p>
+          <p class="persona">At 34, this user embodies the INTJ personality type, showcasing a keen analytical mindset and a strategic approach to technology. Working in Information Technology, they have a strong interest in the VeChain ecosystem, often diving deep into topics like cross-chain bridges and staking upgrades. Engaging with the community, they share insights and practical advice, reflecting their commitment to fostering a robust DeFi landscape.</p>
+          <div class="meta"><span class="tag">following:4</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Used VeChain’s fee delegation today, still impressed how simple it is to implement. User signs the tx → backend pays the gas → zero friction onboarding. Perfect for social login &amp;amp; walletless flows.</li><li>Most chains leave you on your own. VeChain actually has programs like VeBetterDAO that give your project a route to long-term support. Reward mechanisms, governance inclusion, token allocations. Worth checking out if you’re building for more than a weekend hackathon.</li><li>VeBetterDAO’s “proof” model is practical. You submit verifiable data. You get tokens. You build incentives that aren’t just speculative. Decoding transitions is crucial for X2Earn dApps as it enables transparent reward systems, verifiable user contributions, and auditability for partners and communities. You can inspect every proof submission, no ABI decoding or raw logs required. To learn how to build your own proof-based dApp, start with the VeChain Builders Academy URL</li><li>Fee delegation should be the default across chains. Users shouldn’t be stopped by missing gas tokens. VeChain got this right. You can set it so even social logins don’t need to touch VTHO. Makes onboarding feel like Web2.</li><li>With 5.48B VTHO up for grabs, how are you approaching VeChain’s new staking era?</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="policatch policatch finance professional exploring the future of defi through the vechain ecosystem. join me on this blockchain journey! at 34, @policatch embodies the intj personality type, driven by a strategic mindset and a deep analytical approach to finance and technology. with a keen interest in the vechain ecosystem, he stays informed on developments like cross-chain bridges and staking upgrades, engaging with the community to discuss innovations and potential growth. his background in finance complements his passion for cryptocurrency, making him a valuable contributor to conversations about the evolving landscape of decentralized finance.">
+          <div class="header-row">
+            <div>
+              <h2>PoliCatch</h2>
+              <div class="handle">@PoliCatch</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Finance professional exploring the future of DeFi through the VeChain ecosystem. Join me on this blockchain journey!</p>
+          <p class="persona">At 34, @PoliCatch embodies the INTJ personality type, driven by a strategic mindset and a deep analytical approach to finance and technology. With a keen interest in the VeChain ecosystem, he stays informed on developments like cross-chain bridges and staking upgrades, engaging with the community to discuss innovations and potential growth. His background in finance complements his passion for cryptocurrency, making him a valuable contributor to conversations about the evolving landscape of decentralized finance.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Dive into the future of crypto with #BlockDAG and game-changers like #Toncoin, #FetchAI, and #VeChain! These altcoins aren&#x27;t just hype; they&#x27;re paving the way for real-world applications and massive growth! Check out why they’re must-buys! #CryptoInvesting #Altcoins…</li><li>Looking for the next big thing in crypto? Check out BlockDAG, VeChain, Sei, &amp;amp; BONK! These players are set to shine in 2025. Don’t miss the boat! #CryptoInvesting #TopPicks #2025Crypto #BlockDAG #VeChain #Sei #BONK #InvestSmart</li><li>Big news! $1.6 trillion asset giant Franklin Templeton is teaming up with VeChain to distribute its tokenized treasury fund! A major win for crypto and traditional finance merging! Who&#x27;s ready to ride this wave? #Tokenization #VeChain #FinanceRevolution #CryptoNews</li><li>Ready for a wild ride? Can Pump Token keep the pace with Unilabs’ $30M AUM and the Vechain buzz? It’s a race against the clock ⏳, but with the right moves, we might just see a thrilling twist! Stay tuned! #Crypto #PumpToken #Unilabs #Vechain #PricePrediction</li><li>VeChain is gearing up for a crucial test as the market teeters on recovery! Will it rise to the occasion or face the crypto music? Stay tuned, because in the world of blockchain, anything can happen! #VeChain #CryptoNews #MarketRecovery #BlockchainBuzz</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="yavbouforever yavbouforever blockchain enthusiast diving deep into vechain staking and giveaways. join me for rewards and community fun! this user is a 34-year-old male intj who works in information technology and has a strong interest in cryptocurrency, particularly vechain. with a strategic mindset, @yavbouforever actively participates in vechain staking events and giveaways, promoting community engagement through re-shares and interactions. he values analytical discussions and is dedicated to helping others navigate the world of $vet and its associated tokens.">
+          <div class="header-row">
+            <div>
+              <h2>Yavbouforever</h2>
+              <div class="handle">@Yavbouforever</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain enthusiast diving deep into VeChain staking and giveaways. Join me for rewards and community fun!</p>
+          <p class="persona">This user is a 34-year-old male INTJ who works in Information Technology and has a strong interest in cryptocurrency, particularly VeChain. With a strategic mindset, @Yavbouforever actively participates in VeChain staking events and giveaways, promoting community engagement through re-shares and interactions. He values analytical discussions and is dedicated to helping others navigate the world of $VET and its associated tokens.</p>
+          <div class="meta"><span class="tag">following:0</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Just claimed 7.2 $B3TR (demo) rewards with @B3DTIME! Sleep well, earn well! URL #B3DTIME #SleepToEarn #Web3 #VeBetterDAO #Vechain</li><li>Just claimed 7.3 $B3TR (demo) rewards with @B3DTIME_VET! Sleep well, earn well! URL #B3DTIME #SleepToEarn #Web3 #VeBetterDAO #Vechain</li><li>Just claimed 6.6 $B3TR (demo) rewards with @B3DTIME_VET! Sleep well, earn well! URL #B3DTIME #SleepToEarn #Web3 #VeBetterDAO #Vechain</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="nj_rx76585 nj_rx76585 blockchain enthusiast and it professional focused on vechain staking and community giveaways. let&#x27;s grow together in the crypto space! at 35, this user embodies the entj personality type, marked by strong leadership qualities and strategic thinking. as an information technology specialist, they have a keen interest in cryptocurrency, specifically vechain and its associated staking and giveaway events. they actively encourage community participation and engagement, often sharing updates and insights to foster a sense of collaboration and excitement in the crypto landscape.">
+          <div class="header-row">
+            <div>
+              <h2>nj_rx76585</h2>
+              <div class="handle">@nj_rx76585</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain enthusiast and IT professional focused on VeChain staking and community giveaways. Let&#x27;s grow together in the crypto space!</p>
+          <p class="persona">At 35, this user embodies the ENTJ personality type, marked by strong leadership qualities and strategic thinking. As an Information Technology specialist, they have a keen interest in cryptocurrency, specifically VeChain and its associated staking and giveaway events. They actively encourage community participation and engagement, often sharing updates and insights to foster a sense of collaboration and excitement in the crypto landscape.</p>
+          <div class="meta"><span class="tag">following:2</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Just offset 5 CY on @PauseYourCarbon Doing my part to fight climate change with #VeChain and earn B3TR rewards! Let’s build a greener future together! #PauseYourCarbon #B3TR #GreenBlockchain</li><li>I have successfully uploaded a receipt on Justote and will get rewarded with B3TR if approved. URL #Vechain #B3TR</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="ratverseio ratverseio crypto enthusiast diving deep into vechain staking &amp; exciting giveaways! join me for the latest updates and community fun. at 24, this male marketing professional embodies the enfp spirit, thriving on creativity and connection. he is deeply engaged with the vechain community, excited about the stargate staking platform and its potential to reward participants. his dynamic personality drives him to share updates and encourage others to join in on giveaways, fostering a vibrant and interactive online space.">
+          <div class="header-row">
+            <div>
+              <h2>RatVerseio</h2>
+              <div class="handle">@RatVerseio</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Crypto enthusiast diving deep into VeChain staking &amp; exciting giveaways! Join me for the latest updates and community fun.</p>
+          <p class="persona">At 24, this male marketing professional embodies the ENFP spirit, thriving on creativity and connection. He is deeply engaged with the VeChain community, excited about the StarGate staking platform and its potential to reward participants. His dynamic personality drives him to share updates and encourage others to join in on giveaways, fostering a vibrant and interactive online space.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>We&#x27;re trying our luck on @Ve_Lottery with 10 free tickets from VeBetterDAO participation! With a current 18,203 B3TR Jackpot ! Lucky numbers are drawn Sunday 7pm CET! URL URL</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="alexanderj184 alexanderj184 vechain advocate exploring the future of blockchain through staking and giveaways. join me in the journey! at 34, this intj user thrives in the realm of information technology, focusing on innovative solutions like vechain staking. with a penchant for strategic thinking, he engages deeply with the cryptocurrency community, sharing insights and announcing exciting giveaways to foster participation and awareness. his analytical approach helps him navigate the complexities of the blockchain world while encouraging others to join in the rewards of decentralized finance.">
+          <div class="header-row">
+            <div>
+              <h2>AlexanderJ184</h2>
+              <div class="handle">@AlexanderJ184</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">VeChain advocate exploring the future of blockchain through staking and giveaways. Join me in the journey!</p>
+          <p class="persona">At 34, this INTJ user thrives in the realm of Information Technology, focusing on innovative solutions like VeChain staking. With a penchant for strategic thinking, he engages deeply with the cryptocurrency community, sharing insights and announcing exciting giveaways to foster participation and awareness. His analytical approach helps him navigate the complexities of the blockchain world while encouraging others to join in the rewards of decentralized finance.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Just claimed 7.1 $B3TR (demo) rewards with @B3DTIME! Sleep well, earn well! URL #B3DTIME #SleepToEarn #Web3 #VeBetterDAO #Vechain</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="raelsworld1 raelsworld1 techie &amp; blockchain enthusiast diving into vechain staking &amp; giveaways! join me on this journey! #vechain #cryptocommunity at 34, this user embodies the analytical and strategic traits of an intj, leveraging their background in information technology to explore the potentials of vechain. they are deeply invested in the cryptocurrency space, particularly the stargate staking platform, actively participating in community events and encouraging others to join in through engaging tweets about staking rewards, giveaways, and the benefits of $vet and its tokens.">
+          <div class="header-row">
+            <div>
+              <h2>Raelsworld1</h2>
+              <div class="handle">@Raelsworld1</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Techie &amp; blockchain enthusiast diving into VeChain staking &amp; giveaways! Join me on this journey! #VeChain #CryptoCommunity</p>
+          <p class="persona">At 34, this user embodies the analytical and strategic traits of an INTJ, leveraging their background in Information Technology to explore the potentials of VeChain. They are deeply invested in the cryptocurrency space, particularly the StarGate staking platform, actively participating in community events and encouraging others to join in through engaging tweets about staking rewards, giveaways, and the benefits of $VET and its tokens.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Just claimed 7.1 $B3TR (demo) rewards with @B3DTIME! Sleep well, earn well! URL #B3DTIME #SleepToEarn #Web3 #VeBetterDAO #Vechain</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="ailmemon55529 ailmemon55529 blockchain advocate exploring the potential of vechain staking and giveaways. join me for updates and community fun focused on $vet! at 34, this user embodies the intj personality, leveraging their analytical skills in the information technology field. they are deeply invested in the vechain ecosystem, actively participating in staking and giveaway events, promoting community engagement through their tweets. with a focus on strategic participation, they enjoy sharing the latest opportunities and fostering connections among crypto enthusiasts.">
+          <div class="header-row">
+            <div>
+              <h2>AilMemon55529</h2>
+              <div class="handle">@AilMemon55529</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain advocate exploring the potential of VeChain staking and giveaways. Join me for updates and community fun focused on $VET!</p>
+          <p class="persona">At 34, this user embodies the INTJ personality, leveraging their analytical skills in the Information Technology field. They are deeply invested in the VeChain ecosystem, actively participating in staking and giveaway events, promoting community engagement through their tweets. With a focus on strategic participation, they enjoy sharing the latest opportunities and fostering connections among crypto enthusiasts.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>I have successfully uploaded a receipt on Justote and will get rewarded with B3TR if approved. URL #Vechain #B3TR</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="cryptodelicvet cryptodelicvet blockchain advocate and tech lover diving deep into vechain staking &amp; giveaways. join me for the latest updates! at 34, this user embodies the intj personality with a strategic mindset and a passion for technology. working in information technology, they leverage their expertise to explore the intricacies of vechain&#x27;s ecosystem, particularly the stargate staking platform. engaging actively with the community, they frequently share insights, promote participation in giveaways, and encourage others to embrace sustainable practices through blockchain technology.">
+          <div class="header-row">
+            <div>
+              <h2>CryptodelicVET</h2>
+              <div class="handle">@CryptodelicVET</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain advocate and tech lover diving deep into VeChain staking &amp; giveaways. Join me for the latest updates!</p>
+          <p class="persona">At 34, this user embodies the INTJ personality with a strategic mindset and a passion for technology. Working in Information Technology, they leverage their expertise to explore the intricacies of VeChain&#x27;s ecosystem, particularly the StarGate staking platform. Engaging actively with the community, they frequently share insights, promote participation in giveaways, and encourage others to embrace sustainable practices through blockchain technology.</p>
+          <div class="meta"><span class="tag">following:9</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>#VeChain $VET #VeBetterDAO just earned 4.80 B3TR from EVearn after charging my car and saving 23.8 kg of CO2!</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="goldnshamrock goldnshamrock crypto enthusiast sharing insights on vechain staking and giveaways. join me for the latest updates and prize draws! 🚀 this user is a 34-year-old male finance professional with an intj personality, deeply interested in the world of cryptocurrency, particularly vechain. they engage actively with the community by sharing announcements about staking platforms and encouraging participation in giveaways, fostering a collaborative environment among fellow crypto enthusiasts.">
+          <div class="header-row">
+            <div>
+              <h2>GoldnShamrock</h2>
+              <div class="handle">@GoldnShamrock</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Crypto enthusiast sharing insights on VeChain staking and giveaways. Join me for the latest updates and prize draws! 🚀</p>
+          <p class="persona">This user is a 34-year-old male finance professional with an INTJ personality, deeply interested in the world of cryptocurrency, particularly VeChain. They engage actively with the community by sharing announcements about staking platforms and encouraging participation in giveaways, fostering a collaborative environment among fellow crypto enthusiasts.</p>
+          <div class="meta"><span class="tag">following:6</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Folks need to pay attention to the FREE ALPHA hidden in plain sight - simply spend an hour or two looking into all things $B3TR &amp;amp; $VET like I did last December and ride the next wave ‍ #VeBetterDAO #VET #B3TR $VTHO $VOT3</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="pchongsatitkul pchongsatitkul blockchain advocate and vechain enthusiast. join me in exploring staking opportunities and exciting giveaways! #vet at 34, this male intj user thrives in the information technology field, leveraging his analytical skills to navigate the complexities of cryptocurrency. he actively participates in vechain staking and giveaway events, sharing insights and fostering community involvement through strategic tweets that encourage others to engage with the ecosystem. his passion for blockchain technology is matched by a commitment to educating others about the potential of sustainable finance.">
+          <div class="header-row">
+            <div>
+              <h2>PChongsatitkul</h2>
+              <div class="handle">@PChongsatitkul</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Blockchain advocate and VeChain enthusiast. Join me in exploring staking opportunities and exciting giveaways! #VET</p>
+          <p class="persona">At 34, this male INTJ user thrives in the Information Technology field, leveraging his analytical skills to navigate the complexities of cryptocurrency. He actively participates in VeChain staking and giveaway events, sharing insights and fostering community involvement through strategic tweets that encourage others to engage with the ecosystem. His passion for blockchain technology is matched by a commitment to educating others about the potential of sustainable finance.</p>
+          <div class="meta"><span class="tag">following:5</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Just claimed 7.4 $B3TR (demo) rewards with @B3DTIME_VET! Sleep well, earn well! URL #B3DTIME #SleepToEarn #Web3 #VeBetterDAO #Vechain</li></ul>
+          </div>
+        </article>
+        
+
+        <article class="card" data-category="Unspecified" data-search="vechaindekker vechaindekker crypto enthusiast focused on vechain staking and giveaways. join me for the latest opportunities in $vet and beyond! at 34, this male entp thrives in the fast-paced world of information technology, where he combines his analytical skills with a keen interest in blockchain technology. engaging actively with the vechain community, he shares updates on staking platforms and promotes participation in giveaway events, encouraging others to join in the excitement of earning rewards through $vet and its tokens.">
+          <div class="header-row">
+            <div>
+              <h2>VechainDekker</h2>
+              <div class="handle">@VechainDekker</div>
+            </div>
+            <div class="pill">Unspecified</div>
+          </div>
+          <p class="bio">Crypto enthusiast focused on VeChain staking and giveaways. Join me for the latest opportunities in $VET and beyond!</p>
+          <p class="persona">At 34, this male ENTP thrives in the fast-paced world of Information Technology, where he combines his analytical skills with a keen interest in blockchain technology. Engaging actively with the VeChain community, he shares updates on staking platforms and promotes participation in giveaway events, encouraging others to join in the excitement of earning rewards through $VET and its tokens.</p>
+          <div class="meta"><span class="tag">following:3</span></div>
+          <div class="categories"><strong>All categories:</strong> Unspecified</div>
+          <div class="tweets">
+            <strong>Sample tweets</strong>
+            <ul><li>Just claimed 7.4 $B3TR (demo) rewards with @B3DTIME_VET! Sleep well, earn well! URL #B3DTIME #SleepToEarn #Web3 #VeBetterDAO #Vechain</li></ul>
+          </div>
+        </article>
+        
+    </section>
+  </div>
+
+  <script>
+    const searchBox = document.getElementById("searchBox");
+    const categoryFilter = document.getElementById("categoryFilter");
+    const cards = Array.from(document.querySelectorAll(".card"));
+
+    function applyFilters() {
+      const q = (searchBox.value || "").toLowerCase().trim();
+      const cat = categoryFilter.value;
+      for (const card of cards) {
+        const text = card.dataset.search || "";
+        const c = card.dataset.category || "";
+        const matchesText = !q || text.includes(q);
+        const matchesCat = cat === "all" || c === cat;
+        card.classList.toggle("hidden", !(matchesText && matchesCat));
+      }
+    }
+
+    searchBox.addEventListener("input", applyFilters);
+    categoryFilter.addEventListener("change", applyFilters);
+  </script>
+</body>
+</html>

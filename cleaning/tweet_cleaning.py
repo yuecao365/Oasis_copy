@@ -9,7 +9,7 @@ from typing import Dict, List, Set
 # Config
 # =========================
 
-INPUT_DIR = "/Users/sichengxu/Downloads/twitter"
+INPUT_DIR = "data/raw/twitter"
 OUTPUT_DIR = "data/processed"
 
 MIN_TOKEN_LEN = 20          # skip very short tweets
@@ -50,6 +50,11 @@ def clean_text(text: str) -> str:
     text = EMOJI_PATTERN.sub("", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+def normalize_numbers(text: str) -> str:
+    """Replace digit sequences (including decimals) with NUM for dedup; template tweets that only differ by numbers then get high Jaccard."""
+    return re.sub(r"\d+\.?\d*", "NUM", text)
+
 
 def tokenize(text: str) -> List[str]:
     return re.findall(r"\b\w+\b", text.lower())
@@ -96,7 +101,8 @@ def deduplicate_tweets(tweets: List[Dict]):
     for idx, tw in enumerate(tweets):
         raw = tw.get("text", "")
         clean = clean_text(raw)
-        tokens = tokenize(clean)
+        # Use number-normalized text for tokenization so template tweets that only differ by numbers (e.g. "Popular crypto latest prices: $PEPE 0.0000143...") get high Jaccard and are deduplicated
+        tokens = tokenize(normalize_numbers(clean))
 
         tw["clean_text"] = clean
         tw["tokens"] = tokens

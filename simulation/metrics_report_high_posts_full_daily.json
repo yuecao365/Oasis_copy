@@ -1,0 +1,43 @@
+{
+  "inputs": {
+    "db": "data/simu_db/yaml_gpt/sweep_high_posts.db",
+    "test_csv": "persona_generation/outputs/test_tweets.csv",
+    "personas_csv": "persona_generation/outputs/user_personas.csv",
+    "filtered_jsonl": "data/processed/filtered_tweets.jsonl",
+    "timestep_hours": 24.0,
+    "split_info": "persona_generation/outputs/split_info.json"
+  },
+  "coverage": {
+    "persona_user_count": 60,
+    "gt_active_users": 51,
+    "sim_active_users": 48
+  },
+  "user_activity_fit": {
+    "spearman_posts_per_user": 0.1500573271320433,
+    "jsd_posts_per_user": 0.30061494096374264,
+    "top10_overlap": 0.3,
+    "top20_overlap": 0.45
+  },
+  "temporal_fit": {
+    "day_of_week_jsd": 0.029135395265125787,
+    "cumulative_posts_daily_rmse": 70.97838427636091,
+    "cumulative_posts_daily_nrmse": 0.27618048356560665
+  },
+  "engagement_fit": {
+    "gt_mean_likes_per_post": 1.5919117647058822,
+    "gt_mean_retweets_per_post": 0.4117647058823529,
+    "gt_mean_replies_per_post": 0.3860294117647059,
+    "gt_mean_quotes_per_post": 0.022058823529411766,
+    "gt_total_retweets": 112,
+    "gt_total_quotes": 6,
+    "sim_mean_likes_per_post": 0.18243243243243243,
+    "sim_mean_shares_per_post": 0.02702702702702703,
+    "sim_mean_replies_per_post": 0.08108108108108109,
+    "sim_mean_reposts_per_post": 0.02702702702702703,
+    "sim_mean_quotes_per_post": 0.0,
+    "sim_total_reposts": 4,
+    "sim_total_quotes": 0,
+    "gt_total_posts": 272,
+    "sim_total_posts": 148
+  }
+}
