@@ -123,6 +123,16 @@ def topk_overlap(a_scores: Dict[str, float], b_scores: Dict[str, float], k: int)
     return len(a_top & b_top) / float(k)
 
 
+def topk_overlap_positive(a_scores: Dict[str, float], b_scores: Dict[str, float], k: int) -> float:
+    """
+    Top-K overlap on strictly-positive scores only.
+    Avoids tie artifacts when one side is all zeros.
+    """
+    a_pos = {u: v for u, v in a_scores.items() if float(v) > 0.0}
+    b_pos = {u: v for u, v in b_scores.items() if float(v) > 0.0}
+    return topk_overlap(a_pos, b_pos, k)
+
+
 def graph_density(nodes: int, edges: int, directed: bool = True) -> float:
     if nodes <= 1:
         return 0.0
@@ -192,6 +202,7 @@ def load_persona_mapping(personas_csv: Path) -> Dict[int, str]:
 
 def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
     per_user_posts = Counter()
+    per_user_total_engagement = Counter()
     gt_weekday = [0] * 7
     gt_posts_ts: List[datetime] = []
     likes = []
@@ -210,12 +221,18 @@ def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
                 if ts is not None:
                     gt_weekday[ts.weekday()] += 1
                     gt_posts_ts.append(ts)
-                likes.append(_safe_int(row.get("likes"), 0))
-                retweets.append(_safe_int(row.get("retweets"), 0))
-                replies.append(_safe_int(row.get("replies"), 0))
-                quotes.append(_safe_int(row.get("quotes"), 0))
+                nlikes = _safe_int(row.get("likes"), 0)
+                nretweets = _safe_int(row.get("retweets"), 0)
+                nreplies = _safe_int(row.get("replies"), 0)
+                nquotes = _safe_int(row.get("quotes"), 0)
+                likes.append(nlikes)
+                retweets.append(nretweets)
+                replies.append(nreplies)
+                quotes.append(nquotes)
+                per_user_total_engagement[uname] += (nlikes + nretweets + nreplies + nquotes)
     return {
         "per_user_posts": dict(per_user_posts),
+        "eng_total_per_user": dict(per_user_total_engagement),
         "weekday_hist": gt_weekday,
         "post_timestamps": gt_posts_ts,
         "likes": likes,
@@ -230,6 +247,7 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     cur = con.cursor()
 
     sim_posts_by_user = Counter()
+    sim_total_engagement_by_user = Counter()
     sim_hour = [0] * 24
     sim_post_steps: List[float] = []
     sim_eng_like = []
@@ -248,10 +266,13 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     )
     sim_posts = cur.fetchall()
     post_ids = []
+    post_user = {}
+    post_like = {}
     for post_id, user_id, created_at, nlikes, nshares in sim_posts:
         uname = agent_to_username.get(_safe_int(user_id, -1))
         if not uname:
             continue
+        pid = _safe_int(post_id, -1)
         sim_posts_by_user[uname] += 1
         step = _safe_float(created_at, 0.0)
         sim_post_steps.append(step)
@@ -259,7 +280,9 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
         sim_hour[hour] += 1
         sim_eng_like.append(_safe_int(nlikes, 0))
         sim_eng_share.append(_safe_int(nshares, 0))
-        post_ids.append(_safe_int(post_id, -1))
+        post_ids.append(pid)
+        post_user[pid] = uname
+        post_like[pid] = _safe_int(nlikes, 0)
 
     # Comment counts per post.
     sim_eng_replies = []
@@ -292,9 +315,17 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
             quote_count[_safe_int(opid, -1)] = _safe_int(qcount, 0)
 
         for pid in post_ids:
-            sim_eng_replies.append(_safe_int(comment_count.get(pid, 0), 0))
-            sim_eng_reposts.append(_safe_int(repost_count.get(pid, 0), 0))
-            sim_eng_quotes.append(_safe_int(quote_count.get(pid, 0), 0))
+            nreplies = _safe_int(comment_count.get(pid, 0), 0)
+            nreposts = _safe_int(repost_count.get(pid, 0), 0)
+            nquotes = _safe_int(quote_count.get(pid, 0), 0)
+            sim_eng_replies.append(nreplies)
+            sim_eng_reposts.append(nreposts)
+            sim_eng_quotes.append(nquotes)
+            uname = post_user.get(pid)
+            if uname:
+                sim_total_engagement_by_user[uname] += (
+                    _safe_int(post_like.get(pid, 0), 0) + nreplies + nreposts + nquotes
+                )
 
     # Follow graph in simulation (map to usernames).
     cur.execute(
@@ -313,6 +344,7 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     con.close()
     return {
         "per_user_posts": dict(sim_posts_by_user),
+        "eng_total_per_user": dict(sim_total_engagement_by_user),
         "hour_hist": sim_hour,
         "post_steps": sim_post_steps,
         "likes": sim_eng_like,
@@ -573,6 +605,56 @@ def main() -> None:
             "percentile_hist_jsd": js_divergence(gt_hist, sim_hist),
         }
 
+    # User-level engagement ranking fit (additive to existing engagement diagnostics).
+    # Components used: likes + replies + reposts + quotes.
+    gt_eng_total_map = {u: float(gt["eng_total_per_user"].get(u, 0.0)) for u in users}
+    sim_eng_total_map = {u: float(sim["eng_total_per_user"].get(u, 0.0)) for u in users}
+    gt_eng_avg_map = {
+        u: (
+            gt_eng_total_map[u] / float(gt["per_user_posts"].get(u, 0))
+            if gt["per_user_posts"].get(u, 0) > 0 else 0.0
+        )
+        for u in users
+    }
+    sim_eng_avg_map = {
+        u: (
+            sim_eng_total_map[u] / float(sim["per_user_posts"].get(u, 0))
+            if sim["per_user_posts"].get(u, 0) > 0 else 0.0
+        )
+        for u in users
+    }
+
+    gt_eng_total_vec = [gt_eng_total_map[u] for u in users]
+    sim_eng_total_vec = [sim_eng_total_map[u] for u in users]
+    gt_eng_avg_vec = [gt_eng_avg_map[u] for u in users]
+    sim_eng_avg_vec = [sim_eng_avg_map[u] for u in users]
+
+    gt_top_shares = top_share_curve(gt_eng_total_vec, [0.10, 0.20])
+    sim_top_shares = top_share_curve(sim_eng_total_vec, [0.10, 0.20])
+    engagement_rank_fit = {
+        "scope": "user",
+        "components": ["likes", "replies", "reposts", "quotes"],
+        "topk_values": [10, 20],
+        "gt_total_engagement": float(sum(gt_eng_total_vec)),
+        "sim_total_engagement": float(sum(sim_eng_total_vec)),
+        "spearman_total_engagement_per_user": spearman(sim_eng_total_vec, gt_eng_total_vec),
+        "jsd_total_engagement_per_user": js_divergence(sim_eng_total_vec, gt_eng_total_vec),
+        "spearman_engagement_per_post_per_user": spearman(sim_eng_avg_vec, gt_eng_avg_vec),
+        "jsd_engagement_per_post_per_user": js_divergence(sim_eng_avg_vec, gt_eng_avg_vec),
+        "topk_overlap_total_engagement_per_user": {
+            "top10": topk_overlap_positive(sim_eng_total_map, gt_eng_total_map, 10),
+            "top20": topk_overlap_positive(sim_eng_total_map, gt_eng_total_map, 20),
+        },
+        "topk_overlap_engagement_per_post_per_user": {
+            "top10": topk_overlap_positive(sim_eng_avg_map, gt_eng_avg_map, 10),
+            "top20": topk_overlap_positive(sim_eng_avg_map, gt_eng_avg_map, 20),
+        },
+        "gt_top10pct_share_total_engagement": gt_top_shares[0] if gt_top_shares else 0.0,
+        "sim_top10pct_share_total_engagement": sim_top_shares[0] if sim_top_shares else 0.0,
+        "gt_top20pct_share_total_engagement": gt_top_shares[1] if len(gt_top_shares) > 1 else 0.0,
+        "sim_top20pct_share_total_engagement": sim_top_shares[1] if len(sim_top_shares) > 1 else 0.0,
+    }
+
     report = {
         "inputs": {
             "db": str(args.db),
@@ -604,6 +686,7 @@ def main() -> None:
             "top_share_curve": engagement_concentration,
             "percentile_rank_jsd": engagement_percentile_jsd,
         },
+        "engagement_rank_fit": engagement_rank_fit,
     }
 
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -635,6 +718,32 @@ def main() -> None:
         "## Engagement Fit",
         f"- GT total posts: {report['engagement_fit']['gt_total_posts']}",
         f"- Sim total posts: {report['engagement_fit']['sim_total_posts']}",
+        "",
+        "## Engagement Rank Fit (User-level)",
+        f"- Components: {', '.join(report['engagement_rank_fit']['components'])}",
+        f"- Top-K values: {', '.join(str(k) for k in report['engagement_rank_fit']['topk_values'])}",
+        f"- Spearman (total engagement/user): "
+        f"{report['engagement_rank_fit']['spearman_total_engagement_per_user']:.4f}",
+        f"- JSD (total engagement/user): "
+        f"{report['engagement_rank_fit']['jsd_total_engagement_per_user']:.4f}",
+        f"- Spearman (engagement-per-post per user): "
+        f"{report['engagement_rank_fit']['spearman_engagement_per_post_per_user']:.4f}",
+        f"- JSD (engagement-per-post per user): "
+        f"{report['engagement_rank_fit']['jsd_engagement_per_post_per_user']:.4f}",
+        f"- Top-10 overlap (total engagement/user): "
+        f"{report['engagement_rank_fit']['topk_overlap_total_engagement_per_user']['top10']:.4f}",
+        f"- Top-20 overlap (total engagement/user): "
+        f"{report['engagement_rank_fit']['topk_overlap_total_engagement_per_user']['top20']:.4f}",
+        f"- Top-10 overlap (engagement-per-post/user): "
+        f"{report['engagement_rank_fit']['topk_overlap_engagement_per_post_per_user']['top10']:.4f}",
+        f"- Top-20 overlap (engagement-per-post/user): "
+        f"{report['engagement_rank_fit']['topk_overlap_engagement_per_post_per_user']['top20']:.4f}",
+        f"- GT/Sim top-10% share of total engagement: "
+        f"{report['engagement_rank_fit']['gt_top10pct_share_total_engagement']:.4f} / "
+        f"{report['engagement_rank_fit']['sim_top10pct_share_total_engagement']:.4f}",
+        f"- GT/Sim top-20% share of total engagement: "
+        f"{report['engagement_rank_fit']['gt_top20pct_share_total_engagement']:.4f} / "
+        f"{report['engagement_rank_fit']['sim_top20pct_share_total_engagement']:.4f}",
         "",
         f"- Top-share curve RMSE (likes): "
         f"{report['engagement_fit']['top_share_curve']['likes']['top_share_curve_rmse']:.4f}",
