@@ -17,14 +17,14 @@ TRAIN_YEAR = 2025
 TRAIN_MONTH = 7  # July
 TEST_YEAR = 2025
 TEST_MONTH = 8   # August
-TRAIN_START_DATE = "2025-05-01T00:00:00+00:00"
+TRAIN_START_DATE = "2025-04-01T00:00:00+00:00"
 TRAIN_END_DATE = "2025-08-01T00:00:00+00:00"
 TEST_START_DATE = "2025-08-01T00:00:00+00:00"
 TEST_END_DATE = "2025-09-01T00:00:00+00:00"
 MIN_TRAIN_TWEETS = 1
 MIN_TEST_TWEETS = 1
 
-DRY_RUN = False   # If True, skip all OpenAI and Twitter API calls
+DRY_RUN = True   # If True, skip all OpenAI and Twitter API calls
 
 # Ranking and persona
 TOP_N = 10  # Number of top users per cluster
