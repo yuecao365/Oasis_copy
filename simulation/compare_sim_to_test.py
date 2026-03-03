@@ -10,10 +10,13 @@ import csv
 import json
 import math
 import sqlite3
-from collections import Counter, defaultdict
-from datetime import datetime
+import re
+from collections import Counter
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
+
+from yaml import safe_load
 
 
 def _safe_float(v, default=0.0) -> float:
@@ -120,6 +123,16 @@ def topk_overlap(a_scores: Dict[str, float], b_scores: Dict[str, float], k: int)
     return len(a_top & b_top) / float(k)
 
 
+def topk_overlap_positive(a_scores: Dict[str, float], b_scores: Dict[str, float], k: int) -> float:
+    """
+    Top-K overlap on strictly-positive scores only.
+    Avoids tie artifacts when one side is all zeros.
+    """
+    a_pos = {u: v for u, v in a_scores.items() if float(v) > 0.0}
+    b_pos = {u: v for u, v in b_scores.items() if float(v) > 0.0}
+    return topk_overlap(a_pos, b_pos, k)
+
+
 def graph_density(nodes: int, edges: int, directed: bool = True) -> float:
     if nodes <= 1:
         return 0.0
@@ -137,6 +150,45 @@ def graph_reciprocity(edge_set: set[Tuple[str, str]]) -> float:
     return mutual / len(edge_set)
 
 
+def top_share_curve(values: List[float], cutoffs: List[float]) -> List[float]:
+    arr = [max(0.0, float(v)) for v in values]
+    n = len(arr)
+    if n == 0:
+        return [0.0] * len(cutoffs)
+    arr_sorted = sorted(arr, reverse=True)
+    total = sum(arr_sorted)
+    if total <= 0.0:
+        return [0.0] * len(cutoffs)
+    out = []
+    for c in cutoffs:
+        frac = max(0.0, min(1.0, float(c)))
+        k = max(1, int(math.ceil(frac * n)))
+        out.append(sum(arr_sorted[:k]) / total)
+    return out
+
+
+def percentile_rank_histogram(values: List[float], bins: int = 10) -> List[int]:
+    vals = [max(0.0, float(v)) for v in values]
+    n = len(vals)
+    if bins <= 0:
+        return []
+    if n == 0:
+        return [0] * bins
+
+    ranks = _rankdata(vals)
+    if n == 1:
+        percentiles = [0.0]
+    else:
+        percentiles = [(r - 1.0) / (n - 1.0) for r in ranks]
+
+    hist = [0] * bins
+    for p in percentiles:
+        idx = int(math.floor(p * bins))
+        idx = max(0, min(bins - 1, idx))
+        hist[idx] += 1
+    return hist
+
+
 def load_persona_mapping(personas_csv: Path) -> Dict[int, str]:
     out: Dict[int, str] = {}
     with personas_csv.open("r", encoding="utf-8", newline="") as f:
@@ -150,7 +202,8 @@ def load_persona_mapping(personas_csv: Path) -> Dict[int, str]:
 
 def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
     per_user_posts = Counter()
-    gt_hour = [0] * 24
+    per_user_total_engagement = Counter()
+    gt_weekday = [0] * 7
     gt_posts_ts: List[datetime] = []
     likes = []
     retweets = []
@@ -166,15 +219,21 @@ def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
                 per_user_posts[uname] += 1
                 ts = _parse_ts(row.get("timestamp", ""))
                 if ts is not None:
-                    gt_hour[ts.hour] += 1
+                    gt_weekday[ts.weekday()] += 1
                     gt_posts_ts.append(ts)
-                likes.append(_safe_int(row.get("likes"), 0))
-                retweets.append(_safe_int(row.get("retweets"), 0))
-                replies.append(_safe_int(row.get("replies"), 0))
-                quotes.append(_safe_int(row.get("quotes"), 0))
+                nlikes = _safe_int(row.get("likes"), 0)
+                nretweets = _safe_int(row.get("retweets"), 0)
+                nreplies = _safe_int(row.get("replies"), 0)
+                nquotes = _safe_int(row.get("quotes"), 0)
+                likes.append(nlikes)
+                retweets.append(nretweets)
+                replies.append(nreplies)
+                quotes.append(nquotes)
+                per_user_total_engagement[uname] += (nlikes + nretweets + nreplies + nquotes)
     return {
         "per_user_posts": dict(per_user_posts),
-        "hour_hist": gt_hour,
+        "eng_total_per_user": dict(per_user_total_engagement),
+        "weekday_hist": gt_weekday,
         "post_timestamps": gt_posts_ts,
         "likes": likes,
         "retweets": retweets,
@@ -188,6 +247,7 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     cur = con.cursor()
 
     sim_posts_by_user = Counter()
+    sim_total_engagement_by_user = Counter()
     sim_hour = [0] * 24
     sim_post_steps: List[float] = []
     sim_eng_like = []
@@ -206,10 +266,13 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     )
     sim_posts = cur.fetchall()
     post_ids = []
+    post_user = {}
+    post_like = {}
     for post_id, user_id, created_at, nlikes, nshares in sim_posts:
         uname = agent_to_username.get(_safe_int(user_id, -1))
         if not uname:
             continue
+        pid = _safe_int(post_id, -1)
         sim_posts_by_user[uname] += 1
         step = _safe_float(created_at, 0.0)
         sim_post_steps.append(step)
@@ -217,7 +280,9 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
         sim_hour[hour] += 1
         sim_eng_like.append(_safe_int(nlikes, 0))
         sim_eng_share.append(_safe_int(nshares, 0))
-        post_ids.append(_safe_int(post_id, -1))
+        post_ids.append(pid)
+        post_user[pid] = uname
+        post_like[pid] = _safe_int(nlikes, 0)
 
     # Comment counts per post.
     sim_eng_replies = []
@@ -250,9 +315,17 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
             quote_count[_safe_int(opid, -1)] = _safe_int(qcount, 0)
 
         for pid in post_ids:
-            sim_eng_replies.append(_safe_int(comment_count.get(pid, 0), 0))
-            sim_eng_reposts.append(_safe_int(repost_count.get(pid, 0), 0))
-            sim_eng_quotes.append(_safe_int(quote_count.get(pid, 0), 0))
+            nreplies = _safe_int(comment_count.get(pid, 0), 0)
+            nreposts = _safe_int(repost_count.get(pid, 0), 0)
+            nquotes = _safe_int(quote_count.get(pid, 0), 0)
+            sim_eng_replies.append(nreplies)
+            sim_eng_reposts.append(nreposts)
+            sim_eng_quotes.append(nquotes)
+            uname = post_user.get(pid)
+            if uname:
+                sim_total_engagement_by_user[uname] += (
+                    _safe_int(post_like.get(pid, 0), 0) + nreplies + nreposts + nquotes
+                )
 
     # Follow graph in simulation (map to usernames).
     cur.execute(
@@ -271,6 +344,7 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     con.close()
     return {
         "per_user_posts": dict(sim_posts_by_user),
+        "eng_total_per_user": dict(sim_total_engagement_by_user),
         "hour_hist": sim_hour,
         "post_steps": sim_post_steps,
         "likes": sim_eng_like,
@@ -280,36 +354,6 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
         "quotes": sim_eng_quotes,
         "follow_edges": sim_edges,
     }
-
-
-def load_gt_reply_edges(filtered_jsonl: Path, test_csv: Path, persona_usernames: set[str]) -> set[Tuple[str, str]]:
-    test_ids = set()
-    with test_csv.open("r", encoding="utf-8", newline="") as f:
-        for row in csv.DictReader(f):
-            tid = (row.get("id") or "").strip()
-            if tid:
-                test_ids.add(tid)
-
-    edges = set()
-    with filtered_jsonl.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            tid = str(obj.get("id", ""))
-            if tid not in test_ids:
-                continue
-            if not bool(obj.get("isReply", False)):
-                continue
-            a = str((obj.get("author") or {}).get("userName", "")).strip().lower()
-            b = str(obj.get("inReplyToUsername", "")).strip().lower()
-            if a and b and a != b and a in persona_usernames and b in persona_usernames:
-                edges.add((a, b))
-    return edges
 
 
 def cumulative_curve_from_datetimes(ts_list: List[datetime], bins: int = 24) -> List[float]:
@@ -354,6 +398,83 @@ def cumulative_curve_from_steps(steps: List[float], bins: int = 24) -> List[floa
     return out
 
 
+def cumulative_curve_from_day_offsets(day_offsets: List[int], bins: int) -> List[float]:
+    if bins <= 0:
+        return []
+    hist = [0] * bins
+    for d in day_offsets:
+        pos = max(0, min(bins - 1, int(d)))
+        hist[pos] += 1
+    out = []
+    run = 0
+    for h in hist:
+        run += h
+        out.append(float(run))
+    return out
+
+
+def day_offsets_from_datetimes(ts_list: List[datetime]) -> List[int]:
+    if not ts_list:
+        return []
+    tmin = min(ts_list)
+    return [max(0, int((t - tmin).total_seconds() // 86400)) for t in ts_list]
+
+
+def day_offsets_from_steps(steps: List[float], timestep_hours: float) -> List[int]:
+    if not steps:
+        return []
+    smin = min(steps)
+    return [
+        max(0, int(math.floor(((s - smin) * timestep_hours) / 24.0)))
+        for s in steps
+    ]
+
+
+def weekday_hist_from_steps(
+    steps: List[float],
+    timestep_hours: float,
+    simulation_start: datetime | None,
+) -> List[int]:
+    hist = [0] * 7
+    if not steps or simulation_start is None:
+        return hist
+    for s in steps:
+        dt = simulation_start + timedelta(hours=float(s) * timestep_hours)
+        hist[dt.weekday()] += 1
+    return hist
+
+
+def _slug(v: object) -> str:
+    s = str(v)
+    s = re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
+    return s or "na"
+
+
+def _build_archive_stem(db_path: Path, timestep_hours: float, sim_config_path: Path) -> str:
+    db_stem = _slug(db_path.stem)
+    parts = [f"db-{db_stem}", f"ts-{_slug(timestep_hours)}"]
+
+    try:
+        cfg = safe_load(sim_config_path.read_text(encoding="utf-8")) or {}
+        sim = cfg.get("simulation", {}) or {}
+        wanted = {
+            "gran": sim.get("activity_granularity"),
+            "sel": sim.get("action_selection_mode"),
+            "mult": sim.get("agent_activation_multiplier"),
+            "min": sim.get("min_activation_threshold"),
+            "clock": sim.get("clock_factor"),
+            "recsys": sim.get("recsys_type"),
+            "posts": sim.get("target_posts_per_step"),
+            "posts_auto": sim.get("auto_target_posts_per_step_from_train"),
+        }
+        for k, v in wanted.items():
+            parts.append(f"{k}-{_slug(v)}")
+    except Exception:
+        parts.append("cfg-unavailable")
+
+    return "__".join(parts)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compare OASIS simulation DB vs test split.")
     parser.add_argument("--db", required=True, type=Path, help="Path to simulation SQLite DB.")
@@ -375,8 +496,14 @@ def main() -> None:
     parser.add_argument(
         "--timestep_hours",
         type=float,
-        default=1.0,
+        default=24.0,
         help="How many real hours one simulation timestep represents.",
+    )
+    parser.add_argument(
+        "--split_info",
+        default=Path("persona_generation/outputs/split_info.json"),
+        type=Path,
+        help="Split info JSON to recover simulation start date for weekday metrics.",
     )
     parser.add_argument(
         "--output_json",
@@ -388,6 +515,24 @@ def main() -> None:
         default=Path("simulation/metrics_report.md"),
         type=Path,
     )
+    parser.add_argument(
+        "--archive_dir",
+        default=Path("simulation/metrics_history"),
+        type=Path,
+        help="Directory to store per-run archived reports with hyperparameter-tagged filenames.",
+    )
+    parser.add_argument(
+        "--sim_config",
+        default=Path("simulation/config.yaml"),
+        type=Path,
+        help="Simulation config path used to build hyperparameter tags in archive filenames.",
+    )
+    parser.add_argument(
+        "--run_tag",
+        default="",
+        type=str,
+        help="Optional suffix tag for archive filenames (e.g., experiment id).",
+    )
     args = parser.parse_args()
 
     agent_to_username = load_persona_mapping(args.personas_csv)
@@ -395,7 +540,18 @@ def main() -> None:
 
     gt = load_test(args.test_csv, persona_usernames)
     sim = load_sim(args.db, agent_to_username, args.timestep_hours)
-    gt_reply_edges = load_gt_reply_edges(args.filtered_jsonl, args.test_csv, persona_usernames)
+
+    sim_start = None
+    if args.split_info.exists():
+        try:
+            split_info = json.loads(args.split_info.read_text(encoding="utf-8"))
+            test_start_raw = ((split_info or {}).get("test_period", {}) or {}).get("start")
+            if test_start_raw:
+                sim_start = datetime.fromisoformat(str(test_start_raw))
+        except Exception:
+            sim_start = None
+    if sim_start is None and gt["post_timestamps"]:
+        sim_start = min(gt["post_timestamps"])
 
     users = sorted(persona_usernames)
     gt_vec = [float(gt["per_user_posts"].get(u, 0.0)) for u in users]
@@ -406,19 +562,98 @@ def main() -> None:
     top10_overlap = topk_overlap(sim["per_user_posts"], gt["per_user_posts"], 10)
     top20_overlap = topk_overlap(sim["per_user_posts"], gt["per_user_posts"], 20)
 
-    hour_jsd = js_divergence(sim["hour_hist"], gt["hour_hist"])
+    sim_weekday_hist = weekday_hist_from_steps(sim["post_steps"], args.timestep_hours, sim_start)
+    weekday_jsd = js_divergence(sim_weekday_hist, gt["weekday_hist"])
 
-    sim_curve = cumulative_curve_from_steps(sim["post_steps"], bins=24)
-    gt_curve = cumulative_curve_from_datetimes(gt["post_timestamps"], bins=24)
+    sim_day_offsets = day_offsets_from_steps(sim["post_steps"], args.timestep_hours)
+    gt_day_offsets = day_offsets_from_datetimes(gt["post_timestamps"])
+    day_bins = max(
+        (max(sim_day_offsets) + 1) if sim_day_offsets else 0,
+        (max(gt_day_offsets) + 1) if gt_day_offsets else 0,
+        1,
+    )
+    sim_curve = cumulative_curve_from_day_offsets(sim_day_offsets, bins=day_bins)
+    gt_curve = cumulative_curve_from_day_offsets(gt_day_offsets, bins=day_bins)
     curve_rmse = rmse(sim_curve, gt_curve)
     curve_nrmse = nrmse(sim_curve, gt_curve)
 
-    sim_edges = sim["follow_edges"]
-    gt_edges = gt_reply_edges
-    inter = len(sim_edges & gt_edges)
-    p = inter / len(sim_edges) if sim_edges else 0.0
-    r = inter / len(gt_edges) if gt_edges else 0.0
-    f1 = (2 * p * r / (p + r)) if (p + r) > 0 else 0.0
+    engagement_cutoffs = [0.01, 0.05, 0.10, 0.20, 0.50]
+    engagement_pairs = {
+        "likes": (gt["likes"], sim["likes"]),
+        "retweets_reposts": (gt["retweets"], sim["reposts"]),
+        "replies": (gt["replies"], sim["replies"]),
+        "quotes": (gt["quotes"], sim["quotes"]),
+    }
+    engagement_concentration = {}
+    engagement_percentile_jsd = {}
+    for metric_name, (gt_vals, sim_vals) in engagement_pairs.items():
+        gt_curve_top = top_share_curve(gt_vals, engagement_cutoffs)
+        sim_curve_top = top_share_curve(sim_vals, engagement_cutoffs)
+        engagement_concentration[metric_name] = {
+            "cutoffs": engagement_cutoffs,
+            "gt_top_share_curve": gt_curve_top,
+            "sim_top_share_curve": sim_curve_top,
+            "top_share_curve_rmse": rmse(gt_curve_top, sim_curve_top),
+        }
+
+        gt_hist = percentile_rank_histogram(gt_vals, bins=10)
+        sim_hist = percentile_rank_histogram(sim_vals, bins=10)
+        engagement_percentile_jsd[metric_name] = {
+            "bins": 10,
+            "gt_percentile_hist": gt_hist,
+            "sim_percentile_hist": sim_hist,
+            "percentile_hist_jsd": js_divergence(gt_hist, sim_hist),
+        }
+
+    # User-level engagement ranking fit (additive to existing engagement diagnostics).
+    # Components used: likes + replies + reposts + quotes.
+    gt_eng_total_map = {u: float(gt["eng_total_per_user"].get(u, 0.0)) for u in users}
+    sim_eng_total_map = {u: float(sim["eng_total_per_user"].get(u, 0.0)) for u in users}
+    gt_eng_avg_map = {
+        u: (
+            gt_eng_total_map[u] / float(gt["per_user_posts"].get(u, 0))
+            if gt["per_user_posts"].get(u, 0) > 0 else 0.0
+        )
+        for u in users
+    }
+    sim_eng_avg_map = {
+        u: (
+            sim_eng_total_map[u] / float(sim["per_user_posts"].get(u, 0))
+            if sim["per_user_posts"].get(u, 0) > 0 else 0.0
+        )
+        for u in users
+    }
+
+    gt_eng_total_vec = [gt_eng_total_map[u] for u in users]
+    sim_eng_total_vec = [sim_eng_total_map[u] for u in users]
+    gt_eng_avg_vec = [gt_eng_avg_map[u] for u in users]
+    sim_eng_avg_vec = [sim_eng_avg_map[u] for u in users]
+
+    gt_top_shares = top_share_curve(gt_eng_total_vec, [0.10, 0.20])
+    sim_top_shares = top_share_curve(sim_eng_total_vec, [0.10, 0.20])
+    engagement_user_level = {
+        "scope": "user",
+        "components": ["likes", "replies", "reposts", "quotes"],
+        "topk_values": [10, 20],
+        "gt_total_engagement": float(sum(gt_eng_total_vec)),
+        "sim_total_engagement": float(sum(sim_eng_total_vec)),
+        "spearman_total_engagement_per_user": spearman(sim_eng_total_vec, gt_eng_total_vec),
+        "jsd_total_engagement_per_user": js_divergence(sim_eng_total_vec, gt_eng_total_vec),
+        "spearman_engagement_per_post_per_user": spearman(sim_eng_avg_vec, gt_eng_avg_vec),
+        "jsd_engagement_per_post_per_user": js_divergence(sim_eng_avg_vec, gt_eng_avg_vec),
+        "topk_overlap_total_engagement_per_user": {
+            "top10": topk_overlap_positive(sim_eng_total_map, gt_eng_total_map, 10),
+            "top20": topk_overlap_positive(sim_eng_total_map, gt_eng_total_map, 20),
+        },
+        "topk_overlap_engagement_per_post_per_user": {
+            "top10": topk_overlap_positive(sim_eng_avg_map, gt_eng_avg_map, 10),
+            "top20": topk_overlap_positive(sim_eng_avg_map, gt_eng_avg_map, 20),
+        },
+        "gt_top10pct_share_total_engagement": gt_top_shares[0] if gt_top_shares else 0.0,
+        "sim_top10pct_share_total_engagement": sim_top_shares[0] if sim_top_shares else 0.0,
+        "gt_top20pct_share_total_engagement": gt_top_shares[1] if len(gt_top_shares) > 1 else 0.0,
+        "sim_top20pct_share_total_engagement": sim_top_shares[1] if len(sim_top_shares) > 1 else 0.0,
+    }
 
     report = {
         "inputs": {
@@ -427,6 +662,7 @@ def main() -> None:
             "personas_csv": str(args.personas_csv),
             "filtered_jsonl": str(args.filtered_jsonl),
             "timestep_hours": args.timestep_hours,
+            "split_info": str(args.split_info),
         },
         "coverage": {
             "persona_user_count": len(users),
@@ -440,39 +676,18 @@ def main() -> None:
             "top20_overlap": top20_overlap,
         },
         "temporal_fit": {
-            "hour_of_day_jsd": hour_jsd,
-            "cumulative_posts_rmse": curve_rmse,
-            "cumulative_posts_nrmse": curve_nrmse,
+            "day_of_week_jsd": weekday_jsd,
+            "cumulative_posts_daily_rmse": curve_rmse,
+            "cumulative_posts_daily_nrmse": curve_nrmse,
         },
         "engagement_fit": {
-            "gt_mean_likes_per_post": (sum(gt["likes"]) / len(gt["likes"])) if gt["likes"] else 0.0,
-            "gt_mean_retweets_per_post": (sum(gt["retweets"]) / len(gt["retweets"])) if gt["retweets"] else 0.0,
-            "gt_mean_replies_per_post": (sum(gt["replies"]) / len(gt["replies"])) if gt["replies"] else 0.0,
-            "gt_mean_quotes_per_post": (sum(gt["quotes"]) / len(gt["quotes"])) if gt["quotes"] else 0.0,
-            "gt_total_retweets": sum(gt["retweets"]) if gt["retweets"] else 0,
-            "gt_total_quotes": sum(gt["quotes"]) if gt["quotes"] else 0,
-            "sim_mean_likes_per_post": (sum(sim["likes"]) / len(sim["likes"])) if sim["likes"] else 0.0,
-            "sim_mean_shares_per_post": (sum(sim["shares"]) / len(sim["shares"])) if sim["shares"] else 0.0,
-            "sim_mean_replies_per_post": (sum(sim["replies"]) / len(sim["replies"])) if sim["replies"] else 0.0,
-            "sim_mean_reposts_per_post": (sum(sim["reposts"]) / len(sim["reposts"])) if sim["reposts"] else 0.0,
-            "sim_mean_quotes_per_post": (sum(sim["quotes"]) / len(sim["quotes"])) if sim["quotes"] else 0.0,
-            "sim_total_reposts": sum(sim["reposts"]) if sim["reposts"] else 0,
-            "sim_total_quotes": sum(sim["quotes"]) if sim["quotes"] else 0,
             "gt_total_posts": len(gt["post_timestamps"]),
             "sim_total_posts": len(sim["post_steps"]),
-        },
-        "graph_fit": {
-            "sim_nodes": len(users),
-            "sim_edges": len(sim_edges),
-            "gt_reply_nodes": len(users),
-            "gt_reply_edges": len(gt_edges),
-            "sim_density": graph_density(len(users), len(sim_edges), directed=True),
-            "gt_reply_density": graph_density(len(users), len(gt_edges), directed=True),
-            "sim_reciprocity": graph_reciprocity(sim_edges),
-            "gt_reply_reciprocity": graph_reciprocity(gt_edges),
-            "edge_precision_sim_vs_gt_reply": p,
-            "edge_recall_sim_vs_gt_reply": r,
-            "edge_f1_sim_vs_gt_reply": f1,
+            "post_level": {
+                "top_share_curve": engagement_concentration,
+                "percentile_rank_jsd": engagement_percentile_jsd,
+            },
+            "user_level": engagement_user_level,
         },
     }
 
@@ -498,45 +713,75 @@ def main() -> None:
         f"- Top-20 overlap: {top20_overlap:.4f}",
         "",
         "## Temporal Fit",
-        f"- Hour-of-day JSD: {hour_jsd:.4f}",
-        f"- Cumulative posts RMSE: {curve_rmse:.4f}",
-        f"- Cumulative posts NRMSE: {curve_nrmse:.4f}",
+        f"- Day-of-week JSD: {weekday_jsd:.4f}",
+        f"- Cumulative daily posts RMSE: {curve_rmse:.4f}",
+        f"- Cumulative daily posts NRMSE: {curve_nrmse:.4f}",
         "",
         "## Engagement Fit",
-        f"- GT mean likes/retweets/replies/quotes per post: "
-        f"{report['engagement_fit']['gt_mean_likes_per_post']:.3f} / "
-        f"{report['engagement_fit']['gt_mean_retweets_per_post']:.3f} / "
-        f"{report['engagement_fit']['gt_mean_replies_per_post']:.3f} / "
-        f"{report['engagement_fit']['gt_mean_quotes_per_post']:.3f}",
-        f"- Sim mean likes/shares/replies per post: "
-        f"{report['engagement_fit']['sim_mean_likes_per_post']:.3f} / "
-        f"{report['engagement_fit']['sim_mean_shares_per_post']:.3f} / "
-        f"{report['engagement_fit']['sim_mean_replies_per_post']:.3f}",
-        f"- Sim mean reposts/quotes per post: "
-        f"{report['engagement_fit']['sim_mean_reposts_per_post']:.3f} / "
-        f"{report['engagement_fit']['sim_mean_quotes_per_post']:.3f}",
-        f"- GT total retweets/quotes: "
-        f"{report['engagement_fit']['gt_total_retweets']} / "
-        f"{report['engagement_fit']['gt_total_quotes']}",
-        f"- Sim total reposts/quotes: "
-        f"{report['engagement_fit']['sim_total_reposts']} / "
-        f"{report['engagement_fit']['sim_total_quotes']}",
+        f"- GT total posts: {report['engagement_fit']['gt_total_posts']}",
+        f"- Sim total posts: {report['engagement_fit']['sim_total_posts']}",
         "",
-        "## Graph Fit",
-        f"- Sim edges: {report['graph_fit']['sim_edges']}",
-        f"- GT reply edges: {report['graph_fit']['gt_reply_edges']}",
-        f"- Sim density / GT reply density: "
-        f"{report['graph_fit']['sim_density']:.5f} / {report['graph_fit']['gt_reply_density']:.5f}",
-        f"- Sim reciprocity / GT reply reciprocity: "
-        f"{report['graph_fit']['sim_reciprocity']:.5f} / {report['graph_fit']['gt_reply_reciprocity']:.5f}",
-        f"- Edge precision / recall / F1: "
-        f"{p:.5f} / {r:.5f} / {f1:.5f}",
+        "### User-level",
+        f"- Components: {', '.join(report['engagement_fit']['user_level']['components'])}",
+        f"- Top-K values: {', '.join(str(k) for k in report['engagement_fit']['user_level']['topk_values'])}",
+        f"- Spearman (total engagement/user): "
+        f"{report['engagement_fit']['user_level']['spearman_total_engagement_per_user']:.4f}",
+        f"- JSD (total engagement/user): "
+        f"{report['engagement_fit']['user_level']['jsd_total_engagement_per_user']:.4f}",
+        f"- Spearman (engagement-per-post per user): "
+        f"{report['engagement_fit']['user_level']['spearman_engagement_per_post_per_user']:.4f}",
+        f"- JSD (engagement-per-post per user): "
+        f"{report['engagement_fit']['user_level']['jsd_engagement_per_post_per_user']:.4f}",
+        f"- Top-10 overlap (total engagement/user): "
+        f"{report['engagement_fit']['user_level']['topk_overlap_total_engagement_per_user']['top10']:.4f}",
+        f"- Top-20 overlap (total engagement/user): "
+        f"{report['engagement_fit']['user_level']['topk_overlap_total_engagement_per_user']['top20']:.4f}",
+        f"- Top-10 overlap (engagement-per-post/user): "
+        f"{report['engagement_fit']['user_level']['topk_overlap_engagement_per_post_per_user']['top10']:.4f}",
+        f"- Top-20 overlap (engagement-per-post/user): "
+        f"{report['engagement_fit']['user_level']['topk_overlap_engagement_per_post_per_user']['top20']:.4f}",
+        f"- GT/Sim top-10% share of total engagement: "
+        f"{report['engagement_fit']['user_level']['gt_top10pct_share_total_engagement']:.4f} / "
+        f"{report['engagement_fit']['user_level']['sim_top10pct_share_total_engagement']:.4f}",
+        f"- GT/Sim top-20% share of total engagement: "
+        f"{report['engagement_fit']['user_level']['gt_top20pct_share_total_engagement']:.4f} / "
+        f"{report['engagement_fit']['user_level']['sim_top20pct_share_total_engagement']:.4f}",
+        "",
+        "### Post-level",
+        f"- Top-share curve RMSE (likes): "
+        f"{report['engagement_fit']['post_level']['top_share_curve']['likes']['top_share_curve_rmse']:.4f}",
+        f"- Top-share curve RMSE (retweets vs reposts): "
+        f"{report['engagement_fit']['post_level']['top_share_curve']['retweets_reposts']['top_share_curve_rmse']:.4f}",
+        f"- Top-share curve RMSE (replies): "
+        f"{report['engagement_fit']['post_level']['top_share_curve']['replies']['top_share_curve_rmse']:.4f}",
+        f"- Top-share curve RMSE (quotes): "
+        f"{report['engagement_fit']['post_level']['top_share_curve']['quotes']['top_share_curve_rmse']:.4f}",
+        f"- Percentile-rank JSD (likes): "
+        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['likes']['percentile_hist_jsd']:.4f}",
+        f"- Percentile-rank JSD (retweets vs reposts): "
+        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['retweets_reposts']['percentile_hist_jsd']:.4f}",
+        f"- Percentile-rank JSD (replies): "
+        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['replies']['percentile_hist_jsd']:.4f}",
+        f"- Percentile-rank JSD (quotes): "
+        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['quotes']['percentile_hist_jsd']:.4f}",
         "",
     ]
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")
 
+    # Also write a historical, hyperparameter-labeled artifact for comparison over time.
+    args.archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_stem = _build_archive_stem(args.db, args.timestep_hours, args.sim_config)
+    if args.run_tag:
+        archive_stem = f"{archive_stem}__tag-{_slug(args.run_tag)}"
+    archive_json = args.archive_dir / f"{archive_stem}.json"
+    archive_md = args.archive_dir / f"{archive_stem}.md"
+    archive_json.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    archive_md.write_text("\n".join(md_lines), encoding="utf-8")
+
     print(f"Wrote {args.output_json}")
     print(f"Wrote {args.output_md}")
+    print(f"Wrote {archive_json}")
+    print(f"Wrote {archive_md}")
 
 
 if __name__ == "__main__":

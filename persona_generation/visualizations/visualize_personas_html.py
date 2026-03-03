@@ -27,6 +27,27 @@ DEFAULT_JSON = OUTPUT_DIR / "user_personas.json"
 DEFAULT_CSV = OUTPUT_DIR / "user_personas.csv"
 DEFAULT_HTML = VISUALIZATIONS_DIR / "personas_dashboard.html"
 
+ACTION_PROB_COLUMNS = [
+    ("create_post", "p_create_post"),
+    ("create_comment", "p_create_comment"),
+    ("do_nothing", "p_do_nothing"),
+    ("repost", "p_repost"),
+    ("quote_post", "p_quote_post"),
+    ("like_post", "p_like_post"),
+    ("follow", "p_follow"),
+]
+
+def safe_float(x, default=0.0) -> float:
+    try:
+        if x is None:
+            return default
+        s = str(x).strip()
+        if not s:
+            return default
+        return float(s)
+    except Exception:
+        return default
+
 
 def parse_json_list(value: str) -> List:
     try:
@@ -49,6 +70,10 @@ def normalize_json_personas(data: List[Dict]) -> List[Dict]:
         if not isinstance(sample_tweets, list):
             sample_tweets = []
 
+        ap = p.get("action_probs") or p.get("action_probabilities") or {}
+        if not isinstance(ap, dict):
+            ap = {}
+        
         personas.append(
             {
                 "id": str(p.get("original_user_id") or p.get("user_id") or idx),
@@ -67,8 +92,11 @@ def normalize_json_personas(data: List[Dict]) -> List[Dict]:
                 "sample_tweets": [str(t) for t in sample_tweets],
                 "following_count": 0,
                 "source_format": "json",
+                "action_probs": {k: safe_float(v, 0.0) for k, v in ap.items()},
             }
         )
+
+
     return personas
 
 
@@ -78,6 +106,17 @@ def normalize_csv_personas(rows: List[Dict]) -> List[Dict]:
         following = parse_json_list(r.get("following_agentid_list", "[]"))
         tweets = parse_json_list(r.get("previous_tweets", "[]"))
 
+        category = r.get("category", "Unspecified")
+
+        all_categories = r.get("all_categories")
+        if isinstance(all_categories, str):
+            all_categories = parse_json_list(all_categories)
+        if not isinstance(all_categories, list) or not all_categories:
+            all_categories = [category]
+
+        action_probs = {}
+        for action, col in ACTION_PROB_COLUMNS:
+            action_probs[action] = safe_float(r.get(col, 0.0), 0.0)
         personas.append(
             {
                 "id": str(r.get("user_id", idx)),
@@ -85,8 +124,8 @@ def normalize_csv_personas(rows: List[Dict]) -> List[Dict]:
                 "username": str(r.get("username", "unknown")),
                 "bio": str(r.get("description", "")),
                 "persona": str(r.get("user_char", "")),
-                "category": "Unspecified",
-                "all_categories": ["Unspecified"],
+                "category": str(category),
+                "all_categories": [str(c) for c in all_categories],
                 "age": "",
                 "gender": "",
                 "mbti": "",
@@ -96,6 +135,7 @@ def normalize_csv_personas(rows: List[Dict]) -> List[Dict]:
                 "sample_tweets": [str(t) for t in tweets],
                 "following_count": len(following),
                 "source_format": "csv",
+                "action_probs": action_probs,
             }
         )
     return personas
@@ -134,6 +174,40 @@ def build_html(personas: List[Dict]) -> str:
     categories = sorted({p["category"] for p in personas})
     avg_tweets = round(sum(int(p.get("tweet_count", 0) or 0) for p in personas) / total, 2) if total else 0
 
+    def render_action_probs(ap: Dict[str, float]) -> str:
+        if not isinstance(ap, dict) or not ap:
+            return '<div class="action-probs muted">No action probabilities</div>'
+
+        # Ensure stable order + clamp values to [0,1]
+        items = []
+        for action, col in ACTION_PROB_COLUMNS:
+            v = ap.get(action, 0.0)
+            try:
+                v = float(v)
+            except Exception:
+                v = 0.0
+            v = max(0.0, min(1.0, v))
+            pct = int(round(v * 100))
+            items.append((action, v, pct))
+
+        rows = []
+        for action, v, pct in items:
+            rows.append(f"""
+              <div class="ap-row">
+                <div class="ap-label">{html.escape(action)}</div>
+                <div class="ap-bar"><div class="ap-fill" style="width:{pct}%"></div></div>
+                <div class="ap-val">{pct}%</div>
+              </div>
+            """)
+        return f"""
+          <div class="action-probs">
+            <strong>Action probabilities</strong>
+            <div class="ap-grid">
+              {''.join(rows)}
+            </div>
+          </div>
+        """
+
     category_options = ['<option value="all">All categories</option>']
     for c in categories:
         category_options.append(f'<option value="{html.escape(c)}">{html.escape(c)}</option>')
@@ -147,9 +221,14 @@ def build_html(personas: List[Dict]) -> str:
             tags.append(f"following:{int(p.get('following_count', 0) or 0)}")
 
         tags_html = "".join(f'<span class="tag">{t}</span>' for t in tags) if tags else '<span class="tag muted">No demographics</span>'
+        
+        action_probs_html = render_action_probs(p.get("action_probs", {}))
+
         tweets = p.get("sample_tweets", [])
         tweets_html = "".join(f"<li>{html.escape(str(t))}</li>" for t in tweets[:5]) if tweets else "<li>No sample tweets</li>"
         categories_html = ", ".join(html.escape(c) for c in p.get("all_categories", []))
+
+
 
         card = f"""
         <article class="card" data-category="{html.escape(p['category'])}" data-search="{html.escape((p['name'] + ' ' + p['username'] + ' ' + p['bio'] + ' ' + p['persona']).lower())}">
@@ -163,6 +242,7 @@ def build_html(personas: List[Dict]) -> str:
           <p class="bio">{html.escape(p['bio'])}</p>
           <p class="persona">{html.escape(p['persona'])}</p>
           <div class="meta">{tags_html}</div>
+          {action_probs_html}
           <div class="categories"><strong>All categories:</strong> {categories_html or "N/A"}</div>
           <div class="tweets">
             <strong>Sample tweets</strong>
@@ -272,6 +352,43 @@ def build_html(personas: List[Dict]) -> str:
     .hidden {{ display: none; }}
     @media (max-width: 760px) {{
       .controls {{ grid-template-columns: 1fr; }}
+    }}
+    
+    .action-probs {{ margin: 10px 0 8px; border-top: 1px dashed var(--line); padding-top: 10px; }}
+    .action-probs.muted {{ color: var(--muted); }}
+    .action-probs strong {{ display: block; margin-bottom: 8px; color: var(--ink); }}
+
+    .ap-grid {{ display: grid; gap: 6px; }}
+    .ap-row {{
+      display: grid;
+      grid-template-columns: 120px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.84rem;
+      color: #2f3e48;
+    }}
+    .ap-label {{
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.78rem;
+    }}
+    .ap-bar {{
+      height: 10px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+    }}
+    .ap-fill {{
+      height: 100%;
+      background: linear-gradient(120deg, var(--accent), #14b8a6);
+      border-radius: 999px;
+    }}
+    .ap-val {{
+      text-align: right;
+      color: #0f766e;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
     }}
   </style>
 </head>

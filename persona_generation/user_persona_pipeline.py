@@ -14,8 +14,11 @@ import json
 import math
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta  # Standard for handling month increments
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
@@ -28,12 +31,17 @@ from config import (
     FILTERED_TWEETS_PATH,
     MIN_TEST_TWEETS,
     MIN_TRAIN_TWEETS,
+    MAX_FOLLOWEES,
     OUTPUT_DIR,
     OUTPUT_FORMAT,
     TEST_MONTH,
+    TEST_END_DATE,
+    TEST_START_DATE,
     TEST_YEAR,
     TOP_N,
     TRAIN_MONTH,
+    TRAIN_END_DATE,
+    TRAIN_START_DATE,
     TRAIN_YEAR,
     TWEET_POPULARITY_PATH,
     USE_TWITTER_API,
@@ -58,6 +66,15 @@ from rank_users_by_category import (
 )
 
 REPO_ROOT = _REPO_ROOT
+
+
+def _parse_iso_utc(value: str):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except Exception:
+        return None
 
 
 def load_cluster_assignments(path: Path) -> Dict[str, int]:
@@ -362,15 +379,32 @@ def main():
     # Step 1: Load and split tweets
     print("\n[Step 1] Loading tweets and splitting by time...")
     all_tweets = load_tweets_with_timestamps(FILTERED_TWEETS_PATH)
+    if not all_tweets:
+        print("No tweets found. Exiting.")
+        return
     print(f"Loaded {len(all_tweets)} tweets")
 
-    train_tweets, test_tweets = split_tweets_by_time(
-        all_tweets,
-        train_year=TRAIN_YEAR,
-        train_month=TRAIN_MONTH,
-        test_year=TEST_YEAR,
-        test_month=TEST_MONTH,
-    )
+    # --- NEW RELATIVE SPLIT LOGIC ---
+    # 1. Find the earliest tweet timestamp to anchor the split
+    global_start_dt = min(t.timestamp for t in all_tweets)
+    
+    # 2. Define training as first 2 months, test as the 1 month following that
+    # Note: Using relativedelta is safer for calendar months than timedelta(days=60)
+    train_end_dt = global_start_dt + relativedelta(months=2)
+    test_end_dt = train_end_dt + relativedelta(months=1)
+
+    train_tweets = [
+        t for t in all_tweets if global_start_dt <= t.timestamp < train_end_dt
+    ]
+    test_tweets = [
+        t for t in all_tweets if train_end_dt <= t.timestamp < test_end_dt
+    ]
+
+    print(f"Relative split based on data start: {global_start_dt.strftime('%Y-%m-%d')}")
+    print(f"Train window: {global_start_dt.isoformat()} to {train_end_dt.isoformat()}")
+    print(f"Test window:  {train_end_dt.isoformat()} to {test_end_dt.isoformat()}")
+    # --------------------------------
+
     print(f"Initial split - Train: {len(train_tweets)}, Test: {len(test_tweets)}")
 
     train_filtered, test_filtered = filter_active_users_in_both_periods(
@@ -379,6 +413,7 @@ def main():
         min_train_tweets=MIN_TRAIN_TWEETS,
         min_test_tweets=MIN_TEST_TWEETS,
     )
+    
     print(f"After filtering - Train: {len(train_filtered)}, Test: {len(test_filtered)}")
 
     train_file = OUTPUT_DIR / "train_tweets.csv"
@@ -396,8 +431,23 @@ def main():
 
     # Step 2: Load clustering output
     print("\n[Step 2] Loading clustering output...")
-    tweet_to_cluster = load_cluster_assignments(CLUSTER_ASSIGNMENTS_PATH)
-    topics_dict = load_cluster_topics(CLUSTER_TOPICS_PATH)
+    cluster_assignments_path = CLUSTER_ASSIGNMENTS_PATH
+    cluster_topics_path = CLUSTER_TOPICS_PATH
+
+    if not cluster_assignments_path.exists():
+        fallback = REPO_ROOT / "clustering" / "cluster_assignments.jsonl"
+        if fallback.exists():
+            print(f"Cluster assignments not found at {cluster_assignments_path}, using {fallback}")
+            cluster_assignments_path = fallback
+
+    if not cluster_topics_path.exists():
+        fallback = REPO_ROOT / "clustering" / "cluster_topics.json"
+        if fallback.exists():
+            print(f"Cluster topics not found at {cluster_topics_path}, using {fallback}")
+            cluster_topics_path = fallback
+
+    tweet_to_cluster = load_cluster_assignments(cluster_assignments_path)
+    topics_dict = load_cluster_topics(cluster_topics_path)
     print(f"Loaded {len(tweet_to_cluster)} cluster assignments, {len(topics_dict)} topics")
 
     clusters = load_train_tweets_with_popularity_and_clusters(
@@ -453,7 +503,7 @@ def main():
         direct_reply_map=reply_follow_map,
         user_all_train_tweets=user_all_train_tweets,
         user_cluster_mix=user_cluster_mix,
-        max_followees=15,
+        max_followees=MAX_FOLLOWEES,
     )
     nonempty = sum(1 for uid in follow_map if follow_map[uid])
     print(

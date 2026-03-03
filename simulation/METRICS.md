@@ -1,87 +1,89 @@
 # Simulation-vs-Ground-Truth Metrics
 
-This document defines how to compare OASIS simulation outputs against ground truth in `persona_generation/outputs/test_tweets.csv`.
+This document defines the current metrics computed by
+`simulation/compare_sim_to_test.py` against
+`persona_generation/outputs/test_tweets.csv`.
 
 ## Data Sources
 
 - Simulation DB (SQLite): `data/simu_db/.../*.db`
 - Test split: `persona_generation/outputs/test_tweets.csv`
-- Personas used in simulation: `persona_generation/outputs/user_personas.csv`
-- Filtered tweets (for reply-derived ground-truth graph): `data/processed/filtered_tweets.jsonl`
+- Personas: `persona_generation/outputs/user_personas.csv`
+- Split metadata: `persona_generation/outputs/split_info.json` (used for weekday alignment)
 
-All metrics should be computed on the same persona user set (matched by username).
+All metrics are evaluated on the persona user set (username-matched).
 
-## Paper-Aligned Metrics (OASIS-inspired)
+## Current Report Sections
 
-The OASIS paper reports cascade-shape metrics and normalized RMSE for dynamics, plus polarization/herding analyses.
-For this Twitter pipeline, we operationalize the same spirit as follows:
+The comparison report has these top-level sections:
 
-1. Dynamics error (NRMSE over time)
-- Build cumulative time curves for:
-  - posts
-  - interactions (likes + shares + replies/comments)
-- Compare simulation vs test with:
-  - RMSE
-  - NRMSE = RMSE / (max(test_curve) - min(test_curve))
+- `coverage`
+- `user_activity_fit`
+- `temporal_fit`
+- `engagement_fit`
 
-2. Network dynamics
-- Compare simulation follow graph vs test reply-interaction graph:
-  - edge precision/recall/F1
-  - density
-  - reciprocity
+Graph-structure metrics are not included in the current report.
 
-## Core Fit Metrics
+## Metric Definitions
 
-1. User Activity Fit
+1. Coverage
+- `persona_user_count`: number of persona users considered.
+- `gt_active_users`: users with at least one root post in test data.
+- `sim_active_users`: users with at least one simulated root post.
+
+2. User Activity Fit
 - Per-user post counts:
-  - test: root tweets (`is_root == 1`)
-  - sim: original posts (`original_post_id IS NULL`, `created_at > 0`)
+  - GT: root posts (`is_root == 1`)
+  - Sim: original posts (`original_post_id IS NULL`, `created_at > 0`)
 - Metrics:
-  - Spearman correlation
-  - Jensen-Shannon divergence between normalized user activity distributions
-  - Top-K active user overlap (K=10, 20)
+  - `spearman_posts_per_user` (higher is better)
+  - `jsd_posts_per_user` (lower is better)
+  - `top10_overlap`, `top20_overlap` (higher is better)
 
-2. Engagement Fit
-- Test side:
-  - mean likes, retweets, replies, quotes per root tweet
-- Simulation side:
-  - mean `num_likes`, `num_shares`, comment-count per original post
-- Also report total volumes and per-post means.
+3. Temporal Fit (current weekly-aligned method)
+- `day_of_week_jsd`: JSD between GT weekday post distribution and simulated weekday distribution.
+- `cumulative_posts_daily_rmse`: RMSE between cumulative daily post curves.
+- `cumulative_posts_daily_nrmse`: normalized RMSE (lower is better).
 
-3. Temporal Rhythm Fit
-- Hour-of-day distributions:
-  - test from tweet timestamps
-  - sim from timestep clock (`created_at * timestep_hours`)
-- Metric:
-  - Jensen-Shannon divergence over 24-bin hour histograms
+4. Engagement Fit
+- Includes post totals for reference:
+  - total posts in GT vs Sim
+- Post-level rank metrics (scale-robust) under `engagement_fit.post_level`:
+  - `top_share_curve`:
+    - For each metric (likes, retweets/reposts, replies, quotes), compute
+      share of total engagement captured by top x% posts at
+      cutoffs `[1%, 5%, 10%, 20%, 50%]` in GT and Sim.
+    - Report `top_share_curve_rmse` between GT and Sim curves.
+  - `percentile_rank_jsd`:
+    - For each metric, convert post engagement values to within-dataset
+      percentile ranks, bin into 10 bins (deciles), and compare GT vs Sim
+      histograms with JSD (`percentile_hist_jsd`).
+- User-level rank metrics under `engagement_fit.user_level`:
+  - Components: likes + replies + reposts + quotes
+  - Correlation/divergence for total engagement per user and engagement-per-post per user.
+  - Top-k overlap (`top10`, `top20`) for user rankings.
+  - Top-share diagnostics for user-level total engagement concentration (top 10% and top 20% users).
 
-4. Graph-Structure Fit
-- Simulation graph: `follow(follower_id -> followee_id)`
-- Ground truth graph: `replier -> replied-to` from test-period tweets
-- Metrics:
-  - nodes, edges
-  - density
-  - reciprocity
-  - edge precision/recall/F1 (on overlapping user set)
+## Default Timestep Assumption
 
-## Notes / Limitations
+`compare_sim_to_test.py` now defaults to:
 
-- This pipeline does not directly expose full retweet/reply trees in test CSV, so cascade-depth/max-breadth is approximated through available interaction/time metrics.
-- If simulation actions exclude comments/reposts, some engagement metrics may be sparse.
-- For robust results, run multiple seeds and report mean ± CI.
+- `--timestep_hours 24.0`
 
-## Script
+So one simulation step is treated as one day unless overridden.
 
-Use:
+## Script Usage
 
 ```bash
 python simulation/compare_sim_to_test.py \
-  --db data/simu_db/yaml_gpt/False_Business_0.db \
-  --test_csv persona_generation/outputs/test_tweets.csv \
-  --personas_csv persona_generation/outputs/user_personas.csv \
-  --filtered_jsonl data/processed/filtered_tweets.jsonl
+  --db data/simu_db/yaml_gpt/sweep_high_posts.db \
+  --sim_config simulation/config.yaml
 ```
 
-Outputs:
-- `simulation/metrics_report.json`
-- `simulation/metrics_report.md`
+For non-daily simulations, pass `--timestep_hours` explicitly.
+
+## Outputs
+
+- JSON report (default): `simulation/metrics_report.json`
+- Markdown report (default): `simulation/metrics_report.md`
+- Archived per-run reports: `simulation/metrics_history/...`

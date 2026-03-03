@@ -101,3 +101,5 @@ models/
 tmp
 data/
 log/
+simulation/metrics_history
+simulation/sweeps
