@@ -17,6 +17,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta  # Standard for handling month increments
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
@@ -377,34 +379,32 @@ def main():
     # Step 1: Load and split tweets
     print("\n[Step 1] Loading tweets and splitting by time...")
     all_tweets = load_tweets_with_timestamps(FILTERED_TWEETS_PATH)
+    if not all_tweets:
+        print("No tweets found. Exiting.")
+        return
     print(f"Loaded {len(all_tweets)} tweets")
 
-    train_start_dt = _parse_iso_utc(TRAIN_START_DATE)
-    train_end_dt = _parse_iso_utc(TRAIN_END_DATE)
-    test_start_dt = _parse_iso_utc(TEST_START_DATE)
-    test_end_dt = _parse_iso_utc(TEST_END_DATE)
+    # --- NEW RELATIVE SPLIT LOGIC ---
+    # 1. Find the earliest tweet timestamp to anchor the split
+    global_start_dt = min(t.timestamp for t in all_tweets)
+    
+    # 2. Define training as first 2 months, test as the 1 month following that
+    # Note: Using relativedelta is safer for calendar months than timedelta(days=60)
+    train_end_dt = global_start_dt + relativedelta(months=2)
+    test_end_dt = train_end_dt + relativedelta(months=1)
 
-    if all([train_start_dt, train_end_dt, test_start_dt, test_end_dt]):
-        train_tweets = [
-            t for t in all_tweets if train_start_dt <= t.timestamp < train_end_dt
-        ]
-        test_tweets = [
-            t for t in all_tweets if test_start_dt <= t.timestamp < test_end_dt
-        ]
-        print(
-            "Using explicit date windows: "
-            f"train=[{train_start_dt.isoformat()} -> {train_end_dt.isoformat()}) "
-            f"test=[{test_start_dt.isoformat()} -> {test_end_dt.isoformat()})"
-        )
-    else:
-        train_tweets, test_tweets = split_tweets_by_time(
-            all_tweets,
-            train_year=TRAIN_YEAR,
-            train_month=TRAIN_MONTH,
-            test_year=TEST_YEAR,
-            test_month=TEST_MONTH,
-        )
-        print("Using month-based split from TRAIN_/TEST_ config values.")
+    train_tweets = [
+        t for t in all_tweets if global_start_dt <= t.timestamp < train_end_dt
+    ]
+    test_tweets = [
+        t for t in all_tweets if train_end_dt <= t.timestamp < test_end_dt
+    ]
+
+    print(f"Relative split based on data start: {global_start_dt.strftime('%Y-%m-%d')}")
+    print(f"Train window: {global_start_dt.isoformat()} to {train_end_dt.isoformat()}")
+    print(f"Test window:  {train_end_dt.isoformat()} to {test_end_dt.isoformat()}")
+    # --------------------------------
+
     print(f"Initial split - Train: {len(train_tweets)}, Test: {len(test_tweets)}")
 
     train_filtered, test_filtered = filter_active_users_in_both_periods(
@@ -413,6 +413,7 @@ def main():
         min_train_tweets=MIN_TRAIN_TWEETS,
         min_test_tweets=MIN_TEST_TWEETS,
     )
+    
     print(f"After filtering - Train: {len(train_filtered)}, Test: {len(test_filtered)}")
 
     train_file = OUTPUT_DIR / "train_tweets.csv"
