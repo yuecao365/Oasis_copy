@@ -24,8 +24,8 @@ import sys
 from datetime import datetime, timedelta
 from typing import Any
 
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")))
+from llm_client import get_camel_model
 from colorama import Back
 from yaml import safe_load
 
@@ -104,14 +104,7 @@ async def running(
     clock = Clock(k=clock_factor)
     twitter_channel = Channel()
 
-    model_urls = create_model_urls(inference_configs["server_url"])
-    models = [
-        ModelFactory.create(
-            model_platform=ModelPlatformType.VLLM,
-            model_type=inference_configs["model_type"],
-            url=url,
-        ) for url in model_urls
-    ]
+    models = [get_camel_model()]
 
     infra = Platform(
         db_path,

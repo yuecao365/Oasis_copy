@@ -16,8 +16,9 @@ import json
 import os
 import sqlite3
 
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType, ModelType
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from llm_client import get_camel_model
 
 import oasis
 from oasis import (ActionType, LLMAction, ManualAction,
@@ -25,10 +26,7 @@ from oasis import (ActionType, LLMAction, ManualAction,
 
 
 async def main():
-    openai_model = ModelFactory.create(
-        model_platform=ModelPlatformType.OPENAI,
-        model_type=ModelType.GPT_4O_MINI,
-    )
+    openai_model = get_camel_model()
 
     # Define the available actions for the agents
     # Note: INTERVIEW is NOT included here to

@@ -11,6 +11,14 @@ Output: data/processed/cluster_topics.json
 
 import json
 import os
+import sys
+
+# Ensure repo root is on sys.path so llm_client is importable.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from llm_client import chat_completion, LLM_MODEL
 
 INPUT_DIR = "data/processed"
 OUTPUT_DIR = "data/processed"
@@ -19,8 +27,6 @@ REP_POSTS_FILE = "representative_posts_kmeans.json"
 FILTERED_TWEETS_FILE = "filtered_tweets_train_2025-04_to_07.jsonl"
 OUTPUT_FILE = "cluster_topics.json"
 
-# LLM config
-OPENAI_MODEL = "gpt-4o-mini"  # cost-efficient
 MAX_POSTS_PER_CLUSTER = 50    # cap to avoid token limit
 MAX_CHARS_PER_POST = 280      # truncate long tweets
 
@@ -77,7 +83,7 @@ def get_cluster_texts(rep_posts, id_to_text, max_posts=MAX_POSTS_PER_CLUSTER):
     return cluster_texts
 
 
-def generate_topic_for_cluster(cluster_id, texts, model=OPENAI_MODEL):
+def generate_topic_for_cluster(cluster_id, texts):
     """Call LLM to generate a brief, direct topic sentence for the cluster."""
     if not texts:
         return "No posts available."
@@ -97,15 +103,11 @@ Sample posts:
 """
 
     try:
-        from openai import OpenAI
-        client = OpenAI()
-        resp = client.chat.completions.create(
-            model=model,
+        return chat_completion(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
             max_tokens=200,
         )
-        return (resp.choices[0].message.content or "").strip()
     except Exception as e:
         return f"[Error: {e}]"
 
@@ -127,7 +129,7 @@ def main():
     cluster_ids = sorted(rep_posts.keys())
     print("  Clusters: {}".format(len(cluster_ids)))
 
-    print("Generating topics via {}...".format(OPENAI_MODEL))
+    print("Generating topics via {}...".format(LLM_MODEL))
     topics = {}
     for i, cid in enumerate(cluster_ids):
         texts = cluster_texts.get(cid, [])

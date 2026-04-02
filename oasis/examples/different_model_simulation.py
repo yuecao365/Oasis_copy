@@ -14,8 +14,9 @@
 import asyncio
 import os
 
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType, ModelType
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from llm_client import get_camel_model
 
 import oasis
 from oasis import (ActionType, AgentGraph, LLMAction, ManualAction,
@@ -23,15 +24,9 @@ from oasis import (ActionType, AgentGraph, LLMAction, ManualAction,
 
 
 async def main():
-    # Define the model for the agents
-    openai_model = ModelFactory.create(
-        model_platform=ModelPlatformType.OPENAI,
-        model_type=ModelType.GPT_4O_MINI,
-    )
-    qwen_model = ModelFactory.create(
-        model_platform=ModelPlatformType.QWEN,
-        model_type=ModelType.QWEN_PLUS,
-    )
+    # Define the model for the agents (both use the centralized Qwen 3.5 Plus)
+    openai_model = get_camel_model()
+    qwen_model = get_camel_model()
 
     # Define the available actions for the agents
     available_actions = [

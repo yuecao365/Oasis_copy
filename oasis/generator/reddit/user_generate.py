@@ -12,14 +12,18 @@
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
 import json
+import os
 import random
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
-from openai import OpenAI
+# Ensure repo root is on sys.path so llm_client is importable.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-# Set your OpenAI API key
-client = OpenAI(api_key='sk-xxx')
+from llm_client import chat_completion
 
 # Gender ratio
 gender_ratio = [0.351, 0.636]
@@ -82,13 +86,12 @@ def get_random_mbti():
 def get_random_country():
     country = random.choices(countries, country_ratio)[0]
     if country == "Other":
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+        return chat_completion(
             messages=[{
                 "role": "system",
                 "content": "Select a real country name randomly:"
-            }])
-        return response.choices[0].message.content.strip()
+            }],
+        )
     return country
 
 
@@ -116,13 +119,12 @@ def get_interested_topics(mbti, age, gender, country, profession):
     [list of topic numbers]
     Ensure your output could be parsed to **list**, don't output anything else."""  # noqa: E501
 
-    response = client.chat.completions.create(model="gpt-3.5-turbo",
-                                              messages=[{
-                                                  "role": "system",
-                                                  "content": prompt
-                                              }])
-
-    topics = response.choices[0].message.content.strip()
+    topics = chat_completion(
+        messages=[{
+            "role": "system",
+            "content": prompt
+        }],
+    )
     return json.loads(topics)
 
 
@@ -143,13 +145,12 @@ def generate_user_profile(age, gender, mbti, profession, topics):
     }}
     Ensure the output can be directly parsed to **JSON**, do not output anything else."""  # noqa: E501
 
-    response = client.chat.completions.create(model="gpt-3.5-turbo",
-                                              messages=[{
-                                                  "role": "system",
-                                                  "content": prompt
-                                              }])
-
-    profile = response.choices[0].message.content.strip()
+    profile = chat_completion(
+        messages=[{
+            "role": "system",
+            "content": prompt
+        }],
+    )
     return json.loads(profile)
 
 

@@ -14,8 +14,11 @@
 import asyncio
 import os
 
-from camel.models import ModelFactory, ModelManager
-from camel.types import ModelPlatformType
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from llm_client import get_camel_model
+
+from camel.models import ModelManager
 
 import oasis
 from oasis import (ActionType, LLMAction, ManualAction,
@@ -24,18 +27,8 @@ from oasis import (ActionType, LLMAction, ManualAction,
 
 async def main():
     # NOTE: You need to deploy the vllm server first
-    vllm_model_1 = ModelFactory.create(
-        model_platform=ModelPlatformType.VLLM,
-        model_type="qwen-2",
-        # TODO: change to your own vllm server url
-        url="http://10.109.28.7:8080/v1",
-    )
-    vllm_model_2 = ModelFactory.create(
-        model_platform=ModelPlatformType.VLLM,
-        model_type="qwen-2",
-        # TODO: change to your own vllm server url
-        url="http://10.109.27.103:8080/v1",
-    )
+    vllm_model_1 = get_camel_model()
+    vllm_model_2 = get_camel_model()
 
     # Define the models for agents. Agents will select models based on
     # round-robin strategy

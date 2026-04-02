@@ -14,9 +14,11 @@
 import asyncio
 import os
 
-from camel.models import ModelFactory
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from llm_client import get_camel_model
+
 from camel.toolkits import SearchToolkit
-from camel.types import ModelPlatformType, ModelType
 
 import oasis
 from oasis import (ActionType, AgentGraph, LLMAction, ManualAction,
@@ -25,10 +27,7 @@ from oasis import (ActionType, AgentGraph, LLMAction, ManualAction,
 
 async def main():
     # Define the model for the agents
-    openai_model = ModelFactory.create(
-        model_platform=ModelPlatformType.OPENAI,
-        model_type=ModelType.GPT_4O_MINI,
-    )
+    openai_model = get_camel_model()
 
     # Define the available actions for the agents
     available_actions = [

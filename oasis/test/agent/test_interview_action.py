@@ -18,9 +18,11 @@ import os.path as osp
 import sqlite3
 import tempfile
 
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+from llm_client import get_camel_model
+
 import pytest
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType, ModelType
 
 import oasis
 from oasis import ActionType, ManualAction, generate_twitter_agent_graph
@@ -200,10 +202,7 @@ async def test_interview_with_environment():
         db_path = tmp_file.name
 
     try:
-        openai_model = ModelFactory.create(
-            model_platform=ModelPlatformType.OPENAI,
-            model_type=ModelType.GPT_4O_MINI,
-        )
+        openai_model = get_camel_model()
 
         available_actions = [
             ActionType.CREATE_POST,

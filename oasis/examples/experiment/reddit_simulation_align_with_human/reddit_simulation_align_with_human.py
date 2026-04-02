@@ -24,8 +24,8 @@ import sys
 from datetime import datetime, timedelta
 from typing import Any
 
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")))
+from llm_client import get_camel_model
 from yaml import safe_load
 
 scripts_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -118,14 +118,7 @@ async def running(
         refresh_rec_post_count=refresh_rec_post_count,
     )
 
-    model_urls = create_model_urls(inference_configs["server_url"])
-    models = [
-        ModelFactory.create(
-            model_platform=ModelPlatformType.VLLM,
-            model_type=inference_configs["model_type"],
-            url=url,
-        ) for url in model_urls
-    ]
+    models = [get_camel_model()]
 
     twitter_task = asyncio.create_task(infra.running())
 

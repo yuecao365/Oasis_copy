@@ -14,8 +14,9 @@
 import asyncio
 import os
 
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from llm_client import get_camel_model
 
 import oasis
 from oasis import (ActionType, LLMAction, ManualAction,
@@ -23,11 +24,7 @@ from oasis import (ActionType, LLMAction, ManualAction,
 
 
 async def main():
-    openai_model = ModelFactory.create(
-        model_platform=ModelPlatformType.DEEPSEEK,
-        model_type="deepseek-chat",
-        url="https://api.deepseek.com/v1",
-    )
+    openai_model = get_camel_model()
 
     # Define the available actions for the agents
     available_actions = [

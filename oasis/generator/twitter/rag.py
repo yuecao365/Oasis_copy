@@ -12,6 +12,14 @@
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
 import os
+import sys
+
+# Ensure repo root is on sys.path so llm_client is importable.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from llm_client import LLM_MODEL, LLM_BASE_URL, LLM_API_KEY
 
 from langchain import PromptTemplate
 from langchain_chroma import Chroma
@@ -112,8 +120,9 @@ topic_system = PromptTemplate(input_variables=["mbti", "age", "gender"],
 # llm
 
 llm = ChatOpenAI(
-    model='gpt-3.5-turbo',
-    api_key=os.environ["OPENAI_API_KEY"],
+    model=LLM_MODEL,
+    api_key=LLM_API_KEY,
+    base_url=LLM_BASE_URL,
 )
 
 topic_chain = (topic_system | RunnablePassthrough() | llm

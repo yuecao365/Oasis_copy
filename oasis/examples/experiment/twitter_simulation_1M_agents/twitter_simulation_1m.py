@@ -24,8 +24,8 @@ from datetime import datetime
 from typing import Any
 
 import pandas as pd
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")))
+from llm_client import get_camel_model
 from colorama import Back
 from yaml import safe_load
 
@@ -97,14 +97,7 @@ async def running(
                      refresh_rec_post_count=2,
                      max_rec_post_len=2,
                      following_post_count=3)
-    model_urls = create_model_urls(inference_configs["server_url"])
-    models = [
-        ModelFactory.create(
-            model_platform=ModelPlatformType.VLLM,
-            model_type=inference_configs["model_type"],
-            url=url,
-        ) for url in model_urls
-    ]
+    models = [get_camel_model()]
     twitter_task = asyncio.create_task(infra.running())
 
     try:

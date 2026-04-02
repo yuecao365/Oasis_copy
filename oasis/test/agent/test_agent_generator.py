@@ -16,9 +16,11 @@ import asyncio
 import os
 import os.path as osp
 
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+from llm_client import get_camel_model
+
 import pytest
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType
 
 from oasis.social_agent.agents_generator import (generate_agents,
                                                  generate_controllable_agents)
@@ -34,10 +36,7 @@ if osp.exists(test_db_filepath):
 async def running():
     agent_info_path = "./test/test_data/user_all_id_time.csv"
     twitter_channel = Channel()
-    model = ModelFactory.create(
-        model_platform=ModelPlatformType.OPENAI,
-        model_type='gpt-4o-mini',
-    )
+    model = get_camel_model()
     infra = Platform(test_db_filepath, twitter_channel)
     task = asyncio.create_task(infra.running())
     os.environ["SANDBOX_TIME"] = "0"

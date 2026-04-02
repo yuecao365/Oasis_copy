@@ -1,18 +1,22 @@
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from openai import OpenAI
+# Ensure repo root is on sys.path so llm_client is importable.
+_REPO_ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT_DIR))
+
+from llm_client import chat_completion, LLM_MODEL
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CLUSTER_ROOT = (
     REPO_ROOT / "Clustering_and_topic_generation" / "cluster_outputs"
 )
-
-OPENAI_MODEL = "gpt-4o-mini"
 MAX_TWEETS = 5
 
 
@@ -79,26 +83,23 @@ def build_prompt(cluster_id: int, tweets: List[TweetRow]) -> Dict[str, object]:
     }
 
 
-def maybe_call_openai(prompt: str, model: str) -> str:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
+def maybe_call_openai(prompt: str, model: str = LLM_MODEL) -> str:
+    try:
+        return chat_completion(
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a topic labeling assistant. Create a 3–6 word noun-phrase label "
+                        "and a brief neutral description (1–2 sentences). "
+                        "Output exactly as: Label — Description. No extra text."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+        )
+    except Exception:
         return ""
-    client = OpenAI(api_key=api_key)
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a topic labeling assistant. Create a 3–6 word noun-phrase label "
-                    "and a brief neutral description (1–2 sentences). "
-                    "Output exactly as: Label — Description. No extra text."
-                ),
-            },
-            {"role": "user", "content": prompt},
-        ],
-    )
-    return resp.choices[0].message.content.strip()
 
 
 def _write_topics(topics: List[str], out_path: Path) -> None:

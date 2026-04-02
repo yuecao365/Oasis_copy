@@ -9,19 +9,23 @@ Generate personas for users using hybrid approach:
 import json
 import os
 import random
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 from config import DRY_RUN
 import hashlib
 
-from openai import OpenAI
+# Ensure repo root is on sys.path so llm_client is importable.
+_REPO_ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT_DIR))
+
+from llm_client import chat_completion, LLM_MODEL
 
 # NOTE: This points to the outputs directory under the script's folder, not the repo root.
 REPO_ROOT = Path(__file__).resolve().parent / "outputs"
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")  # Bearer token for Twitter API v2
 GLOBAL_SEED = int(os.getenv("GLOBAL_SEED", "20260215"))
 NOISE_EPS = float(os.getenv("NOISE_EPS", "0.05"))  # for priors noise amplitude
@@ -441,11 +445,6 @@ def generate_demographics_from_tweets(
         }
         return Demographics(**fake)
 
-    if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY not set - required for demographics inference")
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
-
     # Choose a deterministic prompt variant (per user) to encourage diversity
     demo_variant = rng.choice(DEMO_PROMPT_VARIANTS) if rng else random.choice(DEMO_PROMPT_VARIANTS)
 
@@ -504,9 +503,7 @@ Output ONLY valid JSON in this exact format:
     "profession": "Information Technology"
 }}
 """
-    seed_int = rng.randrange(0, 2**31 - 1) if rng else None
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
+    content = chat_completion(
         messages=[
             {
                 "role": "system",
@@ -514,12 +511,9 @@ Output ONLY valid JSON in this exact format:
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=1.0,  # Increased for more variance
+        temperature=1.0,
         max_tokens=200,
-        **({"seed": seed_int} if seed_int is not None else {}),  # Optional seeding for reproducibility
     )
-
-    content = response.choices[0].message.content.strip()
     # Remove markdown code blocks if present
     if content.startswith("```"):
         content = content.split("```")[1]
@@ -589,11 +583,6 @@ def generate_persona(
             action_probs=action_probs,
         )
 
-    if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY not set - required for persona generation")
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
-
     category_topic = normalize_category(category_topic) or "general"
     all_categories = [normalize_category(c) for c in all_categories]
     all_categories = [c for c in all_categories if c]
@@ -650,9 +639,7 @@ Output ONLY valid JSON in this exact format:
 }}
 """
 
-    seed_int = rng.randrange(0, 2**31 - 1) if rng else None
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
+    content = chat_completion(
         messages=[
             {
                 "role": "system",
@@ -662,10 +649,7 @@ Output ONLY valid JSON in this exact format:
         ],
         temperature=0.9,
         max_tokens=400,
-        **({"seed": seed_int} if seed_int is not None else {}),
     )
-
-    content = response.choices[0].message.content.strip()
     # Remove markdown code blocks if present
     if content.startswith("```"):
         content = content.split("```")[1]

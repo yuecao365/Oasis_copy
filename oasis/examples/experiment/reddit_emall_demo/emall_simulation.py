@@ -29,8 +29,8 @@ from yaml import safe_load
 
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType, ModelType
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")))
+from llm_client import get_camel_model
 
 from oasis.clock.clock import Clock
 from oasis.social_agent.agents_generator import (gen_control_agents_with_data,
@@ -124,10 +124,7 @@ async def running(
     twitter_task = asyncio.create_task(infra.running())
 
     if inference_configs["model_type"][:3] == "gpt":
-        model = ModelFactory.create(
-            model_platform=ModelPlatformType.OPENAI,
-            model_type=ModelType(inference_configs["model_type"]),
-        )
+        model = get_camel_model()
     if not controllable_user:
         raise ValueError("Uncontrollable user is not supported")
     else:

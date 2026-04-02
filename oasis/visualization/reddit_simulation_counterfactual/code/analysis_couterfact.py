@@ -15,15 +15,19 @@ import asyncio
 import json
 import os
 import sqlite3
+import sys
 
 import aiohttp
 import matplotlib.pyplot as plt
 import numpy as np
-import openai
 import scipy.stats as st
 
-# OpenAI API key
-openai.api_key = os.environ['OPENAI_API_KEY']
+# Ensure repo root is on sys.path so llm_client is importable.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from llm_client import LLM_MODEL, LLM_BASE_URL, LLM_API_KEY
 
 # 数据库文件列表
 db_files = [
@@ -39,11 +43,11 @@ async def fetch_gpt_score(session, prompt, time_step, post_content,
                           comment_content):
     try:
         response = await session.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {openai.api_key}"},
+            f"{LLM_BASE_URL}/chat/completions",
+            headers={"Authorization": f"Bearer {LLM_API_KEY}"},
             json={
                 "model":
-                "gpt-4o",
+                LLM_MODEL,
                 "messages": [{
                     "role": "system",
                     "content": "You are a helpful assistant."

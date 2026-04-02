@@ -51,6 +51,11 @@ elif _REPO_ROOT not in sys.path:
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
 
+# Ensure repo root is on sys.path so llm_client is importable.
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+from llm_client import get_camel_model
+
 from oasis.clock.clock import Clock
 from oasis.social_agent.agents_generator import generate_agents
 from oasis.social_platform.channel import Channel
@@ -551,13 +556,7 @@ async def running(
         following_post_count=3,
     )
     twitter_task = asyncio.create_task(infra.running())
-    model = None
-    model_type = str((inference_configs or {}).get("model_type", ""))
-    if model_type[:3] == "gpt":
-        model = ModelFactory.create(
-            model_platform=ModelPlatformType.OPENAI,
-            model_type=ModelType(model_type),
-        )
+    model = get_camel_model()
 
     start_hour = 13.0  # Default when topic metadata unavailable
     try:
