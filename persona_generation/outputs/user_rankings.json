@@ -1,217 +1,159 @@
 [
   {
-    "cluster_id": 2,
-    "topic": "VeChain community engagement and market sentiment. This cluster is characterized by enthusiastic calls to action, bullish sentiments, and promotional events, including giveaways and collaborations with notable brands like UFC.",
+    "cluster_id": 1,
+    "topic": "The topic centers around VeChain, a blockchain platform focused on supply chain and business processes, highlighting recent developments such as the launch of a new staking system, real-time analytics tools, and community engagement initiatives. Posts also discuss the potential for $VET price movements, upcoming features, and the overall growth of the VeChain ecosystem.",
     "top_users": [
-      {
-        "user_name": "PaullyTVvet",
-        "user_id": "1890196935815856128",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927880257542967428"
-        ],
-        "sample_tweets": [
-          "Vechain Cafe w Paully Designer &amp; Builda URL"
-        ],
-        "total_popularity": 2.0270294323765703,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "ScoopUp_vet",
-        "user_id": "1889589487929561088",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927100177300537449"
-        ],
-        "sample_tweets": [
-          "We're chatting on Vibing w VeChain. Come join! URL"
-        ],
-        "total_popularity": 1.5199303961269832,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "itsmazza_eth",
-        "user_id": "1412579274532347907",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927036803392872861"
-        ],
-        "sample_tweets": [
-          "Vibing with the homies VeChain alpha URL"
-        ],
-        "total_popularity": -0.16702985414064983,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "BiteGram_vet",
-        "user_id": "1914703221789995008",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927893858005774734"
-        ],
-        "sample_tweets": [
-          "BiteGram LOVES food pics! What's your go-to healthy meal? #B3TR #Rewards #HealthyEating #Vechain URL"
-        ],
-        "total_popularity": -0.287863924532428,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "vibe2741989",
-        "user_id": "1524821541854363649",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1929187283573293284"
-        ],
-        "sample_tweets": [
-          "#vechain #thorhead #vtho #veworld URL"
-        ],
-        "total_popularity": -0.5576040924187552,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Bonnano28",
-        "user_id": "1568643341641830403",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1920394475483942964"
-        ],
-        "sample_tweets": [
-          "#Cardano #PEPE #Vechain #XRP #Ethereum #Bitcoin URL"
-        ],
-        "total_popularity": -0.7595239770771751,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
       {
         "user_name": "LoriLin007",
         "user_id": "1520960261431382016",
-        "tweet_count": 3,
+        "tweet_count": 5,
         "tweet_ids": [
           "1926121577067810980",
+          "1926483890232856890",
           "1930664134028448180",
-          "1925306051097661644"
+          "1925306051097661644",
+          "1922271019214995850"
         ],
         "sample_tweets": [
           "#Bunny &amp; #karana -: : 2025-05-24T03:42:00.000Z : VeChain Karana : URL : URL",
+          "#Bunny &amp; #karana -: : 2025-05-25T03:41:00.000Z : VeChainPBR$VET Karana : URL : URL",
+          "#Bunny &amp; #karana -: : 2025-05-13T12:41:00.000Z : VeChainStella PayB3TR Karana : URL : URL",
           "#Bunny &amp; #karana -: : 2025-05-21T21:41:00.000Z : VeChainWeb3Web3 Karana : URL : URL",
           "#Bunny &amp; #karana -: : 2025-06-05T12:01:00.000Z : VeChain711500 Karana : URL : URL"
         ],
-        "total_popularity": -3.0505471494491383,
-        "mixture_weight": 0.6,
-        "score": 0.6
+        "total_popularity": -5.106272074825408,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "DilawarNaseer",
+        "user_id": "712193853709819904",
+        "tweet_count": 4,
+        "tweet_ids": [
+          "1925512644523331940",
+          "1925512717802074600",
+          "1928080583554380217",
+          "1928080639011545110"
+        ],
+        "sample_tweets": [
+          "VeChain (VET) Price Forecast URL",
+          "Прогноз цен VeChain (VET) URL",
+          "Анализ цен VeChain URL",
+          "VeChain Price Analysis URL"
+        ],
+        "total_popularity": -7.306217460964948,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "Paul_VCS",
+        "user_id": "1460262488692428811",
+        "tweet_count": 3,
+        "tweet_ids": [
+          "1930559498097226223",
+          "1929874330822832611",
+          "1925483853038096836"
+        ],
+        "sample_tweets": [
+          "VeChain Renaissance is almost here! Are you ready to unlock the full potential of Node NFTs and VET staking with Stargate? Crunch the numbers, explore different strategies, and optimize your APY: URL URL",
+          "New on VeChainStats dApp Radar: Now tracking real-time stats for - @ScoopUp_vet - @VeTrade_ - @Bubbles2Earn - Updated @TheSolarWise contracts Explore contract activity, users &amp; VTHO burn Dive in: URL #VeBetterDAO #vechain URL",
+          "Great news for #VeChain! The @wanchain_org bridge has brought BTC, ETH, USDT, USDC &amp; more to @vechainofficial All tokens are now fully integrated in @VeChainStats: Live trades Transfers Richlist Contracts Verified Explore them here: URL URL"
+        ],
+        "total_popularity": 14.936383026210756,
+        "mixture_weight": 1.0,
+        "score": 1.0
       },
       {
         "user_name": "AlexanderJ184",
         "user_id": "1762838865294094336",
-        "tweet_count": 1,
+        "tweet_count": 2,
         "tweet_ids": [
-          "1926232431465476581"
+          "1926232431465476581",
+          "1926640632954503381"
         ],
         "sample_tweets": [
+          "@Thorheads look at my new amazing thorhead Rarity 45,617#VeChain #VeFam URL",
           "Gm #VeFam #VeChain #dogsofVeChain wish you all an amazing Weekend hope everyone is doing great URL"
         ],
-        "total_popularity": 2.5017660941790405,
-        "mixture_weight": 0.5,
-        "score": 0.5
+        "total_popularity": 6.5744019074384035,
+        "mixture_weight": 1.0,
+        "score": 1.0
       },
       {
-        "user_name": "yothatscooldeux",
-        "user_id": "1633214354073034753",
-        "tweet_count": 1,
+        "user_name": "meinhart_esding",
+        "user_id": "1357265498380075009",
+        "tweet_count": 2,
         "tweet_ids": [
-          "1917199468727865760"
+          "1928212944904413474",
+          "1928203188307440042"
         ],
         "sample_tweets": [
-          "Weird $vtho description in veworld. #vefam #vechain @viiitdmj URL"
+          "minted me this @Thorheads banger today, generating areound 100k $vtho per day! have you minted some yourself? drop your bangers in the comments #VeChain #vechainhasnfts #b3tr #b3trDAO $vet #vtho #NFTCommunity URL",
+          "here we go again @Thorheads #VeChain #VeBetterDAO #b3tr #vechainhasnfts #NFTCommunity #vet #vtho URL"
         ],
-        "total_popularity": -0.7324463019577163,
-        "mixture_weight": 0.5,
-        "score": 0.5
+        "total_popularity": 6.2441513957651775,
+        "mixture_weight": 1.0,
+        "score": 1.0
       },
       {
         "user_name": "jables520",
         "user_id": "559324201",
-        "tweet_count": 1,
+        "tweet_count": 2,
         "tweet_ids": [
-          "1927920002969039179"
+          "1927920002969039179",
+          "1924119953722286279"
         ],
         "sample_tweets": [
+          "Clay World is a unique #NFT project on #VeChain, bringing together creativity, innovation, and real-world impact. Get yours today on @worldofv_art and earn #B3TR! URL",
           "Lock the fuck in @Thorheads #VeChain #VTHO #NFTs #B3TR URL"
         ],
-        "total_popularity": -0.9499962147730278,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      }
-    ]
-  },
-  {
-    "cluster_id": 11,
-    "topic": "VeChain's $VET is experiencing heightened community optimism and technical indicators suggest a potential price rally, especially with the upcoming Stargate Staking program and various real-world partnerships. The cluster showcases a blend of bullish sentiment and strategic investment discussions among enthusiasts.",
-    "top_users": [
-      {
-        "user_name": "JohncyCrypto",
-        "user_id": "1704609380874719232",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1928429994671304857",
-          "1917542123752075328"
-        ],
-        "sample_tweets": [
-          "#VET VeChain is retesting the $0.025 support after a breakout from the descending channel on the daily chart If this level holds firm, expect an upward bounce toward targets at $0.033, $0.039, and $0.056 URL",
-          "#VET VeChain is trying to break the upper boundary of the descending channel on daily chart After consolidation below the crucial trendline, price is now showing strong breakout potential‍ This suggests that $VET is ready for a significant bullish wave towards targets at $0.0330, $0.0385, $0.0455 and $0.0565"
-        ],
-        "total_popularity": 1.5043916746641588,
+        "total_popularity": 0.43530967557583533,
         "mixture_weight": 1.0,
         "score": 1.0
       },
       {
-        "user_name": "TheCryptoYapper",
-        "user_id": "1867538228800016384",
+        "user_name": "AICryptoNewsNow",
+        "user_id": "1529873330152648707",
         "tweet_count": 2,
         "tweet_ids": [
-          "1921939545311883683",
-          "1930277361091785013"
+          "1926352597448843611",
+          "1927938037922545840"
         ],
         "sample_tweets": [
-          "Can #Vechain make a similar move like last year ? $VET URL",
-          "#Vechain is PUMPING lately ! The next big horizontal resistance for $VET is at $0.043 URL"
+          "What's New? VeChain Appoints Blockchain Expert Anthony Day as Marketing Director URL URL",
+          "What's New? VeChain's Enhanced VeBetter Grants Program Boosts Sustainable Blockchain Development URL URL"
         ],
-        "total_popularity": -0.3788919005927084,
+        "total_popularity": -2.405765470540736,
         "mixture_weight": 1.0,
         "score": 1.0
       },
       {
-        "user_name": "LordFrey19",
-        "user_id": "2282821020",
+        "user_name": "MadihaMa14196",
+        "user_id": "1809504945261146113",
         "tweet_count": 2,
         "tweet_ids": [
-          "1923521948056707372",
-          "1918332926770524262"
+          "1928081279737610522",
+          "1928081334313914801"
         ],
         "sample_tweets": [
-          "Wait. Kid Rock x VeChain (VET)",
-          "check VeChain. I am a strong believer and supporter of VET because I did the research."
+          "Анализ цен VeChain URL",
+          "VeChain Price Analysis URL"
         ],
-        "total_popularity": -1.7219916667965423,
+        "total_popularity": -2.807308537090859,
         "mixture_weight": 1.0,
         "score": 1.0
       },
       {
-        "user_name": "mcvetpants",
-        "user_id": "1285652681583804416",
+        "user_name": "Chris06902330",
+        "user_id": "1287485451465564162",
         "tweet_count": 1,
         "tweet_ids": [
-          "1922690095204774055"
+          "1929091711961014654"
         ],
         "sample_tweets": [
-          "Positive sentiment returning to crypto + Vechain’s stargate upgrade incoming. Things could get spicy soon for $VET"
+          "#VeChain $VET $VTHO #RealWorldAssets #RWA URL URL"
         ],
-        "total_popularity": 3.182944681048298,
+        "total_popularity": 2.8378131896504457,
         "mixture_weight": 1.0,
         "score": 1.0
       },
@@ -228,308 +170,120 @@
         "total_popularity": 2.1971035651186632,
         "mixture_weight": 1.0,
         "score": 1.0
-      },
+      }
+    ]
+  },
+  {
+    "cluster_id": 4,
+    "topic": "The topic centers around the VeChain ecosystem, particularly the $VET and $VTHO tokens, and the emerging VeBetterDAO platform. Discussions highlight the potential benefits of staking, governance, and partnerships, including notable endorsements from figures in the sports industry, as well as the overall bullish sentiment within the community regarding the future performance of these assets.",
+    "top_users": [
       {
-        "user_name": "DMNDHNDS_07",
-        "user_id": "1598856398435131393",
-        "tweet_count": 3,
+        "user_name": "JohncyCrypto",
+        "user_id": "1704609380874719232",
+        "tweet_count": 1,
         "tweet_ids": [
-          "1925572121675096237",
-          "1921956769997193226",
-          "1922103533307863459"
+          "1917542123752075328"
         ],
         "sample_tweets": [
-          "VeChain (VET) Breaks Free: What’s the Next Price Target? URL",
-          "VeChain Breaks 200-Day EMA: Is an 88% Rally to $0.061 Next? URL",
-          "VeChain price prediction: Is VET poised for a 300% surge? URL"
+          "#VET VeChain is trying to break the upper boundary of the descending channel on daily chart After consolidation below the crucial trendline, price is now showing strong breakout potential‍ This suggests that $VET is ready for a significant bullish wave towards targets at $0.0330, $0.0385, $0.0455 and $0.0565"
         ],
-        "total_popularity": -4.02794669501018,
-        "mixture_weight": 0.75,
-        "score": 0.75
+        "total_popularity": -0.006911129830781077,
+        "mixture_weight": 0.5,
+        "score": 0.5
       },
       {
         "user_name": "NiklasTheisen",
         "user_id": "1071725773",
-        "tweet_count": 10,
+        "tweet_count": 2,
         "tweet_ids": [
-          "1923997083125563443",
-          "1923704623488991393",
-          "1921626366346146212",
           "1924928406489104663",
-          "1920406508761715197",
-          "1925848486299283837",
-          "1922270431794409707",
-          "1923771690065998183",
-          "1924522354543136947",
-          "1926203299948089677"
+          "1923771690065998183"
         ],
         "sample_tweets": [
-          "$VET is trying to overcome EMA200 If #Vechain is able to do that on a daily basis, the possibility to smash 0.236fib will increase a lot! URL",
-          "$VET has broken the anticipated bullflag on the 1h chart. #Vechain could be able to test red resistance once again! URL",
           "Selling $VET right now? Not me. There are plenty of other things I'd sell in this market phase before even thinking about touching my #VeChain stack. This project is built different. #VET #Crypto #Bullish #Altcoins #VeFam",
-          "Hard to find more support than all the indicators for $VET on the daily: PoC (green upper line) 0.618fib EMA50 Black trendline Day 9 above major support since test of 0.236fib (red line) for #Vechain! Best circumstances for next leg up imo URL",
-          "Retest of support (EMA50, 0.618fib &amp; black trendline) almost done for $VET imo. MACD on shorter timeframes (4h, 2h, 1h) with decreasing bearish momentum, which is a good sign! OBV indicator is stable. #Vechain seems to be ready for next breakout attempt within the next days URL"
+          "Once again, $VET is the chosen one ‍ Time to dive into some fresh technical analysis. No surprise though — #VeChain has one of the strongest, loudest, and most loyal communities in the space Let’s see what the charts are telling us #VET #Crypto #VeFam"
         ],
-        "total_popularity": 29.883621490246767,
-        "mixture_weight": 0.7142857142857143,
-        "score": 0.7142857142857143
+        "total_popularity": 6.636923216600346,
+        "mixture_weight": 0.14285714285714285,
+        "score": 0.14285714285714285
       },
       {
-        "user_name": "VeThorVendetta",
-        "user_id": "1065329833733996544",
-        "tweet_count": 10,
-        "tweet_ids": [
-          "1930690628121231625",
-          "1928869929605833153",
-          "1930670460930330646",
-          "1930673191959015664",
-          "1927794035789279654",
-          "1928483265997861312",
-          "1929693054270857381",
-          "1930454326889026005",
-          "1928596181086605637",
-          "1930462303310188880"
-        ],
-        "sample_tweets": [
-          "Save us 200D Bollinger Band bottom, you're our only hope! #HODLtheLine #ThePriceIsWrong #VeChain #VeFam $VET $VTHO URL",
-          "200D Bollinger Band bottom holds right and true for the whole weekend! And now, it is time to send it! CHARRRRRRRGGGGGGEEEEE!!!!!! #SendIt #ThePriceIsWrong #VeChain #VeFam $VET $VTHO URL",
-          "50D MA has held for the last week of downturn, still holding. The send will be here before we know it. #SendIt #ThePriceIsWrong #VeChain #VeFam $VET $VTHO URL",
-          "Trend line intersection coming up! Top purple, back to Apr 21 top. Fighting to break and stay over it ~past year. Bottom white, only spent time beneath twice, Mar-Apr 20, and few months ago / now. Fighting to stay above it. We will know by July. #VeChain #VeFam $VET $VTHO URL",
-          "Range of the 200D Bollinger Band bottom holds once again! Another sign of strength here could be just the fuel this rocket needs to blast off into the stratosphere. HODL on tight lads... She's cookin... #HODLtheLine #SendIt #ThePriceIsWrong #VeChain #VeFam $VET $VTHO URL"
-        ],
-        "total_popularity": 28.014497225748535,
-        "mixture_weight": 0.5555555555555556,
-        "score": 0.5555555555555556
-      },
-      {
-        "user_name": "johnmorganFL",
-        "user_id": "2235329532",
-        "tweet_count": 5,
-        "tweet_ids": [
-          "1925575888235528444",
-          "1926132832402882640",
-          "1925539265846337901",
-          "1920577696163049574",
-          "1922075570625487051"
-        ],
-        "sample_tweets": [
-          "VeChain Surges Past 200-Day EMA, VET Eyes $0.060 Target URL",
-          "VeChain Price Prediction: VET Set to Soar 150–200% in 2025 After Cross-Chain Bridge Launch URL",
-          "VeChain Breaks 200-Day EMA: Is an 88% Rally to $0.061 Next? URL",
-          "VeChain (VET) Breaks Free: What’s the Next Price Target? URL",
-          "AI Predicts VeChain’s (VET) Price For Mid-May 2025 URL"
-        ],
-        "total_popularity": -2.947946435037441,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "imp1ssible23",
-        "user_id": "3001527488",
+        "user_name": "gstamato",
+        "user_id": "57365730",
         "tweet_count": 1,
         "tweet_ids": [
-          "1925554656576774192"
+          "1918688414905360876"
         ],
         "sample_tweets": [
-          "VeChain (VET) Current Price: Approximately $0.02–$0.05 Market Cap: ~$1.5 billion Key Features: Focuses on supply chain management and business process solutions. Employs a dual-token system:"
+          "Exciting news Bravo #VeFam. #Vechain $VET. $B3TR #VebetterDAO"
         ],
-        "total_popularity": 4.088656968929204,
-        "mixture_weight": 0.5,
-        "score": 0.5
+        "total_popularity": -0.3406606968397412,
+        "mixture_weight": 0.14285714285714285,
+        "score": 0.14285714285714285
+      },
+      {
+        "user_name": "TheVirtualFlame",
+        "user_id": "1411402122281816065",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1923467006923227201"
+        ],
+        "sample_tweets": [
+          "Alright fuckers, heres the deal. None of it is priced in. $VET has so much going on. • Development metrics • VebetterDAO • Dana White • UFC • Kid Rock • PBR • WWE • SLAP • Renaissance If $VET can get to $1, it’s gonna be sooner rather than later. URL"
+        ],
+        "total_popularity": 6.131292800160452,
+        "mixture_weight": 0.06666666666666667,
+        "score": 0.06666666666666667
+      },
+      {
+        "user_name": "Vetskandy",
+        "user_id": "945396769172713472",
+        "tweet_count": 2,
+        "tweet_ids": [
+          "1921353465147674870",
+          "1920584311603908966"
+        ],
+        "sample_tweets": [
+          "The market is smoking hot right now! $VET 15% $VTHO 11% #B3TR 41% Just the beginning ⏳⏰ #VeChain #VeFam #VebetterDao #VET URL",
+          "$VET up 7% On the way up to 4 cents again Looking ultra bullish #VeChain #VET #VeFam $VET $VTHO"
+        ],
+        "total_popularity": 4.026781730802672,
+        "mixture_weight": 0.047619047619047616,
+        "score": 0.047619047619047616
+      },
+      {
+        "user_name": "CryptoNewsFlas3",
+        "user_id": "1192794536352899072",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1922212212808024136"
+        ],
+        "sample_tweets": [
+          "Crypto’s New Standard: #VeChain Leads With ‘Proof of Habit’ On-Chain #VeFam #VET $VET URL"
+        ],
+        "total_popularity": 1.7198464082373857,
+        "mixture_weight": 0.04,
+        "score": 0.04
+      },
+      {
+        "user_name": "VechainAurelius",
+        "user_id": "851641266",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1924143615862845754"
+        ],
+        "sample_tweets": [
+          "$VET will soar not because of hype, but because purpose meets power. Led by @sunshinelu24 with @danawhite and @KidRock at his flank—sponsored by @UFC, @PowerSlap, @ATP, and @PBR . Discipline. Impact. Utility. Tell me that’s not bullish. BULLISH $VET URL"
+        ],
+        "total_popularity": 5.6401531352304906,
+        "mixture_weight": 0.010752688172043012,
+        "score": 0.010752688172043012
       }
     ]
   },
   {
-    "cluster_id": 7,
-    "topic": "Bubbles2Earn rewards users for refilling reusable bottles, integrating sustainability with crypto incentives in the VeChain ecosystem. The community actively engages in campaigns promoting NFT multipliers and real-world impact through hydration and eco-friendly practices.",
-    "top_users": [
-      {
-        "user_name": "Bubbles2Earn",
-        "user_id": "1559284344048553984",
-        "tweet_count": 4,
-        "tweet_ids": [
-          "1924374593948561842",
-          "1921671282766327929",
-          "1924208082327900667",
-          "1929515867311652954"
-        ],
-        "sample_tweets": [
-          "Welcome to BUBBLES! Refill. Scan. Earn. A Web3 sustainability dApp in the #VeBetterDAO ecosystem, built by @TurtleLabsV to reward real-world impact — one refill at a time. Get Started: Join the Community: Discord - URL Telegram - URL Claim Your Passport: Discord users: Open a ticket and wait for instructions Discord banned? Use our Google Form - URL Why BUBBLES? - Earn #B3TR for ditching single-use plastic. - Soulbound NFT Passport → Anti-farming, pro-planet. - #VOT3 on #VeBetterDAO → Shape the future of sustainability. Dive Deeper: URL Let’s turn hydration into a movement. #VeFam #B3TR #RefillRevolution",
-          "GOOD MORNING, BUBBLES ARMY! IT’S MOISTURE MONDAY → HYDRATE HARD, VOTE HARDER! Start your week strong: → REFILL your bottle → Scan → Earn $B3TR. → RUSH TO VOTE for Bubbles NOW: VeBetterDAO Round 49 - URL URGENT: NEW ALLOCATION RULES ARE LIVE. This is our MOST critical vote yet → We need EVERY supporter to act TODAY. Why? Changes = less allocation for smaller newer apps. Your vote = our growth + greener future. DO THIS NOW: 1. Go to URL 2. VOTE BUBBLES → Secure funding. 3. Tag 3 friends → Mobilize the army! DROP A \"\" WHEN YOU'VE VOTED! We see you. We salute you. LFGrow TOGETHER → Our hydration moves oceans. Our votes move mountains. #MoistureMonday #VoteBubblesNOW #BubblesEmergency #VeBetterDAO #LFGrow",
-          "GOOD MORNING, BUBBLERZ! IT’S #MOISTUREMONDAY — HYDRATE HARDER, SCAN HARDER! NEW VOTING ROUND IS LIVE! Vote for BUBBLES on #VeBetterDAO → VOTE HERE URL Higher votes = higher #B3TR rewards for YOU. Lock out farmers → Keep rewards fair + green. Fund planet-saving upgrades → Let’s scale impact! TODAY’S MISSION: Refill → Aim for 2L+! Scan → Earn tokens while saving the planet. Tag us → Show off your hydration hustle CHALLENGE ACCEPTED? Vote now → #VOT3 → Allocate to BUBBLES! Tag a friend → Spread the refill revolution! FUN FACT: Proper hydration boosts productivity by 20% → Crush Monday like a hero! Let’s make waves this week! #MoistureMonday #RefillRevolution #BubblesArmy",
-          "GOODNIGHT, BUBBLERS! Before you drift off… ONE LAST THING! Don't forget to Swap your #B3TR to #VOT3 and VOTE FOR BUBBLES on #VeBetterDAO! Every vote fuels our mission to make hydration REWARDING ! Quick To-Do: 1⃣ Swap → #B3TR → #VOT3 2⃣ Vote → @Bubbles2Earn & @TurtleLabsV 3⃣ Refill, Scan, Earn with Bubbles 2.0 4⃣ Sleep → (Hydrated, of course!) Together, we’re building a greener, better future — one scan (and vote!) at a time. Sweet dreams, #HydrateHeros Team Bubbles & TurtleLabs #BUBBLES #VeBetterDAO #HydrateToAccumulate"
-        ],
-        "total_popularity": 9.49230499192494,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "kranaking",
-        "user_id": "1456442921540984832",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1924353512387019051"
-        ],
-        "sample_tweets": [
-          "Don’t forget to vote for @Bubbles2Earn and @TurtleLabsV Vote early and get it out of the way!!!!! Just refilled my bottle &amp; earned rewards via @Bubbles2Earn #VeBetterDAO #BUBBLES Every refill = less plastic + less CO₂ Join now at URL"
-        ],
-        "total_popularity": 0.6185572724286422,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "EightiesEcho",
-        "user_id": "2414948840",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1930763139877876031"
-        ],
-        "sample_tweets": [
-          "We all drink water, don't we!? What if I told you that you could be earning money while drinking that water Stay hydrated with @AdventureFullMa & @JChainsX and earn with the Bubbles app on VeChain! Snap a pic of your reusable water bottle refill, earn $B3TR tokens, & help the planet! Small steps, big impact! Join @W3BCMedia & make every sip count! #VeChain #BubblesApp #EarnCrypto #Sustainability #HydrationStation #Web3 #CryptoRewards #EcoFriendly #B3TR #GreenLiving @vechainofficial"
-        ],
-        "total_popularity": -0.6390017778209945,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "donley84",
-        "user_id": "1471806768867069956",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1924452938992267531"
-        ],
-        "sample_tweets": [
-          "Everyday I refill my bottle &amp; earn rewards via @Bubbles2Earn #VeBetterDAO #BUBBLES Every refill = less plastic + less CO₂ Join now at URL"
-        ],
-        "total_popularity": -1.6083889756289564,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "fistsofdiamond",
-        "user_id": "1515042193404215302",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1921555641535267155",
-          "1925226380800799029"
-        ],
-        "sample_tweets": [
-          "Plastic bottles? Wasteful. Reusable bottles? Profitable. Earn every time you sip with @Bubbles2Earn sustainability should pay off. Check out @TurtleLabsV and get your passport in the discord: URL #GreenCrypto #VeBetterDAO URL",
-          "Just refilled my bottle &amp; earned rewards via @Bubbles2Earn #VeBetterDAO #BUBBLES Every refill = less plastic + less CO₂ Join now at URL And you can get even more when you check out their multipliers!! #SQUAD"
-        ],
-        "total_popularity": -0.20617451701970646,
-        "mixture_weight": 0.6666666666666666,
-        "score": 0.6666666666666666
-      },
-      {
-        "user_name": "BangzBoard",
-        "user_id": "1452617676669526021",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1924168986133995964"
-        ],
-        "sample_tweets": [
-          "#BANGZ Enjoy water and @0nChainSm0kerz Space Good Sunday Eve Bangzers Just refilled my bottle &amp; earned rewards via @Bubbles2Earn #VeBetterDAO #BUBBLES Every refill = less plastic + less CO₂ Join now at URL URL"
-        ],
-        "total_popularity": 0.7807505708328649,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "Phak915",
-        "user_id": "1909930389671657472",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1922958760504352798"
-        ],
-        "sample_tweets": [
-          "I just earned 1 #B3TR from @Bubbles2Earn #VeBetterDAO #Bubbles URL"
-        ],
-        "total_popularity": -1.651761848796582,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "gmanxrp2",
-        "user_id": "1461311656525385734",
-        "tweet_count": 21,
-        "tweet_ids": [
-          "1921363723865731107",
-          "1923209154056933709",
-          "1924288635882647748",
-          "1925556494222918125",
-          "1921895495087120667",
-          "1930523818843648042",
-          "1925859127529553975",
-          "1922275080689598842",
-          "1922950575429239097",
-          "1923179721157660896",
-          "1923763256298176825",
-          "1924033163975921688",
-          "1924701746116624447",
-          "1925049126125031441",
-          "1921108383077138703",
-          "1925910877506576532",
-          "1926830522459639839",
-          "1929915847209881752",
-          "1928811681733386580",
-          "1929023185078595868",
-          "1922497926498062503"
-        ],
-        "sample_tweets": [
-          "Just refilled my bottle &amp; earned rewards via @Bubbles2Earn just before bed What a great bedtime story It could be #B3TR, you could have the same GN @AsherLand #VeBetterDAO #BUBBLES Every refill = less plastic Join now at URL URL",
-          "After 2 &amp; a bit hrs, I'm claiming again via @Bubbles2Earn I'm just drinking water that I would normally drink Huge bonus using a S/S reusable bottle Have you got your passport yet? Join now at URL #VeBetterDAO #BUBBLES Every refill = less plastic URL",
-          "You getting paid to drink water? I am! Just refilled my bottle &amp; earned rewards via @Bubbles2Earn It doesn't get much #B3TR than this! Apart from getting paid to drink coffee as well! Which I do @mugshot_vet #VeBetterDAO #BUBBLES Join now at URL URL",
-          "Just refilled my bottle &amp; earned rewards via @Bubbles2Earn Not gonna stop drinking water So gonna keep getting paid to do it! Always using my reusable drink bottle #VeBetterDAO #BUBBLES Every refill = less plastic Join now at URL",
-          "Just refilled my bottle &amp; earned rewards via @Bubbles2Earn My bed time fill up When I wake up I drink some water In the morning I refill &amp; get paid again! Not bad I must say #VeBetterDAO #Bubbles Every refill = less plastic Join now at URL"
-        ],
-        "total_popularity": 13.315102801071408,
-        "mixture_weight": 0.4883720930232558,
-        "score": 0.4883720930232558
-      },
-      {
-        "user_name": "FingaBanga420",
-        "user_id": "1462332302789337094",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1921956954835997066",
-          "1929622998438273086"
-        ],
-        "sample_tweets": [
-          "All #VeBetterDAO GM NFT holders with Mars, Venus, or Mercury have received their @Bubbles2Earn Passport! Today we are sending to Moon holders Holding Earth GM NFT? Verify in our Discord or via the form on the Bubbles app! #Vebetter #Vechain URL",
-          "Moisture Monday is here! Don’t forget to hydrate — body and blockchain. Grab your passport to the Bubbles dapp and start your journey. Stay moisturized, stay decentralized. #BubblesDapp #Vechain #VeBetter URL"
-        ],
-        "total_popularity": 1.210574472129887,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "AsherLand",
-        "user_id": "2799706744",
-        "tweet_count": 5,
-        "tweet_ids": [
-          "1919431680667918604",
-          "1924734407136481782",
-          "1925686345416016264",
-          "1922250352759333010",
-          "1926610394967154999"
-        ],
-        "sample_tweets": [
-          "BANG BANG 5 Submissions / 4 #B3TR each Being hydrated never felt so fresh Join @Bubbles2Earn ! #VeFam #Vechain #Water #Reward URL",
-          "Dive into the lake of #Sustainability with @Bubbles2Earn on VeChain Use a reusable bottle, earn #B3TR and join the eco-revolution with a elf like grace to save our HOME Like &amp; RT and remmember... ... STAY HYDRATED ... STAY MAGICAL #water #reusable #fantasy URL",
-          "Good Morning #VeFam Just refilled my bottle with @Bubbles2Earn and my mug for @mugshot_vet Double win Combo Less CO₂ for our More energy for me and more #B3TR for my pockets #Vechain #StarWars #GoodMorning URL",
-          "STAY HYDRATED @Bubbles2Earn #BubblesB3TRChallenge #VeFam #VeBetterDAO URL",
-          "Just refilled my bottle &amp; earned rewards via @Bubbles2Earn #VeBetterDAO #BUBBLES Every refill = less plastic + less CO₂ Join now at URL #Health #FitnessGoals #GYM"
-        ],
-        "total_popularity": 9.642469790536559,
-        "mixture_weight": 0.2777777777777778,
-        "score": 0.2777777777777778
-      }
-    ]
-  },
-  {
-    "cluster_id": 17,
-    "topic": "VeChain's community engagement through various giveaways and sustainable initiatives is highlighted in this cluster. Notable activities include Tesla giveaways, daily B3TR token rewards for eco-friendly actions, and the launch of wellness dApps that incentivize healthy lifestyles.",
+    "cluster_id": 6,
+    "topic": "The topic revolves around the VeBetterDAO initiative, which incentivizes sustainable actions through the use of B3TR tokens. Participants can earn rewards for engaging in eco-friendly activities, such as recycling or using sustainable products, while also participating in giveaways and community events to promote sustainability within the VeChain ecosystem.",
     "top_users": [
       {
         "user_name": "vet_mars",
@@ -548,6 +302,22 @@
         "score": 1.0
       },
       {
+        "user_name": "Phak915",
+        "user_id": "1909930389671657472",
+        "tweet_count": 2,
+        "tweet_ids": [
+          "1922958760504352798",
+          "1928807024411701259"
+        ],
+        "sample_tweets": [
+          "I just earned 1.90 #B3TR! Eating better, felling better with @ecomeal_vet #Sustanbility #VeBetterDAO #vechain URL",
+          "I just earned 1 #B3TR from @Bubbles2Earn #VeBetterDAO #Bubbles URL"
+        ],
+        "total_popularity": -2.850681410258484,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
         "user_name": "BuddyHerbNFT",
         "user_id": "1483493497336438786",
         "tweet_count": 1,
@@ -558,6 +328,48 @@
           "Morning People. Want to earn $B3TR for being Better Well you #B3TR get yourself a #VeChain wallet to start. I'd recommend URL Video guide below for you newbies. Then get yourself a @Bubbles2Earn Passport and start earning for drinking water. URL"
         ],
         "total_popularity": 1.8852849572109482,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "gekkashinro",
+        "user_id": "1044231555722309632",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1922235985712095265"
+        ],
+        "sample_tweets": [
+          "VeChain Mugshot [0.28] B3TR / $0.08913 (‿) ※Happy Mother’s day! I miss you Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL"
+        ],
+        "total_popularity": 0.8719302938485518,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "kranaking",
+        "user_id": "1456442921540984832",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1924353512387019051"
+        ],
+        "sample_tweets": [
+          "Don’t forget to vote for @Bubbles2Earn and @TurtleLabsV Vote early and get it out of the way!!!!! Just refilled my bottle &amp; earned rewards via @Bubbles2Earn #VeBetterDAO #BUBBLES Every refill = less plastic + less CO₂ Join now at URL"
+        ],
+        "total_popularity": 0.6185572724286422,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "BiteGram_vet",
+        "user_id": "1914703221789995008",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1927893858005774734"
+        ],
+        "sample_tweets": [
+          "BiteGram LOVES food pics! What's your go-to healthy meal? #B3TR #Rewards #HealthyEating #Vechain URL"
+        ],
+        "total_popularity": -0.287863924532428,
         "mixture_weight": 1.0,
         "score": 1.0
       },
@@ -590,100 +402,38 @@
         "score": 1.0
       },
       {
-        "user_name": "Armanko_vet",
-        "user_id": "216710541",
+        "user_name": "EightiesEcho",
+        "user_id": "2414948840",
         "tweet_count": 1,
         "tweet_ids": [
-          "1923483724320018619"
+          "1930763139877876031"
         ],
         "sample_tweets": [
-          "I just earned 13 $B3TR by beating a challenge on the URL #VeChain #VeBetterDAO"
+          "We all drink water, don't we!? What if I told you that you could be earning money while drinking that water Stay hydrated with @AdventureFullMa & @JChainsX and earn with the Bubbles app on VeChain! Snap a pic of your reusable water bottle refill, earn $B3TR tokens, & help the planet! Small steps, big impact! Join @W3BCMedia & make every sip count! #VeChain #BubblesApp #EarnCrypto #Sustainability #HydrationStation #Web3 #CryptoRewards #EcoFriendly #B3TR #GreenLiving @vechainofficial"
         ],
-        "total_popularity": -0.7457416917913762,
+        "total_popularity": -0.6390017778209945,
         "mixture_weight": 1.0,
         "score": 1.0
       },
       {
-        "user_name": "CarretteThijs",
-        "user_id": "1869334815142506496",
+        "user_name": "Ezeagafelam2",
+        "user_id": "1697883184451489792",
         "tweet_count": 1,
         "tweet_ids": [
-          "1925520391977476266"
+          "1924875167714439457"
         ],
         "sample_tweets": [
-          "I just earned $B3TR by beating a challenge on the URL #VeChain #VeBetterDAO"
+          "I just earned 1.64 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL"
         ],
-        "total_popularity": -0.8297276887949087,
+        "total_popularity": -0.7115947839460199,
         "mixture_weight": 1.0,
         "score": 1.0
-      },
-      {
-        "user_name": "SantiMagno888",
-        "user_id": "1704271047594487808",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1930715113465524731"
-        ],
-        "sample_tweets": [
-          "I have successfully uploaded a receipt on Justote and will get rewarded with B3TR if approved. URL #Vechain #B3TR"
-        ],
-        "total_popularity": -1.2992760251691016,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "B3TRTRADZE",
-        "user_id": "1616800176110469121",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1930624611470671939",
-          "1925964023175995727",
-          "1927100150725431689"
-        ],
-        "sample_tweets": [
-          "B3TR TRADZE CONTENT COMPETITION This one's for the creatives, the memelords, the AI wizards—and yep, even the lurkers. Big Billy's got the prizes... I've got the red nose and the judgment... Let’s make content that burns. #B3TRTRADZE #B3TR #Web3Contest #VeChain URL",
-          "Big congrats to @b3tr_transit — the dApp is DONE and already gaining love from the VeChain Foundation Next stop: proposal, DAO vote, and onboarding new power to the B3TR ecosystem. We’re backing this all the way. #B3TRTRADZE #VeChain #VeBetterDAO URL",
-          "June Rewards Are In! B3TRTradze holders just split over 20,500 VET — another solid month of profit sharing. • ~43.17 VET per NFT • Icon holders received ~890 VET manually Powered by VeChain Fueled by real trading URL #B3TRTRADZE #vechain URL"
-        ],
-        "total_popularity": 10.84253740081419,
-        "mixture_weight": 0.75,
-        "score": 0.75
-      },
-      {
-        "user_name": "Yavbouforever",
-        "user_id": "714561268938616832",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1924521497734869283",
-          "1922616308996165888"
-        ],
-        "sample_tweets": [
-          "I just earned 13 $B3TR by beating a challenge on the URL #VeChain #VeBetterDAO",
-          "Thanks to @green_commuter and their #GreenCommuterChallenge , I received some #B3TR today #VeFam #VeBetterDAO"
-        ],
-        "total_popularity": -2.119270832160577,
-        "mixture_weight": 0.6666666666666666,
-        "score": 0.6666666666666666
-      },
-      {
-        "user_name": "xukang13",
-        "user_id": "958612549578113024",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1926962070982959368"
-        ],
-        "sample_tweets": [
-          "Just earned $B3TR with @cleanify_vet by keeping our environment clean! Take action, and earn rewards on URL #CleanUpChallenge #EarthCleanup #Sustainability #VeBetterDAO #Vechain URL"
-        ],
-        "total_popularity": 3.830167702301556,
-        "mixture_weight": 0.5,
-        "score": 0.5
       }
     ]
   },
   {
-    "cluster_id": 0,
-    "topic": "VeChain's VeBetterDAO ecosystem showcases significant community engagement and development updates. Notable activities include app upgrades, grant programs, and voting initiatives aimed at enhancing utility and rewarding user participation.",
+    "cluster_id": 2,
+    "topic": "VeBetterDAO is a decentralized application ecosystem focused on sustainability and real-world impact, utilizing tokens $B3TR and $VOT3 for governance and rewards. The platform aims to drive the adoption of Web3 technology through community engagement, dApp development, and initiatives that promote eco-friendly actions.",
     "top_users": [
       {
         "user_name": "terumin_369",
@@ -719,6 +469,30 @@
         "score": 1.0
       },
       {
+        "user_name": "Restify_App",
+        "user_id": "1852347868473901056",
+        "tweet_count": 7,
+        "tweet_ids": [
+          "1924781192626504193",
+          "1923319310333640917",
+          "1922636672828608811",
+          "1925476499613696329",
+          "1927672883372855434",
+          "1928022015799087138",
+          "1929470569961173164"
+        ],
+        "sample_tweets": [
+          "We’re getting ready to list on VeBetterDAO… and we’ve already secured a whopping 54/100 points from some incredible endorsers! Huge thanks to those backing us so far If you’d like to support Restify and help bring digital wellness to Web3, reach out—we’d love to have you onboard! @vechainofficial",
+          "Big news… and we’re honestly a bit speechless. Yesterday, we submitted our proposal to VeBetterDAO. Today, we were planning to start our endorsement campaign… But this morning, we woke up to see we’d already received a whopping 113/100 points. To everyone who backed us so fast—thank you. Truly. Restify is coming. We’re building the easiest way to take back your time, and we promise to give back to this incredible @vechainofficial community.",
+          "Next week… Restify goes LIVE on VeBetterDAO! If you’re excited to see us succeed, we’d love your support in the vote this week. More votes = more rewards for our users! Here’s how our weekly B3TR distribution will work: 80% to users that week (based on Restify usage) 15% for initiatives (marketing, referrals, etc.) 5% to our amazing endorsers Let’s make this launch count @vechainofficial",
+          "GM and happy Monday! Hope you had a restorative weekend—and took some time away from your phone. This is a BIG one for us… It’s our first week on the VeBetterDAO voting tables THANK YOU to the 2,973 amazing people who voted for us. We’ve secured our first allocation—and we’re going LIVE this week! Get ready. @vechainofficial",
+          "We’re hoping to receive our VeBetterDAO allocation next week! And if all goes to plan, Restify will be live on the Play Store by Wednesday (pending approval) Why Play Store? Less farming Harder to fake/emulate Real rewards for real users Voting means more rewards—80% of our weekly allocation goes straight to active users! Let’s do this @vechainofficial"
+        ],
+        "total_popularity": 26.00534507865945,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
         "user_name": "cleanify_vet",
         "user_id": "1762241133017509888",
         "tweet_count": 5,
@@ -741,22 +515,20 @@
         "score": 1.0
       },
       {
-        "user_name": "ReheatVet",
-        "user_id": "1886852699913904145",
-        "tweet_count": 4,
+        "user_name": "ecomeal_vet",
+        "user_id": "1894713183773888512",
+        "tweet_count": 3,
         "tweet_ids": [
-          "1924015756976459977",
-          "1922606761942405622",
-          "1918269119670915235",
-          "1918356311206429111"
+          "1927276612657025422",
+          "1924838974972956953",
+          "1929828439004967359"
         ],
         "sample_tweets": [
-          "‼ Clearing Up Confusion: How to Properly Support Proposals in #VeBetterDAO Many seem unsure about how to support proposals—let’s fix that! If you think your vot3s in @veDelegate are supporting a proposal right now, they’re not. Here’s how to actually help: 1⃣ Withdraw the amount of vot3/b3tr you’re willing to lock until next week. (Note: These won’t be snapshotted, so no voting rewards this round. Funds left in veDelegate earn rewards as usual.) 2⃣ Convert to vot3 (if needed) via the VeBetterDAO Governance dApp. 3⃣ Support a proposal: Find one you believe in (like @el_califfo’s), click \"Support Proposal\", and deposit your vot3s. 4⃣ Next round: Claim back your vot3s and optionally restake in veDelegate. Supporting proposals happens ONLY in the VeBetterDAO dApp—@veDelegate plays no role this phase. Your veDelegate votes (see 2nd image) only matter if the proposal passes support this round. Otherwise, both the proposal and your vote will be dropped. 65+ users have already contributed 1+ vot3—but with thousands in the #vefam, we can do better. Look beyond short-term rewards. Supporting strong proposals now ensures the DAO’s long-term health. Ignoring this hurts everyone. If you agree with a proposal, take 2 minutes to lock vot3s and back it! Tag anyone confused by the process!",
-          "Fresh update to this. He's added 5 wallets to his network but a nice ~6k new rewarded actions. This guy is the guy on top of the #VeBetterDAO leaderboard. He's in total gotten rewards 22709 times now. A nice 17603 B3TR haul. I do think this will stop when his queued up rewards are fully claimed, but @AWorld_ActNow if you can, and haven't already, ban his wallets and remove all queued rewards. The google sheets has been updated with today's data. URL",
-          "The @veDelegate votes have been cast and it's most likely settled now that the proposal will pass. The majority is in favor. Good luck to everyone moving forward, this will mark a significant shift in the #VeBetterDAO and dApps and voters alike will have to adapt. Your vote is now more important than ever.",
-          "Thanks for all your hard work @veDelegate . Your dapp and other tools are amazing and it's still really useful for the folks who might not visit #VebetterDAO weekly to vote manually. They'll now take a small reward hit, but 90% is still more than 0% if they forgot to vote manually. Keep rocking and I'll be sure to shout if I figure out some neat way you can keep rewarding users!"
+          "Guys, time to vote! Take a minute to vote for us on #VeBetterDAO It really helps, grazie! URL",
+          "Quick weekly reminder If you haven’t voted yet on #VeBetterDAO, now’s the time to support EcoMeal! As always, grazie URL",
+          "Don’t forget to vote for us on #VeBetterDAO Every vote helps us keep EcoMeal going and growing; it only takes a minute. Grazie!"
         ],
-        "total_popularity": 15.082499101802068,
+        "total_popularity": 5.850728396513699,
         "mixture_weight": 1.0,
         "score": 1.0
       },
@@ -811,6 +583,22 @@
         "score": 1.0
       },
       {
+        "user_name": "CelestialBuilda",
+        "user_id": "1327432048924004355",
+        "tweet_count": 2,
+        "tweet_ids": [
+          "1927062135395193051",
+          "1919762524884365384"
+        ],
+        "sample_tweets": [
+          "New Books Ladies and Gentlemen!#VeChain #VeFam #VeBetterDAO",
+          "It's that time again. The fellowship of NFBC and SolarWise. Come see what both companies have been brewing in our monthly collaborative spaces. #VeFam #VeChain #VeBetterDAO"
+        ],
+        "total_popularity": -0.12137592084680082,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
         "user_name": "morbidejs",
         "user_id": "1475492834304217092",
         "tweet_count": 2,
@@ -839,187 +627,38 @@
         "total_popularity": 4.616037899962305,
         "mixture_weight": 1.0,
         "score": 1.0
-      },
-      {
-        "user_name": "juicyfinance_io",
-        "user_id": "1908137772373929984",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925522715030528007"
-        ],
-        "sample_tweets": [
-          "1/ Our VeBetterDAO application has been approved and Juicy Finance is ready to unlock real DeFi utility for $B3TR and beyond. Here's what we're bringing to the DAO URL"
-        ],
-        "total_popularity": 4.4238535281198175,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "WeedforlifeV",
-        "user_id": "1576123904921419777",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1923301003656413531"
-        ],
-        "sample_tweets": [
-          "Let’s take a look at the VeBetterDAO Round #45 apps that gave out the least in rewards: - Nubilia 0% - EatGreen 10% - Cleanify 15.92% - JustTote 27.52% - EcoBag 32.13% - Bubbles 32.42% - Carboneers 34.18% - MeterMate 34.77% What does the Vechain community think about it???"
-        ],
-        "total_popularity": 3.544127457541838,
-        "mixture_weight": 1.0,
-        "score": 1.0
       }
     ]
   },
   {
-    "cluster_id": 5,
-    "topic": "Ecomeal's integration with the VeChain ecosystem promotes healthy eating through a rewards system. Users share their meals while earning #B3TR tokens, highlighting community engagement in sustainability and wellness.",
+    "cluster_id": 0,
+    "topic": "The topic revolves around promotions and giveaways associated with the UFC and VeChain, particularly during the International Fight Week. Posts highlight various contests, live events, and NFT-related activities, emphasizing community engagement and participation in the UFC ecosystem.",
     "top_users": [
       {
-        "user_name": "Ezeagafelam2",
-        "user_id": "1697883184451489792",
-        "tweet_count": 1,
+        "user_name": "VeChain_Vulture",
+        "user_id": "1695639360886960128",
+        "tweet_count": 8,
         "tweet_ids": [
-          "1924875167714439457"
+          "1927203727871529149",
+          "1923152189528154125",
+          "1925043594890535159",
+          "1920999236738383947",
+          "1917384236492804366",
+          "1919992860453019656",
+          "1922840316555477458",
+          "1922574075399967022"
         ],
         "sample_tweets": [
-          "I just earned 1.64 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL"
+          "Rocky Mountain National Park is welcoming visitors smoothly despite nationwide concerns. Perfect for summer trips! URL URL",
+          "Sidney Crosby and Nathan MacKinnon reunite to represent Canada in the Ice Hockey World Championship, alongside rising star Macklin Celebrini. URL",
+          "Get ready for a night of energetic beats and electrifying performances as Noise Factor returns with early Moods, Hashtronaut, Giant Lungs, and more! URL URL",
+          "Chicago's outdoor deck designs are evolving with contemporary layouts, multi-level styles, eco-friendly solutions, and innovative materials. Experience seamless indoor-outdoor transitions! URL URL",
+          "Chicago Cubs pull off a thrilling comeback in the ninth! Nico Hoerner and Justin Turner deliver clutch hits, sealing a 5-4 victory over Miami. URL"
         ],
-        "total_popularity": -0.7115947839460199,
+        "total_popularity": -9.61692272825517,
         "mixture_weight": 1.0,
         "score": 1.0
       },
-      {
-        "user_name": "windmuni",
-        "user_id": "163330115",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1923322277480759674"
-        ],
-        "sample_tweets": [
-          "I just earned 2 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL"
-        ],
-        "total_popularity": -0.7596966210849138,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Hfrto6",
-        "user_id": "4162921332",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1922593083092275598"
-        ],
-        "sample_tweets": [
-          "I just earned 2 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL"
-        ],
-        "total_popularity": -0.8909878341345155,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "neohana1543",
-        "user_id": "1882441755733442561",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1923648243117982065"
-        ],
-        "sample_tweets": [
-          "I just earned 1.99 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL #continue_salon @continue_salon"
-        ],
-        "total_popularity": -0.9229468389436092,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "bulgarth",
-        "user_id": "1654303255101358084",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1924651492666945992"
-        ],
-        "sample_tweets": [
-          "I just earned 0.96 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL"
-        ],
-        "total_popularity": -1.228564505536254,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Miyako8382",
-        "user_id": "1595615269887840257",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1920999678868361431"
-        ],
-        "sample_tweets": [
-          "I just earned 1.7 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL"
-        ],
-        "total_popularity": -1.2617047334778166,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "TrueMitchiv",
-        "user_id": "2375892800",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1929759779460993537"
-        ],
-        "sample_tweets": [
-          "I just earned 1.75 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL @ATTNtoken @GiveRep"
-        ],
-        "total_popularity": -0.26285054900475696,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "since197889",
-        "user_id": "1555819308478918657",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927649802977759591"
-        ],
-        "sample_tweets": [
-          "I just earned 1.91 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL"
-        ],
-        "total_popularity": -1.072599904782244,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "Phak915",
-        "user_id": "1909930389671657472",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1928807024411701259"
-        ],
-        "sample_tweets": [
-          "I just earned 1.90 #B3TR! Eating better, felling better with @ecomeal_vet #Sustanbility #VeBetterDAO #vechain URL"
-        ],
-        "total_popularity": -1.1989195614619017,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "theb3tr",
-        "user_id": "2892244917",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1921594565955301594"
-        ],
-        "sample_tweets": [
-          "I just earned 1.75 #B3TR! Eating better, feeling better with @ecomeal_vet. #Sustainability #VeBetterDAO #vechain URL"
-        ],
-        "total_popularity": -0.9318372219300329,
-        "mixture_weight": 0.2,
-        "score": 0.2
-      }
-    ]
-  },
-  {
-    "cluster_id": 14,
-    "topic": "VeChain's involvement in live streaming events and community engagement is highlighted in this cluster. The distinctive focus is on promoting the #PowerSlap13 series and encouraging community participation through voting and interactive campaigns.",
-    "top_users": [
       {
         "user_name": "Vechain_Freyr",
         "user_id": "1886827408722157571",
@@ -1047,6 +686,62 @@
           "Damn #VRA what you doing? URL"
         ],
         "total_popularity": 0.658153766222713,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "Vechaindaddy",
+        "user_id": "948970404261048320",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1920860748953112588"
+        ],
+        "sample_tweets": [
+          "This amazing person just won their battle against diabetes! She needs our help to pay off debt and start living fully. Please consider donating or sharing to spread the word. Thank you! URL"
+        ],
+        "total_popularity": 0.6361194820907038,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "AdaVechain",
+        "user_id": "1343716520229302277",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1919418332819677482"
+        ],
+        "sample_tweets": [
+          "Pump and dump from #coti all true time over and over . Nice job @COTInetwork"
+        ],
+        "total_popularity": -0.7907034533001418,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "WoV_Ditryin",
+        "user_id": "761400625183666176",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1928955604514570483"
+        ],
+        "sample_tweets": [
+          "Three BIG #tennis matches tomorrow at the #FrenchOpen #MadVApes #MVA on #VeChain @ the #WorldOfV URL"
+        ],
+        "total_popularity": -0.8359118219725551,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "NftVechain",
+        "user_id": "1448649014803460110",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1929998219607474314"
+        ],
+        "sample_tweets": [
+          "Ready for $GRIND launch on @AbstractChain"
+        ],
+        "total_popularity": -1.5376774559961093,
         "mixture_weight": 1.0,
         "score": 1.0
       },
@@ -1183,865 +878,75 @@
         "score": 0.9913793103448276
       },
       {
-        "user_name": "VechainROWS",
-        "user_id": "1575234482918944768",
-        "tweet_count": 10,
-        "tweet_ids": [
-          "1926401162766327980",
-          "1927334820121628883",
-          "1927347066084143546",
-          "1927776507813847461",
-          "1923442833844772997",
-          "1917543262581317707",
-          "1920555648636563531",
-          "1920122705061486779",
-          "1921908186795122802",
-          "1921958154981523956"
-        ],
-        "sample_tweets": [
-          "Coming Are you ready for the #Renaissance Retweet Drop your handles below URL",
-          "GM M F E R S URL",
-          "Everybody’s all tough…TILL THEY GET SLAPPED URL",
-          "GM homies:. #B3trTogether URL",
-          "P O W E R S L A P -VECHAIN URL"
-        ],
-        "total_popularity": 12.675548135142922,
-        "mixture_weight": 0.21739130434782608,
-        "score": 0.21739130434782608
-      },
-      {
-        "user_name": "My_NamesJames",
-        "user_id": "1720355888",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927000742113460450"
-        ],
-        "sample_tweets": [
-          "The hottest show on X URL"
-        ],
-        "total_popularity": -0.8437667346153015,
-        "mixture_weight": 0.2,
-        "score": 0.2
-      },
-      {
-        "user_name": "420_vechain",
-        "user_id": "1748999212954451969",
-        "tweet_count": 18,
-        "tweet_ids": [
-          "1921683529848537283",
-          "1924116349451686363",
-          "1924166051144630323",
-          "1924414055344754742",
-          "1924459349411250228",
-          "1925683138354667807",
-          "1923481401388568895",
-          "1923490208789528751",
-          "1923830019874226579",
-          "1930701579117642196",
-          "1930920967376642280",
-          "1925225058110185544",
-          "1923530775586029638",
-          "1920979995737915577",
-          "1919630771138007551",
-          "1922994528501330020",
-          "1922088795807052179",
-          "1922320472550568354"
-        ],
-        "sample_tweets": [
-          "Who is ready for #moon ? URL",
-          "WTF did I missed? URL",
-          "I need this URL #FelipePantone",
-          "Look what just arrived @nubilanetwork URL",
-          "BUY BUY BUY URL"
-        ],
-        "total_popularity": -8.57601190372739,
-        "mixture_weight": 0.14173228346456693,
-        "score": 0.14173228346456693
-      },
-      {
-        "user_name": "VeChain_Vulture",
-        "user_id": "1695639360886960128",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925043594890535159"
-        ],
-        "sample_tweets": [
-          "Get ready for a night of energetic beats and electrifying performances as Noise Factor returns with early Moods, Hashtronaut, Giant Lungs, and more! URL URL"
-        ],
-        "total_popularity": -1.2183318603101916,
-        "mixture_weight": 0.125,
-        "score": 0.125
-      },
-      {
-        "user_name": "VechainAurelius",
-        "user_id": "851641266",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1927783495868248555",
-          "1923589031041827210",
-          "1922716947956764925"
-        ],
-        "sample_tweets": [
-          "Time to lock in baby!!! URL",
-          "Not everyone can handle what this head brings to the table @Thorheads 7 figgyyyy Need an 8 figggyyy URL",
-          "Let’s go Knicks!!!!! @ScoopUp_vet @MrWhittleman @VeCorgi @ST3PR_VET @greencart_vet URL"
-        ],
-        "total_popularity": 6.943898578144063,
-        "mixture_weight": 0.03225806451612903,
-        "score": 0.03225806451612903
-      },
-      {
-        "user_name": "vechainofficial",
-        "user_id": "908576143975919616",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927657812236042585"
-        ],
-        "sample_tweets": [
-          "See you all tonight for an action packed session! The all-important link: URL"
-        ],
-        "total_popularity": 8.641589715698503,
-        "mixture_weight": 0.02631578947368421,
-        "score": 0.02631578947368421
-      }
-    ]
-  },
-  {
-    "cluster_id": 12,
-    "topic": "VeChain's promotional activities during UFC International Fight Week and community engagement are highlighted. The cluster features various giveaways, event announcements, and community interactions, showcasing excitement around VeChain's presence in the UFC space.",
-    "top_users": [
-      {
-        "user_name": "RealPaisanTPK",
-        "user_id": "505152699",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1924951107463479662"
-        ],
-        "sample_tweets": [
-          "you guys will not believe who I just brainstormed content with at UFC HQ for Vechain"
-        ],
-        "total_popularity": 3.299297450611265,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "WoV_Ditryin",
-        "user_id": "761400625183666176",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1928955604514570483"
-        ],
-        "sample_tweets": [
-          "Three BIG #tennis matches tomorrow at the #FrenchOpen #MadVApes #MVA on #VeChain @ the #WorldOfV URL"
-        ],
-        "total_popularity": -0.8359118219725551,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "chiarabelmonte_",
-        "user_id": "1251976318457126912",
-        "tweet_count": 8,
-        "tweet_ids": [
-          "1921461550944059892",
-          "1920384614800961946",
-          "1929088385357889958",
-          "1922534612258988435",
-          "1930875225677131970",
-          "1925609796989804823",
-          "1919446221636112887",
-          "1918717807895994858"
-        ],
-        "sample_tweets": [
-          "GM and welcome June! #VeFam #VeChain #illustration #art URL",
-          "We all need a refuge that keeps us alive, that regenerates us from deep within, from our roots, whether it is a physical place or simply an idyllic one. Our place in the world. GE #VeFam, have a great night #VeChain #illustration #digitalpainting URL",
-          "“The night is warm, the night is long, the night is magnificent for listening to stories.” (Antonio Tabucchi) GE #VeFam #VeChain #illustrationart #Illustrator URL",
-          "GM GM It’s almost weeeeeekend #vechain #vefam #lifeonabalcony URL",
-          "GM balcony people Balconies open, heat on the way, and a satisfying grocery haul thanks to @greencart_vet this week! Have a great Friday #VeFam #VeChain #illustrator #art URL"
-        ],
-        "total_popularity": 7.459928524188523,
-        "mixture_weight": 0.6666666666666666,
-        "score": 0.6666666666666666
-      },
-      {
-        "user_name": "VeChain_Vulture",
-        "user_id": "1695639360886960128",
-        "tweet_count": 4,
-        "tweet_ids": [
-          "1923152189528154125",
-          "1920999236738383947",
-          "1919992860453019656",
-          "1922574075399967022"
-        ],
-        "sample_tweets": [
-          "Sidney Crosby and Nathan MacKinnon reunite to represent Canada in the Ice Hockey World Championship, alongside rising star Macklin Celebrini. URL",
-          "Chicago's outdoor deck designs are evolving with contemporary layouts, multi-level styles, eco-friendly solutions, and innovative materials. Experience seamless indoor-outdoor transitions! URL URL",
-          "Chicago Cubs pull off a thrilling comeback in the ninth! Nico Hoerner and Justin Turner deliver clutch hits, sealing a 5-4 victory over Miami. URL",
-          "Simone Biles and Jonathan Owens shone at the Kentucky Derby in stylish lavender outfits, where Biles delivered the exciting \"Riders Up\" call! URL URL"
-        ],
-        "total_popularity": -5.176092864705165,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
         "user_name": "NonFungibleBC",
         "user_id": "1536195409701351424",
-        "tweet_count": 3,
+        "tweet_count": 5,
         "tweet_ids": [
           "1924268768982712678",
           "1922352960970842324",
+          "1921732058369405281",
+          "1926805495668502924",
           "1929342198878970023"
         ],
         "sample_tweets": [
+          "New Listen-to-Earn Books Added to the Library! \"Youth\" – Leo Tolstoy \"Adrift in New York\" – Horatio Alger Jr. \"The Ladies' Paradise\" – Émile Zola Whitelist minting now! Public mint opens May 26, 2025, at 6:00 PM UTC. #VeBetterDAO #VeChain #Audiobooks #ListenToEarn",
           "New Books Have Arrived! \"The Varieties of Religious Experience\" – William James \"The American\" – Henry James \"A Room of One’s Own\" – Virginia Woolf Whitelist is open now! Public mint opens June 2, 2025, at 6:00 PM UTC. #VeBetterDAO #VeChain #Audiobooks #ListenToEarn",
           "New Books Available Now! \"American Fairy Tales\" – L. Frank Baum \"The Branding Iron\" – Katharine Newlin Burt \"The Ambassadors\" – Henry James Whitelist mint open now! Public mint opens May 19, 2025, at 6:00 PM UTC. #VeBetterDAO #VeChain #Audiobooks #ListenToEarn",
+          "New Books Available Now! \"The Snow-Blind\" – Katharine Newlin Burt \"The Cat of Bubastes\" – G. A. Henty \"A Lost Lady\" – Willa Cather Whitelist mint open now! Public mint opens May 12, 2025, at 6:00 PM UTC. #VeBetterDAO #VeChain #Audiobooks #ListenToEarn URL",
           "I am soooo sorry! (Critter here)... I RUGGED THE SPACE!!! Really sorry about that team. Let's be sure to join @cboundy22 and @sunshinelu24 tonight on Connor's VeChain Monthly Update space! See you then!"
         ],
-        "total_popularity": 9.020867633322974,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "FigurelShane",
-        "user_id": "1161454463686729728",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1923473607570723257",
-          "1918359943838654759"
-        ],
-        "sample_tweets": [
-          "I might have a heart attack from the #vechain news. Gotta make a #veheart dapp.",
-          "Probably Vegas. #vechain"
-        ],
-        "total_popularity": 1.3527972681159135,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "BangzBoard",
-        "user_id": "1452617676669526021",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1929978621461942489"
-        ],
-        "sample_tweets": [
-          "BANGZBOARD Webshop Launch! Skaters &amp; Web3 fans, grab your #phygital skateboards powered by VeChain! Original #BANGZ designs: Stylish boards for 100 $USDGLO (#GLODollar) Shop now: URL #Skate #Web3 #VeChain #BANGZ #Skate2earn #Skatelife #SK8 URL"
-        ],
-        "total_popularity": 6.3540222808389,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "cboundy22",
-        "user_id": "893750653",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1922474455361630221"
-        ],
-        "sample_tweets": [
-          "Random scribbles from the 26th VeChain Monthly Updates space. Thank you for joining us @sunshinelu24 that was a lot of fun URL"
-        ],
-        "total_popularity": 4.456614158851713,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "TrueMitchiv",
-        "user_id": "2375892800",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1924425240509042723"
-        ],
-        "sample_tweets": [
-          "The future is log-ically connected Just set up my @nubilanetwork Marco device and gave it the VIP mount. Who else mining data in the wild? #DePIN #VeChain URL"
-        ],
-        "total_popularity": 3.922458441792386,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "imp1ssible23",
-        "user_id": "3001527488",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1924071575986593891"
-        ],
-        "sample_tweets": [
-          "Can I be a millionaire?? #vefam #VET #Vechain @sunshinelu24 @ufc @ufc_jp URL"
-        ],
-        "total_popularity": 3.786523195521929,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      }
-    ]
-  },
-  {
-    "cluster_id": 16,
-    "topic": "VeChain's ecosystem growth and community engagement are highlighted by a surge in user activity and innovative applications. Distinctive elements include the integration of real-world data tokenization, NFT staking models, and sustainability-focused initiatives like the \"Listen-to-Earn\" program.",
-    "top_users": [
-      {
-        "user_name": "AdaVechain",
-        "user_id": "1343716520229302277",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1919418332819677482"
-        ],
-        "sample_tweets": [
-          "Pump and dump from #coti all true time over and over . Nice job @COTInetwork"
-        ],
-        "total_popularity": -0.7907034533001418,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "NftVechain",
-        "user_id": "1448649014803460110",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1929998219607474314"
-        ],
-        "sample_tweets": [
-          "Ready for $GRIND launch on @AbstractChain"
-        ],
-        "total_popularity": -1.5376774559961093,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Lovelivelame",
-        "user_id": "1735463335859011584",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1928043333684744445"
-        ],
-        "sample_tweets": [
-          "@ST3PR_VET my phone won't connect the steps on samsung, I need some help #vechain"
-        ],
-        "total_popularity": -1.7030610695811395,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "AlexanderJ184",
-        "user_id": "1762838865294094336",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1926640632954503381"
-        ],
-        "sample_tweets": [
-          "@Thorheads look at my new amazing thorhead Rarity 45,617#VeChain #VeFam URL"
-        ],
-        "total_popularity": 4.072635813259363,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "MyVechain",
-        "user_id": "1457112884291440646",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1924825448283795576",
-          "1920239471414427739",
-          "1929408081718350045"
-        ],
-        "sample_tweets": [
-          "Rewards for round 48 are out! Let's not forget to vote for BetterSwap to support these heroes!",
-          "At least the #Pool2Earn users earned some nice fees today! Join now on BetterSwap! #PositiveMindset URL",
-          "The giveaway is still open!"
-        ],
-        "total_popularity": 4.027194017476327,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "NonFungibleBC",
-        "user_id": "1536195409701351424",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1921732058369405281",
-          "1926805495668502924"
-        ],
-        "sample_tweets": [
-          "New Listen-to-Earn Books Added to the Library! \"Youth\" – Leo Tolstoy \"Adrift in New York\" – Horatio Alger Jr. \"The Ladies' Paradise\" – Émile Zola Whitelist minting now! Public mint opens May 26, 2025, at 6:00 PM UTC. #VeBetterDAO #VeChain #Audiobooks #ListenToEarn",
-          "New Books Available Now! \"The Snow-Blind\" – Katharine Newlin Burt \"The Cat of Bubastes\" – G. A. Henty \"A Lost Lady\" – Willa Cather Whitelist mint open now! Public mint opens May 12, 2025, at 6:00 PM UTC. #VeBetterDAO #VeChain #Audiobooks #ListenToEarn URL"
-        ],
-        "total_popularity": 7.170913829970159,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "KramLamo",
-        "user_id": "1141577294399459329",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1928997740039811310"
-        ],
-        "sample_tweets": [
-          "x dogsH!t Iiiiitttttttsssss… tiiimmmmmmeeeeeeee @ScoopUp_vet $B3TR #VeBetterDao #VeFam #VeChain #UFC URL"
-        ],
-        "total_popularity": 2.062353835351764,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "ecomeal_vet",
-        "user_id": "1894713183773888512",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1929828439004967359"
-        ],
-        "sample_tweets": [
-          "Quick weekly reminder If you haven’t voted yet on #VeBetterDAO, now’s the time to support EcoMeal! As always, grazie URL"
-        ],
-        "total_popularity": 1.8900389676582074,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "Yayabellta",
-        "user_id": "1891761146069401600",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927265410283413872"
-        ],
-        "sample_tweets": [
-          "Shop ,Earn ,Thank B3TR #BetterBag_vet #EcoBag_vet #Vechain URL"
-        ],
-        "total_popularity": -0.2408257656877312,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "VechainAurelius",
-        "user_id": "851641266",
-        "tweet_count": 29,
-        "tweet_ids": [
-          "1922996211411206411",
-          "1923038599915659635",
-          "1923134944789819406",
-          "1925598072429588527",
-          "1926137045644165475",
-          "1926320969905283408",
-          "1926353445658698040",
-          "1926943467097162130",
-          "1927393505657167874",
-          "1927404617953947999",
-          "1924487464846012860",
-          "1924862976571433375",
-          "1924863604660088852",
-          "1925753197953437816",
-          "1923469886300233915",
-          "1923777261792067859",
-          "1925228975619551527",
-          "1925229912501236086",
-          "1920599697426620520",
-          "1920626092307529975",
-          "1928458201252417764",
-          "1929577224216232285",
-          "1929940385171697783",
-          "1930317443315966371",
-          "1930368985658257443",
-          "1925397834351669338",
-          "1925495900740129057",
-          "1918727161738834412",
-          "1925758847735472372"
-        ],
-        "sample_tweets": [
-          "YOU ARE NOT READY FOR WHAT IS TO COME $VET $VTHO",
-          "Skipping meals so I can feed my $VET bag instead. Sacrifices must be made. URL",
-          "Just did 10 minutes meditation Some visualization Bought more $VET Let’s go, the show must go on !!!! July 1st Stargate URL",
-          "$VET + $VTHO baby July 1st URL",
-          "Sebastian gets it! $VET"
-        ],
-        "total_popularity": 55.82439762125955,
-        "mixture_weight": 0.3118279569892473,
-        "score": 0.3118279569892473
-      }
-    ]
-  },
-  {
-    "cluster_id": 9,
-    "topic": "VeChain ecosystem developments and community engagement. This cluster highlights significant upgrades, the introduction of new tokenomics, and various dApps, emphasizing user-friendly features and real-world asset integration.",
-    "top_users": [
-      {
-        "user_name": "Paul_VCS",
-        "user_id": "1460262488692428811",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1930559498097226223",
-          "1929874330822832611",
-          "1925483853038096836"
-        ],
-        "sample_tweets": [
-          "VeChain Renaissance is almost here! Are you ready to unlock the full potential of Node NFTs and VET staking with Stargate? Crunch the numbers, explore different strategies, and optimize your APY: URL URL",
-          "New on VeChainStats dApp Radar: Now tracking real-time stats for - @ScoopUp_vet - @VeTrade_ - @Bubbles2Earn - Updated @TheSolarWise contracts Explore contract activity, users &amp; VTHO burn Dive in: URL #VeBetterDAO #vechain URL",
-          "Great news for #VeChain! The @wanchain_org bridge has brought BTC, ETH, USDT, USDC &amp; more to @vechainofficial All tokens are now fully integrated in @VeChainStats: Live trades Transfers Richlist Contracts Verified Explore them here: URL URL"
-        ],
-        "total_popularity": 14.936383026210756,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "meinhart_esding",
-        "user_id": "1357265498380075009",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1928212944904413474",
-          "1928203188307440042"
-        ],
-        "sample_tweets": [
-          "minted me this @Thorheads banger today, generating areound 100k $vtho per day! have you minted some yourself? drop your bangers in the comments #VeChain #vechainhasnfts #b3tr #b3trDAO $vet #vtho #NFTCommunity URL",
-          "here we go again @Thorheads #VeChain #VeBetterDAO #b3tr #vechainhasnfts #NFTCommunity #vet #vtho URL"
-        ],
-        "total_popularity": 6.2441513957651775,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "AICryptoNewsNow",
-        "user_id": "1529873330152648707",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1926352597448843611",
-          "1927938037922545840"
-        ],
-        "sample_tweets": [
-          "What's New? VeChain Appoints Blockchain Expert Anthony Day as Marketing Director URL URL",
-          "What's New? VeChain's Enhanced VeBetter Grants Program Boosts Sustainable Blockchain Development URL URL"
-        ],
-        "total_popularity": -2.405765470540736,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "CheekyCrypto",
-        "user_id": "1303395304767709184",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1929236633506763211"
-        ],
-        "sample_tweets": [
-          "Why Not Subscribe To Cheeky Crypto Education? Follow us here: URL #Crypto #Bitcoin #VeChain #Cardano $ADA $VET $BTC $HBAR $XRP #XRPCommunity URL"
-        ],
-        "total_popularity": 3.095548334102912,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Chris06902330",
-        "user_id": "1287485451465564162",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1929091711961014654"
-        ],
-        "sample_tweets": [
-          "#VeChain $VET $VTHO #RealWorldAssets #RWA URL URL"
-        ],
-        "total_popularity": 2.8378131896504457,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Vetliever",
-        "user_id": "287142627",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1924191330688795101"
-        ],
-        "sample_tweets": [
-          "Testing @juicyfinance_io Finally a landing and borrowing platform on Vechain! You'll be able to earn yield on your token and unlock liquidity. URL"
-        ],
-        "total_popularity": 0.9646713447403221,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "bilalzafartv",
-        "user_id": "1871055765764534272",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1928743018502226107"
-        ],
-        "sample_tweets": [
-          "@meter_mate Don't miss Meter mate going to Moon #meter_mate #vechain wait for next move URL"
-        ],
-        "total_popularity": 0.3606742983952095,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "WeWantZeMoney",
-        "user_id": "1288346327890497536",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1928880947090366642"
-        ],
-        "sample_tweets": [
-          "QT Texas 3dables only on vechain!! URL"
-        ],
-        "total_popularity": 0.29163512008339243,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "CryptodelicVET",
-        "user_id": "1459919500095246344",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925670930132447643"
-        ],
-        "sample_tweets": [
-          "#VeChain $VET dont get hacked. Just saying"
-        ],
-        "total_popularity": -0.8836224778244,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Sjosch",
-        "user_id": "22250297",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1923773257058054393"
-        ],
-        "sample_tweets": [
-          "@sunshinelu24 #Vechain #VET ‍ URL"
-        ],
-        "total_popularity": -1.044154820662505,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      }
-    ]
-  },
-  {
-    "cluster_id": 15,
-    "topic": "VeChain's VeBetterDAO promotes sustainability through user engagement and eco-friendly actions. This cluster highlights various DApps and initiatives that reward participants for their contributions to environmental efforts, fostering a community-driven approach to sustainability.",
-    "top_users": [
-      {
-        "user_name": "Bacco1977Dublin",
-        "user_id": "947446026",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1928055304962408661"
-        ],
-        "sample_tweets": [
-          "I just purchased a #SolarNFT with @TheSolarWise! Each panel helps generate clean energy and supports the ReFi movement for a sustainable future, all powered by #VeChain. Own The Sun with URL #VeBetterDAO #VeFam"
-        ],
-        "total_popularity": 2.784112269661034,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "green_commuter",
-        "user_id": "1820107836820451328",
-        "tweet_count": 5,
-        "tweet_ids": [
-          "1919439972735549810",
-          "1924462839764291588",
-          "1924408942467416394",
-          "1926990957267829030",
-          "1919441949892714823"
-        ],
-        "sample_tweets": [
-          "A vote for #GreenCommuter is a vote for: Cleaner air Greener cities Rewarding sustainable lifestyles Join us on #VeBetterDAO and let’s make every commute count! #VeChain #EcoFriendly URL",
-          "Hey Commuters! Please give a big congratulations to our competition winner @Yavbouforever ! Big thanks to all those who participated. We appreciate each and every one of you! #GreenCommuter #Competition #Contest #VeChain #VeBetterDAO #VeFam URL",
-          "‍ COMPETITION TIME, GREEN COMMUTERS! ‍ We're excited to announce a new competition! Take a video selfie, tag us for a chance to win B3TR! Details are in the video attached, Get creative and show us your sustainable commuting spirit! #GreenCommuter #VeChain #VeBetterDAO URL",
-          "‍ Walk. ‍ Cycle. ‍ Run. Your daily choices can shape the future. Vote for #GreenCommuter on #VeBetterDAO and help us reward sustainable commuting with $B3TR tokens. #VeChain #Sustainability URL",
-          "Check out our awesome Green Commuters! Way to go! #GreenCommuter #VeChain #VeBetterDAO"
-        ],
-        "total_popularity": 3.990994659913363,
+        "total_popularity": 16.191781463293133,
         "mixture_weight": 0.8333333333333334,
         "score": 0.8333333333333334
       },
       {
-        "user_name": "gugukkusu67",
-        "user_id": "145883843",
-        "tweet_count": 46,
+        "user_name": "BVechain",
+        "user_id": "1353082247860125703",
+        "tweet_count": 5,
         "tweet_ids": [
-          "1924214844414161406",
-          "1929224406645014962",
-          "1925474700257300884",
-          "1921457347131593146",
-          "1924759062928847176",
-          "1924927707038503189",
-          "1923463685403451641",
-          "1918214651612975486",
-          "1918251802031534528",
-          "1919766183122751658",
-          "1922921302102249805",
-          "1926617873599942813",
-          "1927115950836392212",
-          "1927294298078212567",
-          "1927447758874583310",
-          "1928042473814667539",
-          "1929112200251052289",
-          "1929476341683929291",
-          "1929623519199220024",
-          "1929809623541862662",
-          "1929843473055666550",
-          "1929856532998394002",
-          "1921488968400429562",
-          "1923661264745570610",
-          "1930528933419561390",
-          "1924049967712281086",
-          "1918234059588722991",
-          "1917852209259085829",
-          "1920230513953882577",
-          "1928555043575255099",
-          "1926992016342139214",
-          "1927655240028880908",
-          "1928186729061625900",
-          "1930354474587173355",
-          "1922367692637417823",
-          "1922639997779230916",
-          "1924396854248083494",
-          "1925081956523348438",
-          "1918391993455071332",
-          "1918407749248987627",
-          "1918579766598254833",
-          "1920235080921829827",
-          "1926633666043650369",
-          "1928453113918206356",
-          "1929877845574127814",
-          "1930010988457390181"
+          "1926306477863543094",
+          "1924539651613774126",
+          "1925323696744309042",
+          "1929687451326693879",
+          "1929834628925255720"
         ],
         "sample_tweets": [
-          "Books that make you question your life. Thanks Non-Fungible Book Club. @NonFungibleBC #VeBetterDAO #VeWorld #VeFam #vechain #Sustainability #TakeActionForThePlanet #SaveOurPlanet URL",
-          "I think the inspiration for the #Veat app was Auguste Gusteau :-) And I'm eagerly waiting for the app. @veat_official #VeBetterDAO #VeWorld #VeFam #vechain #Sustainability #EatSustainable #LiveSustainable #B3TR URL",
-          "Today is my shopping day :-) As you can see, the preparations are complete. I'm starting after sipping my coffee. @_BagSolutions_ #VeBetterDAO #VeWorld #VeFam #vechain #NoDisposableBags #Sustainability #TakeActionForThePlanet #SaveOurPlanet URL",
-          "Why VeBetterDAO (Mission and Vision): -Being a Part of the Solution- A global collaboration and effort on planet health and human wellbeing #vechainofficial #VeBetterDAO #VeWorld #VeFam #vechain #Sustainability #TakeActionForThePlanet #SaveOurPlanet URL",
-          "EcoBag is a user-oriented, responsive, responsible team. It feels good to be a part of the EcoBag Community. @_BagSolutions_ #VeBetterDAO #VeWorld #VeFam #vechain #Sustainability #TakeActionForThePlanet #SaveOurPlanet URL"
+          "Shy invest in $LUNC",
+          "Thank you my friend",
+          "More one listing for $B3TR",
+          "New listing #B3TR",
+          "Don't sleeping in #LUMIA"
         ],
-        "total_popularity": 61.34837981885422,
-        "mixture_weight": 0.6133333333333333,
-        "score": 0.6133333333333333
-      },
-      {
-        "user_name": "MrWhittleman",
-        "user_id": "1376983626424803336",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1923420340325081422"
-        ],
-        "sample_tweets": [
-          "Just made it to 100 Scoops! Join me in turning dog poop into rewards – let's keep the environment clean! Follow us at @ScoopUp_vet URL #ScoopUp #VeBetterDAO #VeChain #dogsofVeChain URL"
-        ],
-        "total_popularity": 2.030758737971332,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "CelestialBuilda",
-        "user_id": "1327432048924004355",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1919762524884365384"
-        ],
-        "sample_tweets": [
-          "It's that time again. The fellowship of NFBC and SolarWise. Come see what both companies have been brewing in our monthly collaborative spaces. #VeFam #VeChain #VeBetterDAO"
-        ],
-        "total_popularity": -0.9902600316330138,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "_BagSolutions_",
-        "user_id": "1677245429816147968",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1919423432543948874",
-          "1925552170721485115",
-          "1922305837294616582"
-        ],
-        "sample_tweets": [
-          "Get ready for something big. Bag Coin is on its way. Rewards, benefits, and real world utility in every bag. More information is coming soon. In the meantime, join our discord Discord URL #Ecobag #BagCoin #Web3 #EcoRewards #ComingSoon #VeBetterDAO #VeChain #Sustainability #B3TR",
-          "Hey EcoBag Fam! We're always striving to improve. How can we earn a higher percentage from you in the VeBetterDAO? Your feedback means the world to us. Drop your answers in the replies! #EcoBag #VeBetterDAO #VeChain #Sustainability #CommunityPowered URL",
-          "New increased rewards this week! Snap a pic of your reusable bag *and* receipt in action to earn $B3TR! Dont forget to share your submission Thank you to all of our endorsers and voters #EcoBag #VeBetterDAO #EcoBagRewards #reusablebag #Vechain"
-        ],
-        "total_popularity": 6.53348994062744,
-        "mixture_weight": 0.42857142857142855,
-        "score": 0.42857142857142855
-      },
-      {
-        "user_name": "GronCardx",
-        "user_id": "1897638209032699904",
-        "tweet_count": 7,
-        "tweet_ids": [
-          "1924077786509041676",
-          "1922919400786502119",
-          "1921117624357806146",
-          "1927667715780513847",
-          "1928522453182972074",
-          "1930536072800260408",
-          "1924888114603991253"
-        ],
-        "sample_tweets": [
-          "Without utility, every action is just data. With @GronCardx, your activity on @VebetterDAO turns into real-world products and services! We bring tangible value to participation. ‍ Bridging Web3 with real life. #GronCard #VebetterDAO #TokenUtility #Web3Adoption Let’s make Web3 useful!",
-          "Which country would you like to be added to the list? Write it in the comments! #GreenEconomy #Vechain #SustainableDevelopment #EcoFriendly",
-          "We listen to your thoughts! You USERS are the beating heart of this ecosystem. Without your eco-sustainable actions, #VeBetterDAO and its DApps would have no meaning. Transparency, concreteness, long-term vision, we introduce a virtuous circle in our ecosystem. The change has just begun, but it will be fast, decisive and unstoppable. #CircularEconomy #virtuouscircle #EcoFriendly #Vechain #B3TR #VebetterDAO",
-          "@GronCardx and #WorldEnvironmentDay2025 Every action we take matters! Even a small gesture can change the future of the environment. With #VebetterDAO, your green behaviors are rewarded! Earn #B3TR, use them with #GronCard to access products and services. Join the circular economy of our community and you will do good for the environment... and you will earn money too! #WorldEnvironmentDay #Sustainability #ClimateAction #circulareconomy #VeChain #B3TR #VeBetterDAO",
-          "@GronCardx : the beating heart of sustainable loyalty within #VeBetterDAO ! GronCard is a powerful loyalty tool for existing users on VebetterDAO and, at the same time, an intuitive and rewarding entry point for new users . It offers a new concrete use case for the #B3TR token , making it not only a reward mechanism , but also a means of exchange and access to concrete services, products and benefits . Through GronCard, B3TR tokens are actively reused within the VebetterDAO ecosystem, fueling a continuous virtuous circle in which every sustainable action generates value , which is then spent and reinvested in the community . URL #GronCard #B3tr #VebetterDAO #TokenUtility #Sustainability #LoyaltyProgram #Web3 #GreenEconomy"
-        ],
-        "total_popularity": 19.694689314586004,
-        "mixture_weight": 0.4117647058823529,
-        "score": 0.4117647058823529
-      },
-      {
-        "user_name": "JChainsX",
-        "user_id": "163585097",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1930633352039551366",
-          "1925493087414956239"
-        ],
-        "sample_tweets": [
-          "Just took action with @cleanify_vet! Picked up litter and submitted my impact to help keep our planet clean! Join the movement and start making a difference at URL #CleanUpChallenge #EarthCleanup #Sustainability #VeBetterDAO #Vechain URL",
-          "JUST DROPPED: My sit-down with VeChain CEO Sunny Lu at #Consensus2025 We talk: Sustainability as the killer app for Web3 VeBetter ecosystem + tokenized behavior Mass adoption through real utility Dana White, UFC & VeChain’s global strategy Vechain Renaissance + inclusive decentralization This convo is packed with alpha Watch now: URL"
-        ],
-        "total_popularity": 9.733570462668633,
-        "mixture_weight": 0.4,
-        "score": 0.4
-      },
-      {
-        "user_name": "madvapesnft",
-        "user_id": "1457732671195471872",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1923857729854054417",
-          "1926720530645749925",
-          "1924963395607941133"
-        ],
-        "sample_tweets": [
-          "Another week - another voting round! Every vote matters, and that's why, week after week, the MVA fam gives its full support to these great teams. A sustainable relationship built on trust and community. @_BagSolutions_ @Bubbles2Earn @worldofv_art @ScoopUp_vet URL",
-          "Into NFTs? Try Collect n’ Earn on @worldofv_art ! Get rewarded just for collecting eco-friendly NFTs That’s why the MVA fam votes for them every week, so the rewards keep flowing for everyone! Join our movement and be part of the change!",
-          "A new voting round is just around the corner! Don’t forget to cast your vote and support this amazing team @_BagSolutions_ . Earn tokens as easily as using a reusable bag! Make the world a better place! URL"
-        ],
-        "total_popularity": 12.601310455849132,
-        "mixture_weight": 0.375,
-        "score": 0.375
-      },
-      {
-        "user_name": "ReUse_vet",
-        "user_id": "1909313144369168387",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1920901129770058007",
-          "1920924037376520613"
-        ],
-        "sample_tweets": [
-          "Circular Fashion = Future Fashion &gt; Picture a world where every piece of clothing has many lives. Today, you can be the reason a jacket gets a second story. Circular fashion isn’t a trend—it’s the future! URL #Vechain #VebetterDAO #B3TR",
-          "Looking good shouldn’t cost the Earth—or your savings! Secondhand outfits = 70% cheaper on average than new retail! With ReUse, you EARN B3TR for it. That’s smart fashion! Join the movement at URL and turn style into savings! #Vechain #VebetterDAO"
-        ],
-        "total_popularity": -2.31714686729905,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
+        "total_popularity": -1.9138816360184165,
+        "mixture_weight": 0.7142857142857143,
+        "score": 0.7142857142857143
       }
     ]
   },
   {
-    "cluster_id": 3,
-    "topic": "VeChain's cross-chain bridge with Wanchain enhances its ecosystem, connecting to over 40 blockchains and unlocking new DeFi opportunities. The community is actively engaging with updates, partnerships, and innovative applications that emphasize real-world utility and sustainability.",
+    "cluster_id": 5,
+    "topic": "The topic revolves around the upcoming launch of VeChain's StarGate staking platform and the Renaissance upgrade, which includes significant enhancements to tokenomics, staking mechanisms, and cross-chain capabilities. This initiative aims to foster real-world adoption of blockchain technology while providing new opportunities for $VET holders to earn rewards through decentralized staking and improved governance.",
     "top_users": [
+      {
+        "user_name": "CryptoMichNL",
+        "user_id": "146008010",
+        "tweet_count": 4,
+        "tweet_ids": [
+          "1923406336961728709",
+          "1920538691237302645",
+          "1930307147960664178",
+          "1922645514513698828"
+        ],
+        "sample_tweets": [
+          "$VET is, again, holding the higher timeframe support level. There's been a ton of fundamental growth in the past quarter which isn't priced in. I assume that the price is going to rally through the previous high as VeChain launches their new Stargate Staking program on July 1st!",
+          "Stargate is coming to $VET! I've mentioned before that there will be rewards for early adopters & investors into the ecosystem. #VeChain has done everything to ensure that everyone participating within the ecosystem will be rewarded. Make every action count. Read more about this in the longread on how you can be rewarded for joining the Renaissance early:",
+          "The VeBetter ecosystem of $VET is quickly expanding. The MugShot app has reached 1 million users, through which you can earn $B3TR tokens. It's one month before the Stargate Staking program goes live, which is a pivotal point for the entire VeChain ecosystem. Given that they've obtained the MiCAR license, I'm sure that the ecosystem will continue to expand quickly in the coming quarters. One to keep an eye on at these accumulation levels of the entire #Altcoin market.",
+          "#VeChain keeps delivering as VeChain Renaissance & Stargate are approaching. This cycle might be different, as older coins have continued to build. $VET is a prime example with the heavy improvements. Which improvements are those, and why should you consider VeChain? In our recent episode of the podcast, @new_era_finance, I've had a conversation with VeChain's founder, @sunshinelu24, on the differences between the cycles of 2021 and 2025. Watch the podcast here: URL He said that institutional companies are more interested in protocols that have proven to have a track record and continued to build in the bear market. That's different from the previous cycle, as the old mantra has been that 'newer technology is yielding a higher return'. That might be completely different, and VeChain is likely going to be an example. For sure, they have been delivering in the past months, building up to the new release of the Stargate Program, which is all part of the VeChain Renaissance. That's something that I've been admiring about VeChain, as I've been involved in VeChain since 2017 (proud holder during that first cycle, and that's also where the strong community has been built up). The Key Milestones: - Dana White has become an advisor for VeChain, which is a big name to be added to the ecosystem and therefore opening doors for the entire protocol. - MiCA license was obtained by VeChain, through which Web 2 companies will be able to start doing business with VeChain. Why is this important? ---> In the future, there's a very likely case that marketing will be done in a more sustainable way where companies will be spending marketing budget through sustainable campaigns, where end-users will be able to get a return from actually using the products (for instance: mugs). In that way, targeted marketing towards the end-customer will be more effective and reliable, and to onboard those companies, you'll need to have a MiCa License. - The Stella Pay x $B3TR payment card was released so people can spend their tokens earned on the VeBetter platform. - 4ocean partnership through which the VeChain team is teaming up with 4ocean to combat waste and therefore tokenize waste onto the blockchain. - Multiple listings of the tokens on several exchanges improve the liquidity of the entire ecosystem. Why is this all relevant? Ultimately, you'd want to see that your ecosystem and your investment continue to deliver and expand. For sure, VeChain has proven to be on point when it comes to building efforts, and the amount of positivity surrounding the ecosystem is great. Sunny is a great founder, and after 10 years, keeps on having the motivation to continue to build. Now, at this point in the cycle, it's a great moment to reflect and decide whether or not you'd want to have VeChain in your portfolio. If you're looking for a more 'ESG-proof' or 'sustainable' portfolio, it's a good one to consider, and, aside from that, you'll be able to earn more yield if you're joining the Stargate program on July 1st. Stargate Program Small sidenote, assume you'll be investing $1,000 into an asset that yields 10% APY. That's $100 per year. Good job. Now, as we all assume that the markets are going to be trending upwards, adjust those numbers. Let's say that your underlying asset increases in value to $5,000 and the APY remains the same; now you're earning $500 per year, which is effectively 50%. That's why I think looking at those opportunities makes a lot of sense, and it even improves the ecosystem. Every action that investors, validators, stakers, or participants take will be positively rewarded within the VeChain ecosystem. That's why I think it's worth to have a look at the Stargate program, which is expected to go live on July 1st and will offer early adopters higher rewards for their ability to join early. I think it's a great one to keep in mind at this point in the cycle. The Chart Now, when we're looking at the charts (and we need to make sure that this is not financial advice), then both the USDT and BTC pairs are currently in a bottoming structure. The USDT pair is the most compelling for this as it inverted the entire move of 2021. That's not bad thing; that's quite normal to happen for any particular asset in , However, this is also the area where you want to become interested in an asset, as I think that the entire topic surrounding diminishing returns will fade away. Given that the inflation of $VET is already extremely low with all tokens in circulation & going to drop substantially, it's a good moment to analyze for yourself whether this is a fit at these levels."
+        ],
+        "total_popularity": 33.31501467609151,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
       {
         "user_name": "quantadel1c",
         "user_id": "1636702538396315649",
@@ -2057,6 +962,36 @@
           "URL VeChain’s next act? Tokenizing human behavior. From EV driving to recycling, @sunshinelu24 is building a system where your sustainable actions = on-chain rewards. AI agents, NFT staking, and real decentralization debut at #Consensus2025. @vechainofficial #Vechain #VeFam #AIAgents #NFT #decentralization"
         ],
         "total_popularity": 8.420913328084781,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "AllFactsCrypto",
+        "user_id": "1629822280111992833",
+        "tweet_count": 2,
+        "tweet_ids": [
+          "1918164726351356355",
+          "1930888633671623079"
+        ],
+        "sample_tweets": [
+          "#Altcoins #Facts To incentivize early participation, #VeChain allocated 5.3 billion $VTHO ($15 million) to the reward pool with new tools allowing users to calculate potential staking returns and optimize strategies... #Crypto #VET #VTHO #Staking URL",
+          "#Altcoins #Facts #VeChain’s StarGate launch is locked in for July 1, 2025! A major tokenomics shift is coming for #VET Key changes: New 100% transaction fee burns Staking now LIVE (as little as 10K $VET needed) $14M in $VTHO incentives for early stakers Full decentralization with Hayabusa upgrade >2M unique wallets milestone hit This is the biggest evolution in VeChain’s history..."
+        ],
+        "total_popularity": 6.405228106065733,
+        "mixture_weight": 1.0,
+        "score": 1.0
+      },
+      {
+        "user_name": "degenlifer",
+        "user_id": "1427370013820850176",
+        "tweet_count": 1,
+        "tweet_ids": [
+          "1925870675639632175"
+        ],
+        "sample_tweets": [
+          "@VeChainofficial May Momentum – StarGate, Stella Pay, and the Future of Web3 April was HUGE for VeChain and May is all about sustaining that energy! We're diving deeper into real-world utility, Web2 onboarding, and the launch of StarGate staking on July 1. Let’s break it down! #VeChain #VeBetterDAO #Web3"
+        ],
+        "total_popularity": 9.889848411550657,
         "mixture_weight": 1.0,
         "score": 1.0
       },
@@ -2143,391 +1078,31 @@
         "total_popularity": 0.9404640527877361,
         "mixture_weight": 1.0,
         "score": 1.0
-      },
+      }
+    ]
+  },
+  {
+    "cluster_id": 3,
+    "topic": "The topic revolves around discussions and analyses related to various altcoins, particularly focusing on VeChain ($VET) and its developments, market performance, and community engagement. Posts highlight price predictions, upgrades, and the overall sentiment towards altcoin investments in the context of the cryptocurrency market.",
+    "top_users": [
       {
-        "user_name": "VanMirrie",
-        "user_id": "1541765675001200640",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1921105814036594975"
-        ],
-        "sample_tweets": [
-          "#PrivateMarkets #News Sunny Lu #Technology #DigitalAssets #Blockchain #Sustainability #VeChain Jon Hemmings #EnterpriseBlockchain #Web3 #ESG #Impact #bitcoin #ufc #vet # URL"
-        ],
-        "total_popularity": -0.4120206023236606,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "TurtleLabsV",
-        "user_id": "1752706124040814592",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1919627725632889172"
-        ],
-        "sample_tweets": [
-          "The future of finance isn’t built alone. Turtle Labs is growing a community-first DeFi ecosystem on VeChain. By #VeFam, for #VeFam! Join the movement that moves slow… but wins big. #VeChain #VeFam #DeFi #Web3 URL"
-        ],
-        "total_popularity": -0.479227196514739,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "cryptojourneyrs",
-        "user_id": "1450837801449050114",
+        "user_name": "LiveDayTrader1",
+        "user_id": "1006116727174979584",
         "tweet_count": 3,
         "tweet_ids": [
-          "1925694597541269772",
-          "1927340878915313727",
-          "1923140859723235736"
+          "1925560322599133220",
+          "1927699792567689223",
+          "1927715503297921447"
         ],
         "sample_tweets": [
-          "Love this move for $VET. @vechainofficial @wanchain_org “Through this integration, assets will become transferrable between VeChain and over 40 leading blockchains, including $BTC, $ETH, $SOL, $BNB, $DOT, and many more.” The cross chain possibilities are endless.",
-          "Welcome to the $VET team Anthony! ‍ \"Anthony joins #Vechain with high-level expertise from his roles at IBM and Deloitte, where he led enterprise blockchain implementations across supply chain, sustainability, healthcare, and consumer products.\" Now that's a resume!",
-          "VeChain is setting the standard. Security has to be a top priority in this space. The Galactica Testnet Audit is COMPLETE. Check out the thread below for more info."
+          "Vechain vet coin price prediction and next targets | Vechain vet May 22... URL #vetusdt #vetusd #cryptotrading #cryptonews",
+          "Vechain vet coin price prediction and this week targets ? Vechain vet ... URL #vechain #vet #vetusdt #vetusd #cryptotrading",
+          "Vet coin price prediction and this week targets? Vechain vet crypto May... URL #vechain #vetusdt #cryptotrading #cryptonews"
         ],
-        "total_popularity": 11.321943675294662,
-        "mixture_weight": 0.75,
-        "score": 0.75
-      }
-    ]
-  },
-  {
-    "cluster_id": 8,
-    "topic": "VeChain community engagement and personal interactions. This cluster features a mix of celebratory messages, personal anecdotes, and community support, highlighting the vibrant social dynamics within the VeChain ecosystem.",
-    "top_users": [
-      {
-        "user_name": "Vechaindaddy",
-        "user_id": "948970404261048320",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1920860748953112588"
-        ],
-        "sample_tweets": [
-          "This amazing person just won their battle against diabetes! She needs our help to pay off debt and start living fully. Please consider donating or sharing to spread the word. Thank you! URL"
-        ],
-        "total_popularity": 0.6361194820907038,
+        "total_popularity": -1.517630384697109,
         "mixture_weight": 1.0,
         "score": 1.0
       },
-      {
-        "user_name": "VechainWhale",
-        "user_id": "1192158395958222850",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1920589553871499292",
-          "1921922249369555235"
-        ],
-        "sample_tweets": [
-          "$FROC going much higher",
-          "What a fuckin day lads definitely one of my most profitable days ever conviction paying off!"
-        ],
-        "total_popularity": -0.9698401026513728,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "KaneWills08",
-        "user_id": "1568472271269888000",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925948798141944122"
-        ],
-        "sample_tweets": [
-          "A top, top addition to the team! Welcome, Anthony"
-        ],
-        "total_popularity": 3.4604955340113754,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "vetifuro",
-        "user_id": "110977144",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1920857438560895104"
-        ],
-        "sample_tweets": [
-          "Ik neem deel aan de aankomende Space van @cboundy22. Wil je ook meedoen? URL"
-        ],
-        "total_popularity": -0.33181985419831855,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "ArtistVechain",
-        "user_id": "1209947881773256704",
-        "tweet_count": 4,
-        "tweet_ids": [
-          "1926828216930463936",
-          "1927410417795494048",
-          "1919765720516460755",
-          "1918429796574646654"
-        ],
-        "sample_tweets": [
-          "New Books on the shelves fam!",
-          "A lot of great energy in this picture. So many passionate individuals creating impact in the world. Those two days felt like a week. I'm still downloading from the experience.",
-          "Come be apart of the conversation!",
-          "It's almost that time again! Come be a part of the conversation. @TheSolarWise @NonFungibleBC"
-        ],
-        "total_popularity": -0.5556842154346178,
-        "mixture_weight": 0.3076923076923077,
-        "score": 0.3076923076923077
-      },
-      {
-        "user_name": "BVechain",
-        "user_id": "1353082247860125703",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1925323696744309042",
-          "1929834628925255720"
-        ],
-        "sample_tweets": [
-          "Thank you my friend",
-          "Don't sleeping in #LUMIA"
-        ],
-        "total_popularity": -1.1256605610970993,
-        "mixture_weight": 0.2857142857142857,
-        "score": 0.2857142857142857
-      },
-      {
-        "user_name": "VeChain_Vulture",
-        "user_id": "1695639360886960128",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1927203727871529149",
-          "1917384236492804366"
-        ],
-        "sample_tweets": [
-          "Rocky Mountain National Park is welcoming visitors smoothly despite nationwide concerns. Perfect for summer trips! URL URL",
-          "7-year-old Ryan Spizzirri's Disney dream is coming true! After battling health challenges, her joy and courage shine brighter than ever. URL URL"
-        ],
-        "total_popularity": -1.8467088769615239,
-        "mixture_weight": 0.25,
-        "score": 0.25
-      },
-      {
-        "user_name": "VechainAurelius",
-        "user_id": "851641266",
-        "tweet_count": 21,
-        "tweet_ids": [
-          "1923074755093057981",
-          "1926295610866479340",
-          "1926650245921878380",
-          "1927171971902521514",
-          "1928111195011084504",
-          "1924679114104922575",
-          "1924858853000179884",
-          "1923467932329292212",
-          "1923583896265912554",
-          "1923584326471450848",
-          "1920588437918290015",
-          "1920926478218170813",
-          "1928189676151620027",
-          "1928286870569357414",
-          "1928511884426170593",
-          "1928306827873189901",
-          "1928889140000489791",
-          "1921765785350946876",
-          "1922028757704991220",
-          "1922315183336181782",
-          "1922508762096558219"
-        ],
-        "sample_tweets": [
-          "What does this translate to?",
-          "It takes 2 to tango",
-          "I don’t want this I NEED this!!!",
-          "lol this is the best show ever!",
-          "KNICKS BABY CITY IS ON"
-        ],
-        "total_popularity": -1.0979822958749974,
-        "mixture_weight": 0.22580645161290322,
-        "score": 0.22580645161290322
-      },
-      {
-        "user_name": "GreeceVechain",
-        "user_id": "1450911771166969864",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1917389076124094945",
-          "1929993503901155721"
-        ],
-        "sample_tweets": [
-          "We are expanding guys",
-          "You are a legend"
-        ],
-        "total_popularity": -1.763746634065424,
-        "mixture_weight": 0.2,
-        "score": 0.2
-      },
-      {
-        "user_name": "My_NamesJames",
-        "user_id": "1720355888",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1927023096009023846"
-        ],
-        "sample_tweets": [
-          "Sunny is vibing @sunshinelu24 with @PaullyTVvet #Dude URL"
-        ],
-        "total_popularity": 0.8878569533352975,
-        "mixture_weight": 0.2,
-        "score": 0.2
-      }
-    ]
-  },
-  {
-    "cluster_id": 13,
-    "topic": "VeChain community updates and ecosystem developments. This cluster highlights significant upgrades like the Galactica launch, integration of new dApps, and ongoing community engagement through events and discussions.",
-    "top_users": [
-      {
-        "user_name": "RB_Tradingltd",
-        "user_id": "991435086582173696",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1921843382747287768"
-        ],
-        "sample_tweets": [
-          "Called Vechain buys on the 16th of April to the crew I hope they all held URL URL"
-        ],
-        "total_popularity": -0.7430111947675915,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "cyptowalk",
-        "user_id": "1288060546512805888",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1929255420985581750"
-        ],
-        "sample_tweets": [
-          "Something is cooking on Vechain."
-        ],
-        "total_popularity": -1.0183232304674545,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "DannyMofford",
-        "user_id": "1454277294915268611",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925665875236983207"
-        ],
-        "sample_tweets": [
-          "Bitcoin all time high Vechain still .03 when .35 ?"
-        ],
-        "total_popularity": -1.2617047334778166,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Loki4841",
-        "user_id": "1520540764757008385",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925595583659524413"
-        ],
-        "sample_tweets": [
-          "@Wealthsimple add #Vechain already"
-        ],
-        "total_popularity": -1.5376774559961093,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "SmokerKlub",
-        "user_id": "84945587",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1928186052000502024"
-        ],
-        "sample_tweets": [
-          "DCA into #Vechain URL"
-        ],
-        "total_popularity": -1.084835168661429,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "madamzally",
-        "user_id": "1682385779291484161",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1930255075211092428"
-        ],
-        "sample_tweets": [
-          "I like to shop!! ช้อปมันส์ๆ กันไปเล้ยยยย... #betterbag #betterbag_vet #veworld #Vechain URL"
-        ],
-        "total_popularity": -1.2391833783218877,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "RoshanR24563258",
-        "user_id": "1059877345014829056",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1923270842907050070"
-        ],
-        "sample_tweets": [
-          "Vechain \"VET\" is coming. #RWA URL"
-        ],
-        "total_popularity": -0.5741400891258021,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "gstamato",
-        "user_id": "57365730",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1929921266443559335",
-          "1924859518774567209"
-        ],
-        "sample_tweets": [
-          "Earn and share and repeat. #Vechain. + @StellaPay_io is the best combination of spending your crypto. VebetterDAO $B3TR and $VET and $VTHO. #Vechain is came to change the world. $VET. To the moon",
-          "The time has come to feel the difference #Vechain is leading us to new era $VET $VTHO $B3TR #VebetterDAO"
-        ],
-        "total_popularity": 1.066288491380399,
-        "mixture_weight": 0.2857142857142857,
-        "score": 0.2857142857142857
-      },
-      {
-        "user_name": "0xemanresu",
-        "user_id": "1240721089577312256",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1917545263956115474"
-        ],
-        "sample_tweets": [
-          "VeChain’s building season is live! Learn fast, ship smart, earn real with @VechainBuilders"
-        ],
-        "total_popularity": -0.48788531758177667,
-        "mixture_weight": 0.25,
-        "score": 0.25
-      },
-      {
-        "user_name": "Mindfullfoul",
-        "user_id": "988176272386871296",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1926702113247138064"
-        ],
-        "sample_tweets": [
-          "One of the good Dapps on Vechain #Vebetter #vechain"
-        ],
-        "total_popularity": -0.524917385020522,
-        "mixture_weight": 0.25,
-        "score": 0.25
-      }
-    ]
-  },
-  {
-    "cluster_id": 1,
-    "topic": "Altcoin trends and community dynamics during the current altseason. The cluster highlights specific altcoins like VeChain and Fartboy, alongside discussions on market sentiment and community engagement strategies.",
-    "top_users": [
       {
         "user_name": "Trendingcr78263",
         "user_id": "1824629519539466240",
@@ -2595,469 +1170,74 @@
         "score": 1.0
       },
       {
-        "user_name": "JBUCK_TRW",
-        "user_id": "1387165266224812032",
+        "user_name": "RealPaisanTPK",
+        "user_id": "505152699",
         "tweet_count": 1,
         "tweet_ids": [
-          "1924154923232452630"
+          "1924951107463479662"
         ],
         "sample_tweets": [
-          "Vechain, ICP, sui, near, inj, quant, cro, XRP, xlm all the coins you should be focused on accumulating"
+          "you guys will not believe who I just brainstormed content with at UFC HQ for Vechain"
         ],
-        "total_popularity": -0.36231497354994624,
+        "total_popularity": 3.299297450611265,
         "mixture_weight": 1.0,
         "score": 1.0
       },
       {
-        "user_name": "Oreoluw27",
-        "user_id": "1600556030101962766",
+        "user_name": "mcvetpants",
+        "user_id": "1285652681583804416",
         "tweet_count": 1,
         "tweet_ids": [
-          "1917839112402526596"
+          "1922690095204774055"
         ],
         "sample_tweets": [
-          "PEPE WIPED OUT! 41 TRILLION TOKENS DUMPED - PEPE COIN PRICE PREDICTION #PEPE #Crypto #PEPECOIN #BTC #vechain URL"
+          "Positive sentiment returning to crypto + Vechain’s stargate upgrade incoming. Things could get spicy soon for $VET"
         ],
-        "total_popularity": -0.8006950773517151,
+        "total_popularity": 3.182944681048298,
         "mixture_weight": 1.0,
         "score": 1.0
       },
       {
-        "user_name": "Bradicoin10",
-        "user_id": "1577376427485315091",
+        "user_name": "CheekyCrypto",
+        "user_id": "1303395304767709184",
         "tweet_count": 1,
         "tweet_ids": [
-          "1927571288651874691"
+          "1929236633506763211"
         ],
         "sample_tweets": [
-          "VeChain’s Johnny Garcia Explains Why Texas Could Be Next to Adopt a Bitcoin Reserve"
+          "Why Not Subscribe To Cheeky Crypto Education? Follow us here: URL #Crypto #Bitcoin #VeChain #Cardano $ADA $VET $BTC $HBAR $XRP #XRPCommunity URL"
         ],
-        "total_popularity": -0.8621043701811472,
+        "total_popularity": 3.095548334102912,
         "mixture_weight": 1.0,
         "score": 1.0
       },
       {
-        "user_name": "coindoo",
-        "user_id": "892030283456942080",
+        "user_name": "Vetliever",
+        "user_id": "287142627",
         "tweet_count": 1,
         "tweet_ids": [
-          "1929776823157641472"
+          "1924191330688795101"
         ],
         "sample_tweets": [
-          "Best Crypto to Buy Today: BlockDAG, Hedera, VeChain, &amp; Chainlink Show Fresh Momentum URL #BlockDAG #Crypto"
+          "Testing @juicyfinance_io Finally a landing and borrowing platform on Vechain! You'll be able to earn yield on your token and unlock liquidity. URL"
         ],
-        "total_popularity": -0.9159991592106385,
+        "total_popularity": 0.9646713447403221,
         "mixture_weight": 1.0,
         "score": 1.0
       },
       {
-        "user_name": "digitalknol",
-        "user_id": "187077338",
+        "user_name": "WeWantZeMoney",
+        "user_id": "1288346327890497536",
         "tweet_count": 1,
         "tweet_ids": [
-          "1925029240124121336"
+          "1928880947090366642"
         ],
         "sample_tweets": [
-          "$VET Vechain Crypto Price Predictions and Bullrun Analysis 2025 #CryptoNews #CryptoTrading #CryptoMarket #Altseason URL"
+          "QT Texas 3dables only on vechain!! URL"
         ],
-        "total_popularity": -1.0666761758184342,
+        "total_popularity": 0.29163512008339243,
         "mixture_weight": 1.0,
         "score": 1.0
-      },
-      {
-        "user_name": "LosKruptos",
-        "user_id": "997581688749379587",
-        "tweet_count": 7,
-        "tweet_ids": [
-          "1924791834720551196",
-          "1923393946945761559",
-          "1925299013219131491",
-          "1928492525544751207",
-          "1918641286854173130",
-          "1928935368767787362",
-          "1929231140222640440"
-        ],
-        "sample_tweets": [
-          "Crypto Price Analysis: Bitcoin (BTC), Solana (SOL), Hedara (HBAR), VeChain (VET), Remittix (RTX) and Shiba Inu (SHIB) URL",
-          "Crypto Price Analysis: XRP, Solana, Hedera, Remittix, VeChain and Kaspa URL",
-          "Biggest Crypto Movers of 2025: Unstaked Offers 2,700% ROI Potential, VeChain and Kaspa Show Short-Term Strength URL",
-          "Quant, VeChain, and Hedera Trading Near Resistance – Is a Reversal or Continuation Likely? URL",
-          "Cardano and VeChain Look to Rebound as Whales Notice Potential 5x Returns for Coldware Investors URL"
-        ],
-        "total_popularity": -7.9259829588721535,
-        "mixture_weight": 0.5833333333333334,
-        "score": 0.5833333333333334
-      }
-    ]
-  },
-  {
-    "cluster_id": 4,
-    "topic": "Mugshot's rapid user growth and community engagement highlight the VeBetter ecosystem's focus on sustainability through Web3 applications. Users earn rewards like $B3TR by engaging in eco-friendly behaviors, showcasing a unique blend of utility and environmental impact.",
-    "top_users": [
-      {
-        "user_name": "gekkashinro",
-        "user_id": "1044231555722309632",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1922235985712095265"
-        ],
-        "sample_tweets": [
-          "VeChain Mugshot [0.28] B3TR / $0.08913 (‿) ※Happy Mother’s day! I miss you Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL"
-        ],
-        "total_popularity": 0.8719302938485518,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "csp_jem7",
-        "user_id": "749177828890046464",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925492743675228391"
-        ],
-        "sample_tweets": [
-          "Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. 1.8 $B3TR from home. Decent URL #MugshotDapp #Vechain #VeBetterDAO"
-        ],
-        "total_popularity": -0.8761756388325412,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "LoloGauthie",
-        "user_id": "1772399441904873472",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1926283645003735286"
-        ],
-        "sample_tweets": [
-          "week-end Mugie is happy Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL"
-        ],
-        "total_popularity": -1.1179753966029917,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "CrazyMistyCat",
-        "user_id": "935153729916903424",
-        "tweet_count": 20,
-        "tweet_ids": [
-          "1924516883874861429",
-          "1923419921695875484",
-          "1920526058765627634",
-          "1919452318170546247",
-          "1921988455237652926",
-          "1926467327995888041",
-          "1926668813166117000",
-          "1927029644382851331",
-          "1927418917028282694",
-          "1929278741076693277",
-          "1923788154349420857",
-          "1921233741290090737",
-          "1918697820132925697",
-          "1925595264402038795",
-          "1927818515416834413",
-          "1928158362971385909",
-          "1928453177126367269",
-          "1928854661387133432",
-          "1929279682903437765",
-          "1930284495355424803"
-        ],
-        "sample_tweets": [
-          "Good morning, monday muggies Today, we are admiring rosemary with our cup of coffeeit smells lovely, too Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL",
-          "My evening coffee with some Virginia Spring Beauty I hope everyone had a sweet Saturday Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL",
-          "Today, we're admiring the Sheep's Sorrel with my cup of coffee. Seems there is a bit to learn about it Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL",
-          "Grab your mug, fill it with tea or coffee &amp; cheers to a Figtastic FriYay Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL",
-          "Admiring apple tree blooms while enjoying my hot cup of brew today. Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL"
-        ],
-        "total_popularity": 13.723174685405851,
-        "mixture_weight": 0.6896551724137931,
-        "score": 0.6896551724137931
-      },
-      {
-        "user_name": "VechainDekker",
-        "user_id": "1882397578257747968",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1930225480940064784"
-        ],
-        "sample_tweets": [
-          "Nice rewards from #mugshot #MugshotDapp URL"
-        ],
-        "total_popularity": -1.4133604179695745,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "gmanxrp2",
-        "user_id": "1461311656525385734",
-        "tweet_count": 15,
-        "tweet_ids": [
-          "1930591550574072071",
-          "1921454016073957667",
-          "1918811678474387681",
-          "1922843091674775725",
-          "1926106972220252522",
-          "1924050392259964951",
-          "1910647538476343737",
-          "1928266151521357999",
-          "1925380301410509074",
-          "1922139541411905839",
-          "1930810841492033773",
-          "1918148851787284550",
-          "1918566882698764655",
-          "1926463257973301473",
-          "1925879541647527959"
-        ],
-        "sample_tweets": [
-          "Just earned #B3TR with @mugshot_vet Snap your mug &amp; join the movement We had a surprise yesterday 12 ducklings! Wrong time for them but what could be #B3TR than 12 little duckies? Aren't they cute? URL #MugshotDapp #Vechain #VeBetterDAO URL",
-          "Just earned #B3TR with @mugshot_vet Snap your mug &amp; join the movement. When I tell people I earn coins drinking coffee, they can't believe it! You should URL #MugshotDapp #Vechain #VeBetterDAO URL",
-          "Just earned #B3TR with @mugshot_vet by sipping sustainably! Toooo easy! People find it funny &amp; strange when I tell them I get paid to drink coffee! And you? Snap your mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO URL",
-          "Just earned #B3TR with @mugshot_vet Snap your mug &amp; join the movement Back home after a day out to look at some sculptures Great to be home to have a coffee URL #MugshotDapp #Vechain #VeBetterDAO URL",
-          "Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your mug &amp; join the movement &amp;have a cowtastic day URL #MugshotDapp #Vechain #VeBetterDAO URL"
-        ],
-        "total_popularity": 7.092104974931102,
-        "mixture_weight": 0.3488372093023256,
-        "score": 0.3488372093023256
-      },
-      {
-        "user_name": "el_califfo",
-        "user_id": "1583842017368481798",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1923889838773686506",
-          "1926165367879016602"
-        ],
-        "sample_tweets": [
-          "Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #tommycash dance actived #MugshotDapp #Vechain #VeBetterDAO URL",
-          "People after using @mugshot_vet for the first time: Tommy Cash dance activated One mug. One shot. Unlimited chaos. Web3 has never looked this caffeinated #EspressoMacchiato VIBES #VeBetterDAO #Eurovision2025 URL"
-        ],
-        "total_popularity": 0.2571371240564704,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "KaneWills08",
-        "user_id": "1568472271269888000",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1926981819511013523"
-        ],
-        "sample_tweets": [
-          "Huge congratulations @mugshot_vet - VeBetter's first Super App!"
-        ],
-        "total_popularity": 1.8887697792469769,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "andrej_yugojazz",
-        "user_id": "2982370359",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1922133389823422818"
-        ],
-        "sample_tweets": [
-          "Good morning from Belgrade, Serbia! Coffee needs to be enjoyed slowly. First cup in silence. No rush! Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO"
-        ],
-        "total_popularity": -0.38311907498287606,
-        "mixture_weight": 0.25,
-        "score": 0.25
-      },
-      {
-        "user_name": "fookelon",
-        "user_id": "1250023115087704065",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1924944246962061630",
-          "1929481928513609823",
-          "1929920437531640098"
-        ],
-        "sample_tweets": [
-          "No pay to earn on Mugshot. Just be active and you shall reap the rewards. Just earned 3 #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeFam $VET URL",
-          "Expect much higher rewards if you’re active (and genuine). Happy Mugshot-ing! Just earned #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. URL #MugshotDapp #Vechain #VeBetterDAO",
-          "Just earned 3 #B3TR with @mugshot_vet by sipping sustainably! Snap your eco-mug &amp; join the movement. Whole week completed, time to vote for Mugshot and let's keep this momentum. URL #MugshotDapp #Vechain #VeFam $VET URL"
-        ],
-        "total_popularity": 8.970683257208403,
-        "mixture_weight": 0.2,
-        "score": 0.2
-      }
-    ]
-  },
-  {
-    "cluster_id": 10,
-    "topic": "VeChain's Renaissance and StarGate staking launch mark a significant evolution in its ecosystem. The introduction of new node tiers and a massive 5.48 billion $VTHO bonus incentivizes community participation and enhances tokenomics for real-world adoption.",
-    "top_users": [
-      {
-        "user_name": "AllFactsCrypto",
-        "user_id": "1629822280111992833",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1918164726351356355",
-          "1930888633671623079"
-        ],
-        "sample_tweets": [
-          "#Altcoins #Facts To incentivize early participation, #VeChain allocated 5.3 billion $VTHO ($15 million) to the reward pool with new tools allowing users to calculate potential staking returns and optimize strategies... #Crypto #VET #VTHO #Staking URL",
-          "#Altcoins #Facts #VeChain’s StarGate launch is locked in for July 1, 2025! A major tokenomics shift is coming for #VET Key changes: New 100% transaction fee burns Staking now LIVE (as little as 10K $VET needed) $14M in $VTHO incentives for early stakers Full decentralization with Hayabusa upgrade >2M unique wallets milestone hit This is the biggest evolution in VeChain’s history..."
-        ],
-        "total_popularity": 6.405228106065733,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "degenlifer",
-        "user_id": "1427370013820850176",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925870675639632175"
-        ],
-        "sample_tweets": [
-          "@VeChainofficial May Momentum – StarGate, Stella Pay, and the Future of Web3 April was HUGE for VeChain and May is all about sustaining that energy! We're diving deeper into real-world utility, Web2 onboarding, and the launch of StarGate staking on July 1. Let’s break it down! #VeChain #VeBetterDAO #Web3"
-        ],
-        "total_popularity": 9.889848411550657,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "Redeno_org",
-        "user_id": "1914293331733209088",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1925048788374487122"
-        ],
-        "sample_tweets": [
-          "The first phase of the VeChain Renaissance — Galactica — is now live on Testnet! Redeno has everything VeFam needs to navigate the future of staking. Ready to explore? URL"
-        ],
-        "total_popularity": -0.19099042845998512,
-        "mixture_weight": 1.0,
-        "score": 1.0
-      },
-      {
-        "user_name": "CryptoMichNL",
-        "user_id": "146008010",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1920538691237302645",
-          "1930307147960664178"
-        ],
-        "sample_tweets": [
-          "Stargate is coming to $VET! I've mentioned before that there will be rewards for early adopters & investors into the ecosystem. #VeChain has done everything to ensure that everyone participating within the ecosystem will be rewarded. Make every action count. Read more about this in the longread on how you can be rewarded for joining the Renaissance early:",
-          "The VeBetter ecosystem of $VET is quickly expanding. The MugShot app has reached 1 million users, through which you can earn $B3TR tokens. It's one month before the Stargate Staking program goes live, which is a pivotal point for the entire VeChain ecosystem. Given that they've obtained the MiCAR license, I'm sure that the ecosystem will continue to expand quickly in the coming quarters. One to keep an eye on at these accumulation levels of the entire #Altcoin market."
-        ],
-        "total_popularity": 16.738108911994665,
-        "mixture_weight": 0.5,
-        "score": 0.5
-      },
-      {
-        "user_name": "CryptoBusy",
-        "user_id": "970698661364715520",
-        "tweet_count": 4,
-        "tweet_ids": [
-          "1929949142991942052",
-          "1930701405490491585",
-          "1929848736030904469",
-          "1930233903631192199"
-        ],
-        "sample_tweets": [
-          "VeChain’s StarGate launch is locked in for July 1, 2025! A major tokenomics shift is coming for $VET Key changes: New 100% transaction fee burns Staking now LIVE (as little as 10K $VET needed) $14M in $VTHO incentives for early stakers Full decentralization with Hayabusa upgrade >2M unique wallets milestone hit This is the biggest evolution in VeChain’s history. StarGate will reshape $VET’s value flow, sustainability, and future mass adoption path. DYOR #VEFAM",
-          "VeChain $VET is entering a new era with its most ambitious upgrade since inception: Renaissance Renaissance is a technical update and a full-scale economic and governance evolution designed to push VeChainThor into the next phase of blockchain mass adoption. Here is a detailed breakdown of what is happening: 1. Enhanced Tokenomics The Renaissance upgrade introduces a new tokenomics model that better aligns incentives for network participants, increases capital efficiency, and supports long-term value accrual to $VET holders 2. Democratized Staking The upgrade significantly lowers barriers to staking, allowing a broader range of users to participate in securing the network and earning rewards 3. Improved Governance A revamped governance framework is being implemented, giving the community more direct influence over protocol decisions and future developments 4. Technical Enhancements Renaissance brings critical improvements to scalability, interoperability, and security of VeChainThor. These technical upgrades prepare the chain to support higher transaction throughput and more complex enterprise and real-world use cases 5. Real-World Positioning @vechainofficial is positioning itself not just as an L1 but as the leading blockchain for enterprise and real-world impact. With major partners already using VeChainThor for supply chain, carbon tracking, and sustainability solutions, Renaissance enhances VeChain’s ability to scale these efforts. 6. StarGate Launch - July 1 The Renaissance phase is leading directly into the StarGate launch on July 1st, which will enable seamless interoperability with other blockchains, opening VeChain to new liquidity and cross-chain applications. BULLISH ON #VEFAM",
-          "VeChain just made network participation more accessible than ever! 3 new Eco Node tiers start at just 10,000 $VET! - making staking + rewards open to the entire VeFAM! Perfect timing with StarGate launching July 1 Stronger foundation. More participation. Bullish for @vechainofficial",
-          "VeChain StarGate → July 1 Massive shift coming for $VET + $VTHO URL"
-        ],
-        "total_popularity": 30.7704193888164,
-        "mixture_weight": 0.4,
-        "score": 0.4
-      },
-      {
-        "user_name": "ChainAffairs",
-        "user_id": "1617883393085313028",
-        "tweet_count": 2,
-        "tweet_ids": [
-          "1926648330685198418",
-          "1930297846483296419"
-        ],
-        "sample_tweets": [
-          "#VeChain’s Next Big Leap—StarGate Brings Staking, #NFTs, and Up to 35K VTHO/Day $VET $VTHO URL",
-          "#VeChain StarGate Goes Live July 1: Earn Up to 35,000 VTHO Daily by Staking $VET #VeFam URL"
-        ],
-        "total_popularity": -1.0183632342193099,
-        "mixture_weight": 0.4,
-        "score": 0.4
-      },
-      {
-        "user_name": "mr430aoncrypto",
-        "user_id": "1798370062065102848",
-        "tweet_count": 1,
-        "tweet_ids": [
-          "1926772857977078211"
-        ],
-        "sample_tweets": [
-          "Finally got lucky with Thorheads! Thank you 1_ for reminding of how bullish it is to mint these NFTs! We having FUN on VeChain. You need $VTHO to mint on their DApp. @in_node65718 @swaprunner @JordyPordy0 #VeChainBroskiiis URL"
-        ],
-        "total_popularity": 4.681319612812065,
-        "mixture_weight": 0.3333333333333333,
-        "score": 0.3333333333333333
-      },
-      {
-        "user_name": "CryptoNymphoo",
-        "user_id": "1442572722714734597",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1927722913618104455",
-          "1927752639913074981",
-          "1929925620605018477"
-        ],
-        "sample_tweets": [
-          "The new $VET staking program is going to make #vechain fly",
-          "Heating up on #vechain New staking program from 1st July Stake $VET and earn even more $VTHO",
-          "The new $VET staking program is huge... big $VTHO rewards for early stakers #vechain"
-        ],
-        "total_popularity": 6.116334510386345,
-        "mixture_weight": 0.25,
-        "score": 0.25
-      },
-      {
-        "user_name": "realkryptorevo",
-        "user_id": "1810894401436061697",
-        "tweet_count": 3,
-        "tweet_ids": [
-          "1926598392580374670",
-          "1924812185525489875",
-          "1922605501134569590"
-        ],
-        "sample_tweets": [
-          "VeChain kündigt Hayabusa-Upgrade mit 5,3 Milliarden VTHO-Belohnungspool an #VeChain #VET URL URL",
-          "Neue Tokenomics bei VeChain: Stargate-Upgrade bringt Stakingrevolution #VeChain #VET URL",
-          "VeChain stellt StarGate mit 5,48 Milliarden VTHO-Belohnungen vor #VeChain #VET #VeThorVTHO URL"
-        ],
-        "total_popularity": -2.9450412692875307,
-        "mixture_weight": 0.25,
-        "score": 0.25
-      },
-      {
-        "user_name": "SplendidMite",
-        "user_id": "312560738",
-        "tweet_count": 9,
-        "tweet_ids": [
-          "1925073594867925158",
-          "1930652271521538181",
-          "1929421911965970908",
-          "1924714646314844214",
-          "1924876396138004959",
-          "1928698196269871413",
-          "1925825265810235753",
-          "1924871105082179650",
-          "1918209155094958406"
-        ],
-        "sample_tweets": [
-          "REMINDER!!! VeChain’s StarGate launch is less than one month away—set for July 1, 2025—marking a pivotal shift in $VET tokenomics with the Hayabusa upgrade! Stake as little as 10,000 $VET to run a Dawn Node or up to 15.6M $VET for a Mjolnir X Node, unlocking daily $VTHO rewards up to 35,000 for top tiers. The VeChain Foundation is injecting 5.48B $VTHO (~$14M) to incentivise early stakers—secure your $VET now to maximise exclusive bonuses. New tokenomics include 100% transaction fee burns, aiming to boost $VET’s value and drive sustainability through enhanced decentralisation. Community tools like @VeChainStats APY Estimator and @Redeno_org 's Staking Simulator are live—use them to plan your strategy before the launch. This follows VeChain’s recent milestone of 2M+ unique wallets completing sustainable actions via VeBetter apps, as reported by Vineet Singh on May 29, 2025. Get ready for a blockchain built for mass adoption—StarGate empowers every $VET holder to shape VeChain’s decentralised future! $VET $VTHO #StarGate #VeChain #Blockchain",
-          "#VeChain Renaissance is launching in July 2025, and it’s a GAME-CHANGER for $VET! This massive upgrade redefines #VeChainThor with cutting-edge tokenomics, staking, and interoperability. Why it’s groundbreaking: Revamped Tokenomics: $VTHO issuance slashed by 72.2%, rewarding active stakers (Validators & Delegators) for securing the network. No more idle wallet rewards! Staking Revolution: Stargate launches with a 5.48B $VTHO bonus pool. X-Nodes & Economic Nodes can stake with 101 Validators, boosting decentralisation. EVM & JSON-RPC Integration: Full Ethereum compatibility unlocks seamless cross-chain ops, developer tools, and enterprise adoption. Galactica Phase: Live on Devnet, audited by NCC Group & Coinspect, it brings Shanghai EVM upgrades, dynamic fees, and clause transparency. MiCAR License: VeChain’s ready for European enterprises, aligning with global regulations. $VET's poised for mass adoption. Join the #VeFam and stake your future! URL #VeChainRenaissance #RWA #DeBAN",
-          "- #VeChain's collaboration with @StellaPay_io introduces a Visa card allowing users to spend #B3TR, $VET, and $VTHO tokens at over 130 million retailers globally, bridging the gap between digital assets and real-world utility. - This initiative is part of VeChain's \"Renaissance\" vision, aiming for large-scale adoption by simplifying the user experience for Web2 users unfamiliar with crypto complexities. - Early adopters benefit from a limited-time offer of 200 B3TR tokens upon activating their Stella Pay Visa card, incentivising participation in the #VeBetterDAO ecosystem. - The integration aligns with recent regulatory developments, such as the MiCAR confirmation of $VET and $VTHO tokens, ensuring compliance with Europe's financial infrastructure. - The Stella Pay Visa card transforms blockchain rewards into spendable currency, fulfilling a long-held aspiration within the #Web3 community for seamless digital asset spending. #RWA",
-          "• #VeChain’s Galactica upgrade, is now live on Testnet! • The upgrade, part of the VeChain Renaissance roadmap, passed audits by NCC Group and Coinspect, confirming no critical issues in its code. • Galactica introduces four key VIPs: Dynamic Fee Market, Typed Transactions, EVM Shanghai upgrade, and Extension Contract updates, enhancing #VeChainThor’s performance. • The next phase, Hayabusa, launches July 1 alongside the StarGate staking program, offering a 5.48 billion $VTHO rewards pool for $VET holders. • Developers can test Galactica on the Devnet, using a faucet to claim test $VET and $VTHO tokens, preparing for the mainnet rollout in July. • VeChainThor aims for mass adoption, aligning with Ethereum standards to attract more developers and enable cross-chain integration. • The Renaissance roadmap, including Galactica, Hayabusa, and Interstellar phases, perfectly positions VeChain for broader blockchain adoption amid favourable U.S. & E.U. regulatory shifts.",
-          "#VeChain's Stargate staking program launches on July 1, 2025, offering a 5.48 billion $VTHO bonus over six months for staking $VET tokens, starting at 10,000 VET for node tiers. Stella Pay, integrated with VeChain, introduces a Visa card that allows seamless spending of B3TR tokens with social login and no gas fees, enhancing Web3 usability. #VeBetterDAO focuses on sustainability, rewarding users for positive environmental actions and nearing 1 million active addresses. The $B3TR flywheel mechanism enables users to earn, spend, stake, and govern within the VeChain ecosystem, promoting active participation. VeChain's blockchain is builder-ready with JSON RPC and full EVM equivalence, supporting scalable dApps for mainstream adoption. The VeChain Renaissance emphasises trust, education, and significant developments including partnerships and listings, positioning VeChain in the post-meme blockchain era!"
-        ],
-        "total_popularity": 30.980617657992553,
-        "mixture_weight": 0.23684210526315788,
-        "score": 0.23684210526315788
       }
     ]
   }
