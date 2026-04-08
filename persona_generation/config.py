@@ -1,5 +1,6 @@
 """Hyperparameters and paths for the persona generation pipeline."""
 
+import os
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -24,7 +25,9 @@ TEST_END_DATE = "2025-09-01T00:00:00+00:00"
 MIN_TRAIN_TWEETS = 1
 MIN_TEST_TWEETS = 1
 
-DRY_RUN = True   # If True, skip all OpenAI and Twitter API calls
+# If True, skip all LLM and Twitter API calls (fast synthetic mode).
+# Default is False so persona generation produces real bios/personas.
+DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 
 # Ranking and persona
 TOP_N = 10  # Number of top users per cluster
