@@ -228,13 +228,37 @@ def category_label_from_topic(topic: str) -> str:
     """
     Extract a short category label from a long topic description.
     """
-    if not topic:
+    t = normalize_category(topic) or ""
+    if not t:
         return "general"
+
+    tl = t.lower()
+
+    # Keyword-based labeling for common clusters in this dataset.
+    if "vebetterdao" in tl or "b3tr" in tl or "vot3" in tl:
+        return "VeBetterDAO"
+    if "stargate" in tl or "renaissance" in tl or "galactica" in tl:
+        return "VeChain Renaissance/Stargate"
+    if "vechain" in tl or "$vet" in tl or "$vtho" in tl:
+        return "VeChain ecosystem"
+    if "altcoin" in tl or "price" in tl or "trading" in tl or "chart" in tl:
+        return "Crypto markets"
+    if "sustain" in tl or "esg" in tl or "climate" in tl or "recycle" in tl:
+        return "Sustainability"
+
+    # Generic fallback: strip boilerplate lead-ins.
+    cleaned = t
+    cleaned = re.sub(r"^\s*the topic (centers around|revolves around)\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^\s*discussions?\s*(highlight|focus)\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.strip()
+
     # Take text before em dash or colon
     for sep in ["—", ":", "-"]:
-        if sep in topic:
-            return topic.split(sep)[0].strip()
-    return topic[:50].strip()
+        if sep in cleaned:
+            cleaned = cleaned.split(sep)[0].strip()
+            break
+
+    return cleaned[:50].strip() or "general"
 
 
 
@@ -1186,12 +1210,14 @@ def save_personas(
                 tweets_str = json.dumps(persona.sample_tweets) if persona.sample_tweets else "[]"
 
                 ap = persona.action_probs or {}
+                cat_desc = normalize_category(persona.category) or "general"
+                cat_label = category_label_from_topic(cat_desc)
                 writer.writerow([
                     idx,
                     persona.realname,
                     persona.username,
-                    category_label_from_topic(persona.category),
-                    persona.category,
+                    cat_label,
+                    cat_desc,
                     json.dumps(persona.all_categories),
                     json.dumps(following_list),
                     tweets_str,
