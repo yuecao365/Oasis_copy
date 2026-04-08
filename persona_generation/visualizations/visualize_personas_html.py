@@ -99,32 +99,41 @@ def normalize_json_personas(data: List[Dict]) -> List[Dict]:
 
     return personas
 
-
 def normalize_csv_personas(rows: List[Dict]) -> List[Dict]:
     personas: List[Dict] = []
     for idx, r in enumerate(rows):
         following = parse_json_list(r.get("following_agentid_list", "[]"))
         tweets = parse_json_list(r.get("previous_tweets", "[]"))
 
-        category = r.get("category", "Unspecified")
+        # PRIORITY: 1) category_label (new CSV) 2) category_description 3) category 4) fallback
+        category = (
+            r.get("category_label")
+            or r.get("category_description")
+            or r.get("category")
+            or "Unspecified"
+        )
+        category = str(category).strip() or "Unspecified"
 
         all_categories = r.get("all_categories")
         if isinstance(all_categories, str):
             all_categories = parse_json_list(all_categories)
+        
+        # Ensure we have at least the primary category in the list
         if not isinstance(all_categories, list) or not all_categories:
             all_categories = [category]
 
         action_probs = {}
         for action, col in ACTION_PROB_COLUMNS:
             action_probs[action] = safe_float(r.get(col, 0.0), 0.0)
+
         personas.append(
             {
                 "id": str(r.get("user_id", idx)),
-                "name": str(r.get("name", r.get("username", "Unknown"))),
+                "name": str(r.get("name") or r.get("username") or "Unknown"),
                 "username": str(r.get("username", "unknown")),
                 "bio": str(r.get("description", "")),
                 "persona": str(r.get("user_char", "")),
-                "category": str(category),
+                "category": category,
                 "all_categories": [str(c) for c in all_categories],
                 "age": "",
                 "gender": "",
@@ -139,7 +148,6 @@ def normalize_csv_personas(rows: List[Dict]) -> List[Dict]:
             }
         )
     return personas
-
 
 def load_personas(input_path: Path | None) -> List[Dict]:
     if input_path:
