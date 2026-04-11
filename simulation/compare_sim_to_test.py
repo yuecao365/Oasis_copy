@@ -18,6 +18,13 @@ from typing import Dict, Iterable, List, Tuple
 
 from yaml import safe_load
 
+try:
+    from sentence_transformers import SentenceTransformer
+    import numpy as np
+    _HAS_ST = True
+except ImportError:
+    _HAS_ST = False
+
 
 def _safe_float(v, default=0.0) -> float:
     try:
@@ -209,6 +216,7 @@ def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
     retweets = []
     replies = []
     quotes = []
+    post_texts: List[str] = []
     with test_csv.open("r", encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
             uname = (row.get("user_name") or "").strip().lower()
@@ -230,6 +238,11 @@ def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
                 replies.append(nreplies)
                 quotes.append(nquotes)
                 per_user_total_engagement[uname] += (nlikes + nretweets + nreplies + nquotes)
+                text = (
+                    row.get("full_text") or row.get("text") or row.get("content") or ""
+                ).strip()
+                if text:
+                    post_texts.append(text)
     return {
         "per_user_posts": dict(per_user_posts),
         "eng_total_per_user": dict(per_user_total_engagement),
@@ -239,6 +252,7 @@ def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
         "retweets": retweets,
         "replies": replies,
         "quotes": quotes,
+        "post_texts": post_texts,
     }
 
 
@@ -254,11 +268,13 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     sim_eng_share = []
     sim_eng_reposts = []
     sim_eng_quotes = []
+    sim_post_texts: List[str] = []
+    sim_user_post_texts: Dict[str, List[str]] = {}
 
     # Original posts created by simulation (exclude initialization created_at == 0).
     cur.execute(
         """
-        SELECT p.post_id, p.user_id, p.created_at, p.num_likes, p.num_shares
+        SELECT p.post_id, p.user_id, p.created_at, p.num_likes, p.num_shares, p.content
         FROM post p
         WHERE p.original_post_id IS NULL
           AND CAST(p.created_at AS REAL) > 0
@@ -268,7 +284,7 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     post_ids = []
     post_user = {}
     post_like = {}
-    for post_id, user_id, created_at, nlikes, nshares in sim_posts:
+    for post_id, user_id, created_at, nlikes, nshares, content in sim_posts:
         uname = agent_to_username.get(_safe_int(user_id, -1))
         if not uname:
             continue
@@ -283,6 +299,10 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
         post_ids.append(pid)
         post_user[pid] = uname
         post_like[pid] = _safe_int(nlikes, 0)
+        text = (content or "").strip()
+        if text:
+            sim_post_texts.append(text)
+            sim_user_post_texts.setdefault(uname, []).append(text)
 
     # Comment counts per post.
     sim_eng_replies = []
@@ -353,6 +373,8 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
         "reposts": sim_eng_reposts,
         "quotes": sim_eng_quotes,
         "follow_edges": sim_edges,
+        "post_texts": sim_post_texts,
+        "user_post_texts": sim_user_post_texts,
     }
 
 
@@ -442,6 +464,160 @@ def weekday_hist_from_steps(
         dt = simulation_start + timedelta(hours=float(s) * timestep_hours)
         hist[dt.weekday()] += 1
     return hist
+
+
+def _compute_engagement_source(db_path: Path, agent_to_username: Dict[int, str]) -> Dict:
+    """
+    Classify each engagement action (like, comment, repost) as organic or recsys-driven.
+
+    Heuristic: if the acting user follows the post author at the time of analysis,
+    the engagement is considered organic (from their following list); otherwise it is
+    attributed to the recommendation system.
+    """
+    con = sqlite3.connect(str(db_path))
+    cur = con.cursor()
+
+    # Build follow set: (follower_id, followee_id)
+    cur.execute("SELECT follower_id, followee_id FROM follow")
+    follow_set: set[Tuple[int, int]] = {
+        (_safe_int(r, -1), _safe_int(f, -1)) for r, f in cur.fetchall()
+    }
+
+    # Build post_author map: post_id -> user_id
+    cur.execute("SELECT post_id, user_id FROM post WHERE original_post_id IS NULL AND CAST(created_at AS REAL) > 0")
+    post_author: Dict[int, int] = {_safe_int(pid, -1): _safe_int(uid, -1) for pid, uid in cur.fetchall()}
+
+    # Fetch engagement actions from trace
+    cur.execute(
+        """
+        SELECT user_id, action, info FROM trace
+        WHERE action IN ('like_post', 'create_comment', 'repost', 'quote_post')
+        """
+    )
+    trace_rows = cur.fetchall()
+    con.close()
+
+    organic = 0
+    recsys = 0
+    for user_id, action, info_str in trace_rows:
+        actor_id = _safe_int(user_id, -1)
+        if actor_id < 0:
+            continue
+        try:
+            info = json.loads(info_str) if info_str else {}
+        except Exception:
+            continue
+        pid = _safe_int(info.get("post_id") or info.get("postId") or -1, -1)
+        if pid < 0:
+            continue
+        author_id = post_author.get(pid, -1)
+        if author_id < 0:
+            continue
+        if (actor_id, author_id) in follow_set:
+            organic += 1
+        else:
+            recsys += 1
+
+    total = organic + recsys
+    return {
+        "total_engagements_classified": total,
+        "organic_engagements": organic,
+        "recsys_engagements": recsys,
+        "pct_organic_engagements": round(organic / total, 4) if total > 0 else None,
+        "pct_recsys_engagements": round(recsys / total, 4) if total > 0 else None,
+        "organic_vs_recsys_ratio": round(organic / recsys, 4) if recsys > 0 else None,
+    }
+
+
+def _compute_semantic_similarity(gt_texts: List[str], sim_texts: List[str]) -> Dict:
+    """
+    Measure how semantically close the sim corpus is to the GT corpus.
+    Uses paraphrase-MiniLM-L6-v2 (GPU-accelerated if available).
+    """
+    if not _HAS_ST:
+        return {"error": "sentence-transformers not installed"}
+    if not gt_texts or not sim_texts:
+        return {"error": "empty text corpus"}
+
+    import torch
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = SentenceTransformer("paraphrase-MiniLM-L6-v2", device=device)
+
+    gt_emb = model.encode(gt_texts, batch_size=128, normalize_embeddings=True, show_progress_bar=False)
+    sim_emb = model.encode(sim_texts, batch_size=128, normalize_embeddings=True, show_progress_bar=False)
+
+    gt_emb = np.array(gt_emb, dtype=np.float32)
+    sim_emb = np.array(sim_emb, dtype=np.float32)
+
+    # Centroid similarity
+    gt_centroid = gt_emb.mean(axis=0)
+    sim_centroid = sim_emb.mean(axis=0)
+    centroid_sim = float(np.dot(gt_centroid, sim_centroid) / (
+        np.linalg.norm(gt_centroid) * np.linalg.norm(sim_centroid) + 1e-9
+    ))
+
+    # Max-match: for each sim post, cosine sim to its nearest GT post
+    # sim_emb is already normalized, gt_emb is already normalized → dot product = cosine sim
+    chunk = 512  # process in chunks to avoid OOM
+    max_sims = []
+    for i in range(0, len(sim_emb), chunk):
+        block = sim_emb[i:i + chunk]  # (chunk, d)
+        sims = block @ gt_emb.T       # (chunk, n_gt)
+        max_sims.extend(sims.max(axis=1).tolist())
+    mean_max_match = float(np.mean(max_sims))
+
+    return {
+        "sim_to_gt_centroid_sim": round(centroid_sim, 4),
+        "sim_to_gt_semantic_max_match": round(mean_max_match, 4),
+        "sim_post_count": len(sim_texts),
+        "gt_post_count": len(gt_texts),
+    }
+
+
+def _compute_repetition(user_post_texts: Dict[str, List[str]]) -> Dict:
+    """
+    Measure intra-user content repetition in the simulation.
+    High similarity = agent is producing near-duplicate posts.
+    """
+    if not _HAS_ST:
+        return {"error": "sentence-transformers not installed"}
+
+    import torch
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = SentenceTransformer("paraphrase-MiniLM-L6-v2", device=device)
+
+    # Only consider users with ≥2 posts
+    eligible = {u: texts for u, texts in user_post_texts.items() if len(texts) >= 2}
+    if not eligible:
+        return {"mean_intra_user_similarity": None, "high_repetition_user_rate": None, "near_duplicate_rate": None}
+
+    user_mean_sims = []
+    total_pairs = 0
+    near_dup_pairs = 0
+
+    for uname, texts in eligible.items():
+        emb = model.encode(texts, batch_size=128, normalize_embeddings=True, show_progress_bar=False)
+        emb = np.array(emb, dtype=np.float32)
+        sim_matrix = emb @ emb.T  # (n, n) cosine sims
+        n = len(texts)
+        # Upper triangle only (exclude diagonal)
+        pair_sims = [sim_matrix[i, j] for i in range(n) for j in range(i + 1, n)]
+        user_mean_sims.append(float(np.mean(pair_sims)))
+        for s in pair_sims:
+            total_pairs += 1
+            if s > 0.92:
+                near_dup_pairs += 1
+
+    mean_intra = float(np.mean(user_mean_sims))
+    high_rep_rate = float(sum(1 for s in user_mean_sims if s > 0.85) / len(user_mean_sims))
+    near_dup_rate = float(near_dup_pairs / total_pairs) if total_pairs > 0 else 0.0
+
+    return {
+        "eligible_users": len(eligible),
+        "mean_intra_user_similarity": round(mean_intra, 4),
+        "high_repetition_user_rate": round(high_rep_rate, 4),
+        "near_duplicate_rate": round(near_dup_rate, 4),
+    }
 
 
 def _slug(v: object) -> str:
@@ -558,9 +734,7 @@ def main() -> None:
     sim_vec = [float(sim["per_user_posts"].get(u, 0.0)) for u in users]
 
     activity_spearman = spearman(sim_vec, gt_vec)
-    activity_jsd = js_divergence(sim_vec, gt_vec)
-    top10_overlap = topk_overlap(sim["per_user_posts"], gt["per_user_posts"], 10)
-    top20_overlap = topk_overlap(sim["per_user_posts"], gt["per_user_posts"], 20)
+    top10_overlap_val = topk_overlap(sim["per_user_posts"], gt["per_user_posts"], 10)
 
     sim_weekday_hist = weekday_hist_from_steps(sim["post_steps"], args.timestep_hours, sim_start)
     weekday_jsd = js_divergence(sim_weekday_hist, gt["weekday_hist"])
@@ -577,83 +751,26 @@ def main() -> None:
     curve_rmse = rmse(sim_curve, gt_curve)
     curve_nrmse = nrmse(sim_curve, gt_curve)
 
+    # Post-level engagement: likes top-share curve only.
     engagement_cutoffs = [0.01, 0.05, 0.10, 0.20, 0.50]
-    engagement_pairs = {
-        "likes": (gt["likes"], sim["likes"]),
-        "retweets_reposts": (gt["retweets"], sim["reposts"]),
-        "replies": (gt["replies"], sim["replies"]),
-        "quotes": (gt["quotes"], sim["quotes"]),
-    }
-    engagement_concentration = {}
-    engagement_percentile_jsd = {}
-    for metric_name, (gt_vals, sim_vals) in engagement_pairs.items():
-        gt_curve_top = top_share_curve(gt_vals, engagement_cutoffs)
-        sim_curve_top = top_share_curve(sim_vals, engagement_cutoffs)
-        engagement_concentration[metric_name] = {
-            "cutoffs": engagement_cutoffs,
-            "gt_top_share_curve": gt_curve_top,
-            "sim_top_share_curve": sim_curve_top,
-            "top_share_curve_rmse": rmse(gt_curve_top, sim_curve_top),
-        }
+    gt_likes_curve = top_share_curve(gt["likes"], engagement_cutoffs)
+    sim_likes_curve = top_share_curve(sim["likes"], engagement_cutoffs)
+    likes_top_share_rmse = rmse(gt_likes_curve, sim_likes_curve)
 
-        gt_hist = percentile_rank_histogram(gt_vals, bins=10)
-        sim_hist = percentile_rank_histogram(sim_vals, bins=10)
-        engagement_percentile_jsd[metric_name] = {
-            "bins": 10,
-            "gt_percentile_hist": gt_hist,
-            "sim_percentile_hist": sim_hist,
-            "percentile_hist_jsd": js_divergence(gt_hist, sim_hist),
-        }
-
-    # User-level engagement ranking fit (additive to existing engagement diagnostics).
-    # Components used: likes + replies + reposts + quotes.
+    # User-level engagement: Spearman correlation only.
     gt_eng_total_map = {u: float(gt["eng_total_per_user"].get(u, 0.0)) for u in users}
     sim_eng_total_map = {u: float(sim["eng_total_per_user"].get(u, 0.0)) for u in users}
-    gt_eng_avg_map = {
-        u: (
-            gt_eng_total_map[u] / float(gt["per_user_posts"].get(u, 0))
-            if gt["per_user_posts"].get(u, 0) > 0 else 0.0
-        )
-        for u in users
-    }
-    sim_eng_avg_map = {
-        u: (
-            sim_eng_total_map[u] / float(sim["per_user_posts"].get(u, 0))
-            if sim["per_user_posts"].get(u, 0) > 0 else 0.0
-        )
-        for u in users
-    }
-
     gt_eng_total_vec = [gt_eng_total_map[u] for u in users]
     sim_eng_total_vec = [sim_eng_total_map[u] for u in users]
-    gt_eng_avg_vec = [gt_eng_avg_map[u] for u in users]
-    sim_eng_avg_vec = [sim_eng_avg_map[u] for u in users]
+    eng_spearman = spearman(sim_eng_total_vec, gt_eng_total_vec)
 
-    gt_top_shares = top_share_curve(gt_eng_total_vec, [0.10, 0.20])
-    sim_top_shares = top_share_curve(sim_eng_total_vec, [0.10, 0.20])
-    engagement_user_level = {
-        "scope": "user",
-        "components": ["likes", "replies", "reposts", "quotes"],
-        "topk_values": [10, 20],
-        "gt_total_engagement": float(sum(gt_eng_total_vec)),
-        "sim_total_engagement": float(sum(sim_eng_total_vec)),
-        "spearman_total_engagement_per_user": spearman(sim_eng_total_vec, gt_eng_total_vec),
-        "jsd_total_engagement_per_user": js_divergence(sim_eng_total_vec, gt_eng_total_vec),
-        "spearman_engagement_per_post_per_user": spearman(sim_eng_avg_vec, gt_eng_avg_vec),
-        "jsd_engagement_per_post_per_user": js_divergence(sim_eng_avg_vec, gt_eng_avg_vec),
-        "topk_overlap_total_engagement_per_user": {
-            "top10": topk_overlap_positive(sim_eng_total_map, gt_eng_total_map, 10),
-            "top20": topk_overlap_positive(sim_eng_total_map, gt_eng_total_map, 20),
-        },
-        "topk_overlap_engagement_per_post_per_user": {
-            "top10": topk_overlap_positive(sim_eng_avg_map, gt_eng_avg_map, 10),
-            "top20": topk_overlap_positive(sim_eng_avg_map, gt_eng_avg_map, 20),
-        },
-        "gt_top10pct_share_total_engagement": gt_top_shares[0] if gt_top_shares else 0.0,
-        "sim_top10pct_share_total_engagement": sim_top_shares[0] if sim_top_shares else 0.0,
-        "gt_top20pct_share_total_engagement": gt_top_shares[1] if len(gt_top_shares) > 1 else 0.0,
-        "sim_top20pct_share_total_engagement": sim_top_shares[1] if len(sim_top_shares) > 1 else 0.0,
-    }
+    # Content-fit metrics.
+    print("Computing engagement source (recsys vs organic)...")
+    engagement_source = _compute_engagement_source(args.db, agent_to_username)
+    print("Computing semantic similarity (sim vs GT)...")
+    semantic = _compute_semantic_similarity(gt["post_texts"], sim["post_texts"])
+    print("Computing intra-user repetition...")
+    repetition = _compute_repetition(sim["user_post_texts"])
 
     report = {
         "inputs": {
@@ -671,9 +788,7 @@ def main() -> None:
         },
         "user_activity_fit": {
             "spearman_posts_per_user": activity_spearman,
-            "jsd_posts_per_user": activity_jsd,
-            "top10_overlap": top10_overlap,
-            "top20_overlap": top20_overlap,
+            "top10_overlap": top10_overlap_val,
         },
         "temporal_fit": {
             "day_of_week_jsd": weekday_jsd,
@@ -683,16 +798,30 @@ def main() -> None:
         "engagement_fit": {
             "gt_total_posts": len(gt["post_timestamps"]),
             "sim_total_posts": len(sim["post_steps"]),
-            "post_level": {
-                "top_share_curve": engagement_concentration,
-                "percentile_rank_jsd": engagement_percentile_jsd,
-            },
-            "user_level": engagement_user_level,
+            "likes_top_share_curve_rmse": likes_top_share_rmse,
+            "spearman_total_engagement_per_user": eng_spearman,
+        },
+        "content_fit": {
+            "engagement_source": engagement_source,
+            "semantic_similarity": semantic,
+            "repetition": repetition,
         },
     }
 
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     args.output_json.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+    def _fmt(v, fmt=".4f"):
+        if v is None:
+            return "N/A"
+        try:
+            return format(float(v), fmt)
+        except Exception:
+            return str(v)
+
+    es = report["content_fit"]["engagement_source"]
+    sem = report["content_fit"]["semantic_similarity"]
+    rep = report["content_fit"]["repetition"]
 
     md_lines = [
         "# Simulation vs Test Metrics",
@@ -707,65 +836,55 @@ def main() -> None:
         f"- Sim active users: {report['coverage']['sim_active_users']}",
         "",
         "## User Activity Fit",
-        f"- Spearman (posts/user): {activity_spearman:.4f}",
-        f"- JSD (posts/user): {activity_jsd:.4f}",
-        f"- Top-10 overlap: {top10_overlap:.4f}",
-        f"- Top-20 overlap: {top20_overlap:.4f}",
+        f"- Spearman (posts/user): {_fmt(activity_spearman)}",
+        f"- Top-10 overlap: {_fmt(top10_overlap_val)}",
         "",
         "## Temporal Fit",
-        f"- Day-of-week JSD: {weekday_jsd:.4f}",
-        f"- Cumulative daily posts RMSE: {curve_rmse:.4f}",
-        f"- Cumulative daily posts NRMSE: {curve_nrmse:.4f}",
+        f"- Day-of-week JSD: {_fmt(weekday_jsd)}",
+        f"- Cumulative daily posts RMSE: {_fmt(curve_rmse)}",
+        f"- Cumulative daily posts NRMSE: {_fmt(curve_nrmse)}",
         "",
         "## Engagement Fit",
         f"- GT total posts: {report['engagement_fit']['gt_total_posts']}",
         f"- Sim total posts: {report['engagement_fit']['sim_total_posts']}",
+        f"- Likes top-share curve RMSE: {_fmt(likes_top_share_rmse)}",
+        f"- Spearman (total engagement/user): {_fmt(eng_spearman)}",
         "",
-        "### User-level",
-        f"- Components: {', '.join(report['engagement_fit']['user_level']['components'])}",
-        f"- Top-K values: {', '.join(str(k) for k in report['engagement_fit']['user_level']['topk_values'])}",
-        f"- Spearman (total engagement/user): "
-        f"{report['engagement_fit']['user_level']['spearman_total_engagement_per_user']:.4f}",
-        f"- JSD (total engagement/user): "
-        f"{report['engagement_fit']['user_level']['jsd_total_engagement_per_user']:.4f}",
-        f"- Spearman (engagement-per-post per user): "
-        f"{report['engagement_fit']['user_level']['spearman_engagement_per_post_per_user']:.4f}",
-        f"- JSD (engagement-per-post per user): "
-        f"{report['engagement_fit']['user_level']['jsd_engagement_per_post_per_user']:.4f}",
-        f"- Top-10 overlap (total engagement/user): "
-        f"{report['engagement_fit']['user_level']['topk_overlap_total_engagement_per_user']['top10']:.4f}",
-        f"- Top-20 overlap (total engagement/user): "
-        f"{report['engagement_fit']['user_level']['topk_overlap_total_engagement_per_user']['top20']:.4f}",
-        f"- Top-10 overlap (engagement-per-post/user): "
-        f"{report['engagement_fit']['user_level']['topk_overlap_engagement_per_post_per_user']['top10']:.4f}",
-        f"- Top-20 overlap (engagement-per-post/user): "
-        f"{report['engagement_fit']['user_level']['topk_overlap_engagement_per_post_per_user']['top20']:.4f}",
-        f"- GT/Sim top-10% share of total engagement: "
-        f"{report['engagement_fit']['user_level']['gt_top10pct_share_total_engagement']:.4f} / "
-        f"{report['engagement_fit']['user_level']['sim_top10pct_share_total_engagement']:.4f}",
-        f"- GT/Sim top-20% share of total engagement: "
-        f"{report['engagement_fit']['user_level']['gt_top20pct_share_total_engagement']:.4f} / "
-        f"{report['engagement_fit']['user_level']['sim_top20pct_share_total_engagement']:.4f}",
+        "## Content Fit",
         "",
-        "### Post-level",
-        f"- Top-share curve RMSE (likes): "
-        f"{report['engagement_fit']['post_level']['top_share_curve']['likes']['top_share_curve_rmse']:.4f}",
-        f"- Top-share curve RMSE (retweets vs reposts): "
-        f"{report['engagement_fit']['post_level']['top_share_curve']['retweets_reposts']['top_share_curve_rmse']:.4f}",
-        f"- Top-share curve RMSE (replies): "
-        f"{report['engagement_fit']['post_level']['top_share_curve']['replies']['top_share_curve_rmse']:.4f}",
-        f"- Top-share curve RMSE (quotes): "
-        f"{report['engagement_fit']['post_level']['top_share_curve']['quotes']['top_share_curve_rmse']:.4f}",
-        f"- Percentile-rank JSD (likes): "
-        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['likes']['percentile_hist_jsd']:.4f}",
-        f"- Percentile-rank JSD (retweets vs reposts): "
-        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['retweets_reposts']['percentile_hist_jsd']:.4f}",
-        f"- Percentile-rank JSD (replies): "
-        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['replies']['percentile_hist_jsd']:.4f}",
-        f"- Percentile-rank JSD (quotes): "
-        f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['quotes']['percentile_hist_jsd']:.4f}",
+        "### Engagement Source (Recsys vs Organic)",
+        f"- Total engagements classified: {es.get('total_engagements_classified', 'N/A')}",
+        f"- Organic engagements: {es.get('organic_engagements', 'N/A')} "
+        f"({_fmt(es.get('pct_organic_engagements'))} of total)",
+        f"- Recsys-driven engagements: {es.get('recsys_engagements', 'N/A')} "
+        f"({_fmt(es.get('pct_recsys_engagements'))} of total)",
+        f"- Organic / Recsys ratio: {_fmt(es.get('organic_vs_recsys_ratio'))}",
         "",
+        "### Semantic Similarity (Sim vs GT)",
     ]
+    if "error" in sem:
+        md_lines.append(f"- Error: {sem['error']}")
+    else:
+        md_lines += [
+            f"- Sim posts embedded: {sem.get('sim_post_count', 'N/A')}",
+            f"- GT posts embedded: {sem.get('gt_post_count', 'N/A')}",
+            f"- Centroid similarity: {_fmt(sem.get('sim_to_gt_centroid_sim'))}",
+            f"- Mean max-match similarity: {_fmt(sem.get('sim_to_gt_semantic_max_match'))}",
+        ]
+    md_lines += [
+        "",
+        "### Intra-User Repetition",
+    ]
+    if "error" in rep:
+        md_lines.append(f"- Error: {rep['error']}")
+    else:
+        md_lines += [
+            f"- Eligible users (≥2 posts): {rep.get('eligible_users', 'N/A')}",
+            f"- Mean intra-user similarity: {_fmt(rep.get('mean_intra_user_similarity'))}",
+            f"- High-repetition user rate (>0.85): {_fmt(rep.get('high_repetition_user_rate'))}",
+            f"- Near-duplicate pair rate (>0.92): {_fmt(rep.get('near_duplicate_rate'))}",
+        ]
+    md_lines.append("")
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")
 
     # Also write a historical, hyperparameter-labeled artifact for comparison over time.
