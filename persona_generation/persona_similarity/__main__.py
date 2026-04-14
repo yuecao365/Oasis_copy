@@ -12,17 +12,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent.parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from persona_similarity import (  # noqa: E402
-    activity_spread_depth,
-    compare_persona_repost_distributions,
-    corpus_from_persona_rows,
-    load_personas_csv,
-    load_train_tweet_texts,
-    per_user_tweet_counts_from_train_csv,
-    semantic_distribution_report,
-    summarize_repost_propensity,
-    weekly_retweet_dynamics_from_train_csv,
-)
+from persona_similarity.visualize_similarity_report import build_default_report  # noqa: E402
 
 
 def main() -> None:
@@ -30,24 +20,14 @@ def main() -> None:
     train_csv = out_dir / "train_tweets.csv"
     personas_csv = out_dir / "user_personas.csv"
 
-    report: dict = {}
+    report = build_default_report(
+        train_csv=train_csv,
+        personas_csv=personas_csv,
+        max_train_tweets_semantic=400,
+        max_personas_semantic=80,
+    )
 
-    counts = per_user_tweet_counts_from_train_csv(train_csv)
-    report["train_activity_spread"] = activity_spread_depth(counts, top_k=10)
-
-    personas = load_personas_csv(personas_csv)
-    report["persona_p_repost_summary"] = summarize_repost_propensity(personas)
-
-    # Same file twice → JS divergence ~0 (sanity check)
-    report["persona_repost_self_compare"] = compare_persona_repost_distributions(personas, personas)
-
-    report["weekly_retweet_train"] = weekly_retweet_dynamics_from_train_csv(train_csv)
-
-    real_texts = load_train_tweet_texts(train_csv, max_rows=400)
-    sim_texts = corpus_from_persona_rows(personas[: min(80, len(personas))])
-    report["semantic_real_vs_persona_corpus"] = semantic_distribution_report(real_texts, sim_texts)
-
-    print(json.dumps(report, indent=2))
+    print(json.dumps(report, indent=2, default=str))
 
 
 if __name__ == "__main__":
