@@ -39,20 +39,6 @@ class TweetWithTimestamp:
     dup: bool
 
 
-def _parse_created_at(created_at: str) -> datetime:
-    """Parse Twitter createdAt string (e.g. 'Tue Jul 22 07:01:42 +0000 2025')."""
-    if not created_at:
-        return datetime.fromtimestamp(0, tz=timezone.utc)
-    try:
-        # Twitter format: "Tue Jul 22 07:01:42 +0000 2025"
-        dt = datetime.strptime(created_at.strip(), "%a %b %d %H:%M:%S %z %Y")
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt
-    except (ValueError, TypeError):
-        return datetime.fromtimestamp(0, tz=timezone.utc)
-
-
 def _safe_int(val, default: int = 0) -> int:
     """Cast to int, handling None and empty strings."""
     if val is None:
@@ -61,6 +47,37 @@ def _safe_int(val, default: int = 0) -> int:
         return int(val)
     except (ValueError, TypeError):
         return default
+
+
+def extract_timestamp_from_tweet_id(tweet_id: str) -> datetime:
+    """
+    Extract timestamp from Snowflake tweet ID (Twitter/X).
+
+    Snowflake IDs encode time: (id >> 22) + SNOWFLAKE_EPOCH gives ms since Unix epoch.
+    """
+    try:
+        tweet_id_int = int(tweet_id)
+        timestamp_ms = (tweet_id_int >> 22) + SNOWFLAKE_EPOCH
+        return datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc)
+    except (ValueError, OverflowError):
+        return datetime.fromtimestamp(0, tz=timezone.utc)
+
+
+def _tweet_timestamp(created_at: str, tweet_id: str) -> datetime:
+    """
+    Parse Twitter createdAt (English weekday/month). On failure or missing value,
+    derive time from the Snowflake id so splits stay aligned with clustering data
+    (avoids locale-dependent strptime failures on Windows and mass 1970-01-01 dates).
+    """
+    if created_at:
+        try:
+            dt = datetime.strptime(created_at.strip(), "%a %b %d %H:%M:%S %z %Y")
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except (ValueError, TypeError):
+            pass
+    return extract_timestamp_from_tweet_id(tweet_id)
 
 
 def load_tweets_from_filtered_jsonl(path: Path) -> List[TweetWithTimestamp]:
@@ -101,7 +118,7 @@ def load_tweets_from_filtered_jsonl(path: Path) -> List[TweetWithTimestamp]:
             views = _safe_int(obj.get("viewCount"))
 
             created_at = obj.get("createdAt", "")
-            timestamp = _parse_created_at(created_at)
+            timestamp = _tweet_timestamp(created_at, str(tweet_id))
 
             is_reply = obj.get("isReply", False)
             is_root = not is_reply
@@ -124,28 +141,6 @@ def load_tweets_from_filtered_jsonl(path: Path) -> List[TweetWithTimestamp]:
                 )
             )
     return tweets
-
-
-def extract_timestamp_from_tweet_id(tweet_id: str) -> datetime:
-    """
-    Extract timestamp from Snowflake tweet ID.
-    
-    Snowflake IDs encode timestamp: (id >> 22) + SNOWFLAKE_EPOCH gives milliseconds since epoch.
-    
-    Args:
-        tweet_id: Snowflake tweet ID as string
-        
-    Returns:
-        datetime object representing tweet creation time
-    """
-    try:
-        tweet_id_int = int(tweet_id)
-        # Extract timestamp: shift right 22 bits, add Snowflake epoch
-        timestamp_ms = (tweet_id_int >> 22) + SNOWFLAKE_EPOCH
-        return datetime.fromtimestamp(timestamp_ms / 1000.0)
-    except (ValueError, OverflowError):
-        # If ID is invalid, return a default date (shouldn't happen with real data)
-        return datetime.fromtimestamp(0)
 
 
 def load_tweets_with_timestamps(path: Path = None) -> List[TweetWithTimestamp]:
