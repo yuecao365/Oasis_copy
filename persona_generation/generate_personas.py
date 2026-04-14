@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from config import DRY_RUN
 import hashlib
+import re
 
 # Ensure repo root is on sys.path so llm_client is importable.
 _REPO_ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -37,6 +38,14 @@ MAX_TWEETS_DEMO = int(os.getenv("MAX_TWEETS_DEMO", "24"))      # tweets shown to
 MAX_TWEETS_PERSONA = int(os.getenv("MAX_TWEETS_PERSONA", "28")) # tweets shown to persona prompt
 MIN_TWEETS = int(os.getenv("MIN_TWEETS", "10"))               # if available
 SHUFFLE_TWEETS = os.getenv("SHUFFLE_TWEETS", "1") == "1"
+
+# Balancing sample controls
+BALANCE_USERS_BY_ACTIVITY = os.getenv("BALANCE_USERS_BY_ACTIVITY", "1") == "1"
+USERS_PER_CLUSTER = int(os.getenv("USERS_PER_CLUSTER", "40"))
+LOW_ACTIVITY_FRACTION = float(os.getenv("LOW_ACTIVITY_FRACTION", "0.35"))
+MID_ACTIVITY_FRACTION = float(os.getenv("MID_ACTIVITY_FRACTION", "0.35"))
+HIGH_ACTIVITY_FRACTION = float(os.getenv("HIGH_ACTIVITY_FRACTION", "0.30"))
+
 
 # Parallelism controls (major speedup with DashScope)
 PERSONA_WORKERS = int(os.getenv("PERSONA_WORKERS", "6"))
@@ -120,6 +129,86 @@ DEFAULT_ACTION_PRIORS = {
     "follow": 0.04,
 }
 
+
+ACTION_PRIOR_SMOOTHING = float(os.getenv("ACTION_PRIOR_SMOOTHING", "0.35"))
+# 0.35 means: 65% user priors + 35% global priors
+
+MIN_ACTION_FLOORS = {
+    "repost": float(os.getenv("MIN_P_REPOST", "0.02")),
+    "quote_post": float(os.getenv("MIN_P_QUOTE", "0.01")),
+    "like_post": float(os.getenv("MIN_P_LIKE", "0.08")),
+    "create_comment": float(os.getenv("MIN_P_REPLY", "0.04")),
+}
+
+ACTION_CONCENTRATION = float(os.getenv("ACTION_CONCENTRATION", "12.0"))
+# (was 30.0) -> more diverse action profiles per persona
+
+GLOBAL_ACTION_PRIORS = DEFAULT_ACTION_PRIORS.copy()
+
+def _normalize_dist(d: Dict[str, float]) -> Dict[str, float]:
+    d = {k: max(1e-9, float(v)) for k, v in d.items()}
+    s = sum(d.values())
+    return {k: v / s for k, v in d.items()}
+
+def blend_action_priors(
+    user_priors: Dict[str, float],
+    global_priors: Dict[str, float],
+    smoothing: float = 0.35
+) -> Dict[str, float]:
+    """
+    Blends user priors with global priors to prevent collapse (e.g., repost->0).
+    smoothing = weight on global priors.
+    """
+    user_priors = _normalize_dist(user_priors)
+    global_priors = _normalize_dist(global_priors)
+    out = {}
+    for a in AVAILABLE_ACTIONS:
+        up = user_priors.get(a, 0.0)
+        gp = global_priors.get(a, 0.0)
+        out[a] = (1.0 - smoothing) * up + smoothing * gp
+    return _normalize_dist(out)
+
+def apply_action_floors(priors: Dict[str, float], floors: Dict[str, float]) -> Dict[str, float]:
+    priors = priors.copy()
+    for k, floor in floors.items():
+        if k in priors:
+            priors[k] = max(priors[k], float(floor))
+    return _normalize_dist(priors)
+
+
+def extract_style_markers(tweets: List[str], k: int = 6) -> List[str]:
+    """
+    Pull lightweight, non-invasive style anchors: hashtags, emojis, common tokens, punctuation habits.
+    """
+    if not tweets:
+        return []
+    text = " ".join(tweets)
+    hashtags = re.findall(r"#\w+", text)
+    mentions = re.findall(r"@\w+", text)
+    emojis = re.findall(r"[\U0001F300-\U0001FAFF]", text)
+
+    # simple token freq (skip very short)
+    toks = re.findall(r"[A-Za-z][A-Za-z']{2,}", text.lower())
+    freq = {}
+    for t in toks:
+        freq[t] = freq.get(t, 0) + 1
+    common = [w for w, _ in sorted(freq.items(), key=lambda kv: -kv[1])[:k]]
+
+    markers = []
+    markers += hashtags[: min(2, len(hashtags))]
+    markers += emojis[: min(2, len(emojis))]
+    markers += common[: max(0, k - len(markers))]
+
+    # de-dupe preserve
+    seen = set()
+    out = []
+    for m in markers:
+        if m not in seen:
+            seen.add(m)
+            out.append(m)
+    return out[:k]
+
+
 def sample_action_probabilities(
     rng: random.Random,
     priors: Optional[Dict[str, float]] = None,
@@ -159,6 +248,36 @@ def sample_action_probabilities(
     probs = [d / total for d in draws]
 
     return {a: float(p) for a, p in zip(actions, probs)}
+
+
+def _balanced_pick_users(top_users: List[Dict], rng: random.Random, k: int) -> List[Dict]:
+    if len(top_users) <= k:
+        return top_users
+
+    # sort by tweet_count
+    sorted_users = sorted(top_users, key=lambda u: u.get("tweet_count", 0))
+    n = len(sorted_users)
+    lo = sorted_users[: max(1, n // 3)]
+    mid = sorted_users[max(1, n // 3) : max(2, 2 * n // 3)]
+    hi = sorted_users[max(2, 2 * n // 3) :]
+
+    k_lo = int(k * LOW_ACTIVITY_FRACTION)
+    k_mid = int(k * MID_ACTIVITY_FRACTION)
+    k_hi = max(0, k - k_lo - k_mid)
+
+    picked = []
+    picked += rng.sample(lo, min(k_lo, len(lo)))
+    picked += rng.sample(mid, min(k_mid, len(mid)))
+    picked += rng.sample(hi, min(k_hi, len(hi)))
+
+    # if still short, fill from remaining
+    if len(picked) < k:
+        remaining = [u for u in sorted_users if u not in picked]
+        picked += rng.sample(remaining, min(k - len(picked), len(remaining)))
+
+    return picked
+
+
 
 def infer_action_priors_from_tweets(tweets: List[str]) -> Dict[str, float]:
     """
@@ -491,6 +610,13 @@ def generate_demographics_from_tweets(
     # Prepare context
     sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt])
 
+    
+    style_markers = extract_style_markers(user_tweets)
+    style_line = ""
+    if style_markers:
+        style_line = f"\nStyle anchors (must reflect in voice subtly): {', '.join(style_markers)}\n"
+
+
     api_context = ""
     if api_profile:
         api_context = f"""
@@ -501,6 +627,8 @@ Additional context from Twitter profile:
 """
 
     prompt = f"""Analyze the following tweets from a Twitter user and infer their demographics.
+    
+{style_line}
 
 User: @{user_name}
 {api_context}
@@ -708,11 +836,15 @@ Output ONLY valid JSON in this exact format:
     )
 
     tweet_based_priors = infer_action_priors_from_tweets(user_tweets)
+
+    # NEW: blend + floors
+    priors = blend_action_priors(tweet_based_priors, GLOBAL_ACTION_PRIORS, smoothing=ACTION_PRIOR_SMOOTHING)
+    priors = apply_action_floors(priors, MIN_ACTION_FLOORS)
+
     action_probs = sample_action_probabilities(
         rng=rng or random.Random(),
-        priors=tweet_based_priors,
+        priors=priors,
         actions=AVAILABLE_ACTIONS,
-        concentration=30.0,
     )
 
     return Persona(
@@ -777,12 +909,15 @@ def generate_persona(
 
         tweet_based_priors = infer_action_priors_from_tweets(user_tweets)
 
+        # NEW: blend + floors
+        priors = blend_action_priors(tweet_based_priors, GLOBAL_ACTION_PRIORS, smoothing=ACTION_PRIOR_SMOOTHING)
+        priors = apply_action_floors(priors, MIN_ACTION_FLOORS)
+
         action_probs = sample_action_probabilities(
             rng=rng or random.Random(),
-            priors=tweet_based_priors,
+            priors=priors,
             actions=AVAILABLE_ACTIONS,
-            concentration=30.0,
-        )
+        )   
 
         return Persona(
             username=user_name,
@@ -941,7 +1076,14 @@ def generate_personas_for_users(
         )
         topic = normalize_category(raw_topic) or "general"
 
-        for rank, user_data in enumerate(cluster_data["top_users"], 1):
+        users = cluster_data["top_users"]
+
+        if BALANCE_USERS_BY_ACTIVITY:
+            cluster_rng = random.Random(GLOBAL_SEED + int(cluster_id))
+            users = _balanced_pick_users(users, cluster_rng, USERS_PER_CLUSTER)
+
+
+        for rank, user_data in enumerate(users, 1):
             user_id = user_data["user_id"]
 
             if user_id not in user_appearances:
