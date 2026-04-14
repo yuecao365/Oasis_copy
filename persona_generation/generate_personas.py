@@ -12,7 +12,7 @@ import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from config import DRY_RUN
 import hashlib
 import re
@@ -99,6 +99,13 @@ You must satisfy ALL of the following requirements in the bio + persona:
 6) Analytical/professional signal:
 - Also incorporate an analytical/professional angle: highlight expertise areas and how they approach discussions (e.g., “evidence-driven,” “hands-on builder,” “big-picture strategist”), as supported by tweets.
 
+
+7) Diffusion & engagement dynamics (critical):
+- Describe not only what they post, but how their content tends to spread.
+- Mention whether they amplify others (reposts/quote posts), spark replies, or mostly broadcast.
+- Include one plausible “spread mechanism” (e.g., sharing links, signal-boosting certain accounts, asking questions that trigger replies).
+
+
 DIVERSITY REQUIREMENT (critical):
 - Do not use a fixed template. Vary sentence structure and voice across users.
 - Let the user’s tweet tone drive the voice (more formal vs. meme-y vs. earnest).
@@ -144,6 +151,27 @@ ACTION_CONCENTRATION = float(os.getenv("ACTION_CONCENTRATION", "12.0"))
 # (was 30.0) -> more diverse action profiles per persona
 
 GLOBAL_ACTION_PRIORS = DEFAULT_ACTION_PRIORS.copy()
+
+def infer_engagement_profile_from_tweets(tweets: List[str]) -> Dict[str, float]:
+    if not tweets:
+        return {"replyiness": 0.0, "amplifier": 0.0, "link_sharer": 0.0, "mention_rate": 0.0}
+
+    n = max(1, len(tweets))
+    replies = sum(1 for t in tweets if t.strip().startswith("@"))
+    rts = sum(1 for t in tweets if t.strip().startswith("RT ") or " RT @" in t or "via @" in t)
+    links = sum(1 for t in tweets if "http://" in t or "https://" in t)
+
+    mentions = set()
+    for t in tweets:
+        mentions.update(re.findall(r"@\w+", t))
+    
+
+    return {
+        "replyiness": replies / n if n > 0 else 0.0,
+        "amplifier": rts / n if n > 0 else 0.0,
+        "link_sharer": links / n if n > 0 else 0.0,
+        "mention_rate": len(mentions) / n if n > 0 else 0.0
+    }
 
 def _normalize_dist(d: Dict[str, float]) -> Dict[str, float]:
     d = {k: max(1e-9, float(v)) for k, v in d.items()}
@@ -454,6 +482,9 @@ class Persona:
     tweet_count: int
     sample_tweets: List[str]  # Tweet texts for previous_tweets (OASIS simulation)
     action_probs: Dict[str, float]
+    style_markers: List[str] = None
+    engagement_profile: Dict[str, Any] = None
+
 
 def pick_with_priors(options, priors, rng, noise_eps: float = 0.05):
     """
@@ -847,6 +878,9 @@ Output ONLY valid JSON in this exact format:
         actions=AVAILABLE_ACTIONS,
     )
 
+    eng_profile = infer_engagement_profile_from_tweets(user_tweets)
+    style_markers = extract_style_markers(user_tweets)
+
     return Persona(
         username=user_name,
         realname=user_name,
@@ -865,6 +899,8 @@ Output ONLY valid JSON in this exact format:
         tweet_count=tweet_count,
         sample_tweets=user_tweets,
         action_probs=action_probs,
+        style_markers=style_markers,
+        engagement_profile=eng_profile,
     )
 
 
@@ -1281,6 +1317,8 @@ def save_personas(
                 "tweet_count": persona.tweet_count,
                 "sample_tweets": persona.sample_tweets,
                 "action_probs": persona.action_probs,
+                "style_markers": persona.style_markers or [],
+                "engagement_profile": persona.engagement_profile or {},
             })
 
         with output_path.open("w", encoding="utf-8") as f:
