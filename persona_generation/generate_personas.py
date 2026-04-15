@@ -5,7 +5,8 @@ Generate personas for users using hybrid approach:
 - LLM inference for demographics (age, gender, MBTI, country, profession)
 - LLM generation for detailed persona
 """
-
+from time import time
+from tqdm import tqdm
 import json
 import os
 import random
@@ -1251,30 +1252,71 @@ def generate_personas_for_users(
     except Exception:
         ThreadPoolExecutor = None
 
+
+    total = len(work_items)
+
+    def _print_done(p: Persona):
+    # Always print exactly in the format you want
+        if len(p.all_categories) > 1:
+            print(
+                f"Generated multi-category persona for {p.original_user_name} "
+                f"(category: {p.category}; all: {', '.join(p.all_categories)})"
+            )
+        else:
+            print(f"Generated persona for {p.original_user_name} (category: {p.category})")
+
+# -------------------------
+# Sequential (no threads)
+# -------------------------
     if ThreadPoolExecutor is None or PERSONA_WORKERS <= 1:
-        for w in work_items:
-            p = _run_one(w)
-            if p is None:
-                continue
-            personas.append(p)
-            processed_users.add(p.original_user_id)
-            if len(p.all_categories) > 1:
-                print(f"Generated multi-category persona for {p.original_user_name} (categories: {', '.join(p.all_categories)})")
-            else:
-                print(f"Generated persona for {p.original_user_name} (category: {p.category})")
-    else:
-        with ThreadPoolExecutor(max_workers=max(1, PERSONA_WORKERS)) as ex:
-            futures = [ex.submit(_run_one, w) for w in work_items]
-            for fut in as_completed(futures):
-                p = fut.result()
+        start_t = time()
+        done = 0
+
+        with tqdm(total=total, desc="Generating personas", unit="persona") as pbar:
+            for w in work_items:
+                p = _run_one(w)
+                done += 1
+
                 if p is None:
+                    # still count it as "attempted" so the bar doesn't stall
+                    pbar.update(1)
+                    pbar.set_postfix(left=total - done)
                     continue
+
                 personas.append(p)
                 processed_users.add(p.original_user_id)
-                if len(p.all_categories) > 1:
-                    print(f"Generated multi-category persona for {p.original_user_name} (categories: {', '.join(p.all_categories)})")
-                else:
-                    print(f"Generated persona for {p.original_user_name} (category: {p.category})")
+
+                _print_done(p)
+
+                pbar.update(1)
+                pbar.set_postfix(left=total - done)
+
+# -------------------------
+# Parallel (ThreadPoolExecutor)
+# -------------------------
+    else:
+        from concurrent.futures import as_completed
+
+        start_t = time()
+        done = 0
+
+        with ThreadPoolExecutor(max_workers=max(1, PERSONA_WORKERS)) as ex:
+            futures = [ex.submit(_run_one, w) for w in work_items]
+
+            with tqdm(total=total, desc="Generating personas", unit="persona") as pbar:
+                for fut in as_completed(futures):
+                    p = fut.result()
+                    done += 1
+
+                    if p is not None:
+                        personas.append(p)
+                        processed_users.add(p.original_user_id)
+                        _print_done(p)
+
+                    # progress bar ticks when a job finishes (correct for threads)
+                    pbar.update(1)
+                    pbar.set_postfix(left=total - done)
+
 
     return personas
 
