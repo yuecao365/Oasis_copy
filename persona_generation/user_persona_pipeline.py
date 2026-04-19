@@ -17,8 +17,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta  # Standard for handling month increments
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
@@ -35,13 +33,9 @@ from config import (
     OUTPUT_DIR,
     OUTPUT_FORMAT,
     TEST_MONTH,
-    TEST_END_DATE,
-    TEST_START_DATE,
     TEST_YEAR,
     TOP_N,
     TRAIN_MONTH,
-    TRAIN_END_DATE,
-    TRAIN_START_DATE,
     TRAIN_YEAR,
     TWEET_POPULARITY_PATH,
     USE_TWITTER_API,
@@ -90,7 +84,10 @@ def load_cluster_assignments(path: Path) -> Dict[str, int]:
             try:
                 obj = json.loads(line)
                 tweet_id = obj.get("tweet_id")
+                # Spec uses cluster_id; some clustering outputs use cluster_kmeans, etc.
                 cluster_id = obj.get("cluster_id")
+                if cluster_id is None:
+                    cluster_id = obj.get("cluster_kmeans")
                 if tweet_id is not None and cluster_id is not None:
                     result[str(tweet_id)] = int(cluster_id)
             except (json.JSONDecodeError, ValueError, TypeError):
@@ -384,26 +381,32 @@ def main():
         return
     print(f"Loaded {len(all_tweets)} tweets")
 
-    # --- NEW RELATIVE SPLIT LOGIC ---
-    # 1. Find the earliest tweet timestamp to anchor the split
-    global_start_dt = min(t.timestamp for t in all_tweets)
-    
-    # 2. Define training as first 2 months, test as the 1 month following that
-    # Note: Using relativedelta is safer for calendar months than timedelta(days=60)
-    train_end_dt = global_start_dt + relativedelta(months=2)
-    test_end_dt = train_end_dt + relativedelta(months=1)
-
-    train_tweets = [
-        t for t in all_tweets if global_start_dt <= t.timestamp < train_end_dt
-    ]
-    test_tweets = [
-        t for t in all_tweets if train_end_dt <= t.timestamp < test_end_dt
-    ]
-
-    print(f"Relative split based on data start: {global_start_dt.strftime('%Y-%m-%d')}")
-    print(f"Train window: {global_start_dt.isoformat()} to {train_end_dt.isoformat()}")
-    print(f"Test window:  {train_end_dt.isoformat()} to {test_end_dt.isoformat()}")
-    # --------------------------------
+    # Calendar-month split from config (aligns with clustering / tweet_popularity windows).
+    train_tweets, test_tweets = split_tweets_by_time(
+        all_tweets,
+        train_months=TRAIN_MONTH,
+        test_months=TEST_MONTH,
+        train_year=TRAIN_YEAR,
+        train_month=TRAIN_MONTH,
+        test_year=TEST_YEAR,
+        test_month=TEST_MONTH,
+    )
+    print(
+        f"Split by config months: train {TRAIN_YEAR}-{TRAIN_MONTH:02d}, "
+        f"test {TEST_YEAR}-{TEST_MONTH:02d}"
+    )
+    if train_tweets:
+        tr_sorted = sorted(train_tweets, key=lambda t: t.timestamp)
+        print(
+            f"Train date range: {tr_sorted[0].timestamp.isoformat()} to "
+            f"{tr_sorted[-1].timestamp.isoformat()}"
+        )
+    if test_tweets:
+        te_sorted = sorted(test_tweets, key=lambda t: t.timestamp)
+        print(
+            f"Test date range: {te_sorted[0].timestamp.isoformat()} to "
+            f"{te_sorted[-1].timestamp.isoformat()}"
+        )
 
     print(f"Initial split - Train: {len(train_tweets)}, Test: {len(test_tweets)}")
 

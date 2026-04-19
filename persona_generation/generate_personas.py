@@ -12,9 +12,10 @@ import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from config import DRY_RUN
 import hashlib
+import re
 
 # Ensure repo root is on sys.path so llm_client is importable.
 _REPO_ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -37,6 +38,21 @@ MAX_TWEETS_DEMO = int(os.getenv("MAX_TWEETS_DEMO", "24"))      # tweets shown to
 MAX_TWEETS_PERSONA = int(os.getenv("MAX_TWEETS_PERSONA", "28")) # tweets shown to persona prompt
 MIN_TWEETS = int(os.getenv("MIN_TWEETS", "10"))               # if available
 SHUFFLE_TWEETS = os.getenv("SHUFFLE_TWEETS", "1") == "1"
+
+# Balancing sample controls
+BALANCE_USERS_BY_ACTIVITY = os.getenv("BALANCE_USERS_BY_ACTIVITY", "1") == "1"
+USERS_PER_CLUSTER = int(os.getenv("USERS_PER_CLUSTER", "40"))
+LOW_ACTIVITY_FRACTION = float(os.getenv("LOW_ACTIVITY_FRACTION", "0.35"))
+MID_ACTIVITY_FRACTION = float(os.getenv("MID_ACTIVITY_FRACTION", "0.35"))
+HIGH_ACTIVITY_FRACTION = float(os.getenv("HIGH_ACTIVITY_FRACTION", "0.30"))
+
+
+# Parallelism controls (major speedup with DashScope)
+PERSONA_WORKERS = int(os.getenv("PERSONA_WORKERS", "6"))
+
+# Reduce calls: by default, do a single LLM call per user (demographics + persona).
+# Set to "0" to revert to legacy behavior (2 calls per user).
+SINGLE_CALL_PER_USER = os.getenv("SINGLE_CALL_PER_USER", "1") == "1"
 
 DEMO_PROMPT_VARIANTS = [
     # Variant A: emphasize linguistic/cultural cues
@@ -83,6 +99,13 @@ You must satisfy ALL of the following requirements in the bio + persona:
 6) Analytical/professional signal:
 - Also incorporate an analytical/professional angle: highlight expertise areas and how they approach discussions (e.g., “evidence-driven,” “hands-on builder,” “big-picture strategist”), as supported by tweets.
 
+
+7) Diffusion & engagement dynamics (critical):
+- Describe not only what they post, but how their content tends to spread.
+- Mention whether they amplify others (reposts/quote posts), spark replies, or mostly broadcast.
+- Include one plausible “spread mechanism” (e.g., sharing links, signal-boosting certain accounts, asking questions that trigger replies).
+
+
 DIVERSITY REQUIREMENT (critical):
 - Do not use a fixed template. Vary sentence structure and voice across users.
 - Let the user’s tweet tone drive the voice (more formal vs. meme-y vs. earnest).
@@ -112,6 +135,107 @@ DEFAULT_ACTION_PRIORS = {
     "like_post": 0.20,
     "follow": 0.04,
 }
+
+
+ACTION_PRIOR_SMOOTHING = float(os.getenv("ACTION_PRIOR_SMOOTHING", "0.35"))
+# 0.35 means: 65% user priors + 35% global priors
+
+MIN_ACTION_FLOORS = {
+    "repost": float(os.getenv("MIN_P_REPOST", "0.02")),
+    "quote_post": float(os.getenv("MIN_P_QUOTE", "0.01")),
+    "like_post": float(os.getenv("MIN_P_LIKE", "0.08")),
+    "create_comment": float(os.getenv("MIN_P_REPLY", "0.04")),
+}
+
+ACTION_CONCENTRATION = float(os.getenv("ACTION_CONCENTRATION", "12.0"))
+# (was 30.0) -> more diverse action profiles per persona
+
+GLOBAL_ACTION_PRIORS = DEFAULT_ACTION_PRIORS.copy()
+
+def infer_engagement_profile_from_tweets(tweets: List[str]) -> Dict[str, float]:
+    if not tweets:
+        return {"replyiness": 0.0, "amplifier": 0.0, "link_sharer": 0.0, "mention_rate": 0.0}
+
+    n = max(1, len(tweets))
+    replies = sum(1 for t in tweets if t.strip().startswith("@"))
+    rts = sum(1 for t in tweets if t.strip().startswith("RT ") or " RT @" in t or "via @" in t)
+    links = sum(1 for t in tweets if "http://" in t or "https://" in t)
+
+    mentions = set()
+    for t in tweets:
+        mentions.update(re.findall(r"@\w+", t))
+    
+
+    return {
+        "replyiness": replies / n if n > 0 else 0.0,
+        "amplifier": rts / n if n > 0 else 0.0,
+        "link_sharer": links / n if n > 0 else 0.0,
+        "mention_rate": len(mentions) / n if n > 0 else 0.0
+    }
+
+def _normalize_dist(d: Dict[str, float]) -> Dict[str, float]:
+    d = {k: max(1e-9, float(v)) for k, v in d.items()}
+    s = sum(d.values())
+    return {k: v / s for k, v in d.items()}
+
+def blend_action_priors(
+    user_priors: Dict[str, float],
+    global_priors: Dict[str, float],
+    smoothing: float = 0.35
+) -> Dict[str, float]:
+    """
+    Blends user priors with global priors to prevent collapse (e.g., repost->0).
+    smoothing = weight on global priors.
+    """
+    user_priors = _normalize_dist(user_priors)
+    global_priors = _normalize_dist(global_priors)
+    out = {}
+    for a in AVAILABLE_ACTIONS:
+        up = user_priors.get(a, 0.0)
+        gp = global_priors.get(a, 0.0)
+        out[a] = (1.0 - smoothing) * up + smoothing * gp
+    return _normalize_dist(out)
+
+def apply_action_floors(priors: Dict[str, float], floors: Dict[str, float]) -> Dict[str, float]:
+    priors = priors.copy()
+    for k, floor in floors.items():
+        if k in priors:
+            priors[k] = max(priors[k], float(floor))
+    return _normalize_dist(priors)
+
+
+def extract_style_markers(tweets: List[str], k: int = 6) -> List[str]:
+    """
+    Pull lightweight, non-invasive style anchors: hashtags, emojis, common tokens, punctuation habits.
+    """
+    if not tweets:
+        return []
+    text = " ".join(tweets)
+    hashtags = re.findall(r"#\w+", text)
+    mentions = re.findall(r"@\w+", text)
+    emojis = re.findall(r"[\U0001F300-\U0001FAFF]", text)
+
+    # simple token freq (skip very short)
+    toks = re.findall(r"[A-Za-z][A-Za-z']{2,}", text.lower())
+    freq = {}
+    for t in toks:
+        freq[t] = freq.get(t, 0) + 1
+    common = [w for w, _ in sorted(freq.items(), key=lambda kv: -kv[1])[:k]]
+
+    markers = []
+    markers += hashtags[: min(2, len(hashtags))]
+    markers += emojis[: min(2, len(emojis))]
+    markers += common[: max(0, k - len(markers))]
+
+    # de-dupe preserve
+    seen = set()
+    out = []
+    for m in markers:
+        if m not in seen:
+            seen.add(m)
+            out.append(m)
+    return out[:k]
+
 
 def sample_action_probabilities(
     rng: random.Random,
@@ -152,6 +276,36 @@ def sample_action_probabilities(
     probs = [d / total for d in draws]
 
     return {a: float(p) for a, p in zip(actions, probs)}
+
+
+def _balanced_pick_users(top_users: List[Dict], rng: random.Random, k: int) -> List[Dict]:
+    if len(top_users) <= k:
+        return top_users
+
+    # sort by tweet_count
+    sorted_users = sorted(top_users, key=lambda u: u.get("tweet_count", 0))
+    n = len(sorted_users)
+    lo = sorted_users[: max(1, n // 3)]
+    mid = sorted_users[max(1, n // 3) : max(2, 2 * n // 3)]
+    hi = sorted_users[max(2, 2 * n // 3) :]
+
+    k_lo = int(k * LOW_ACTIVITY_FRACTION)
+    k_mid = int(k * MID_ACTIVITY_FRACTION)
+    k_hi = max(0, k - k_lo - k_mid)
+
+    picked = []
+    picked += rng.sample(lo, min(k_lo, len(lo)))
+    picked += rng.sample(mid, min(k_mid, len(mid)))
+    picked += rng.sample(hi, min(k_hi, len(hi)))
+
+    # if still short, fill from remaining
+    if len(picked) < k:
+        remaining = [u for u in sorted_users if u not in picked]
+        picked += rng.sample(remaining, min(k - len(picked), len(remaining)))
+
+    return picked
+
+
 
 def infer_action_priors_from_tweets(tweets: List[str]) -> Dict[str, float]:
     """
@@ -221,13 +375,37 @@ def category_label_from_topic(topic: str) -> str:
     """
     Extract a short category label from a long topic description.
     """
-    if not topic:
+    t = normalize_category(topic) or ""
+    if not t:
         return "general"
+
+    tl = t.lower()
+
+    # Keyword-based labeling for common clusters in this dataset.
+    if "vebetterdao" in tl or "b3tr" in tl or "vot3" in tl:
+        return "VeBetterDAO"
+    if "stargate" in tl or "renaissance" in tl or "galactica" in tl:
+        return "VeChain Renaissance/Stargate"
+    if "vechain" in tl or "$vet" in tl or "$vtho" in tl:
+        return "VeChain ecosystem"
+    if "altcoin" in tl or "price" in tl or "trading" in tl or "chart" in tl:
+        return "Crypto markets"
+    if "sustain" in tl or "esg" in tl or "climate" in tl or "recycle" in tl:
+        return "Sustainability"
+
+    # Generic fallback: strip boilerplate lead-ins.
+    cleaned = t
+    cleaned = re.sub(r"^\s*the topic (centers around|revolves around)\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^\s*discussions?\s*(highlight|focus)\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.strip()
+
     # Take text before em dash or colon
     for sep in ["—", ":", "-"]:
-        if sep in topic:
-            return topic.split(sep)[0].strip()
-    return topic[:50].strip()
+        if sep in cleaned:
+            cleaned = cleaned.split(sep)[0].strip()
+            break
+
+    return cleaned[:50].strip() or "general"
 
 
 
@@ -304,6 +482,9 @@ class Persona:
     tweet_count: int
     sample_tweets: List[str]  # Tweet texts for previous_tweets (OASIS simulation)
     action_probs: Dict[str, float]
+    style_markers: List[str] = None
+    engagement_profile: Dict[str, Any] = None
+
 
 def pick_with_priors(options, priors, rng, noise_eps: float = 0.05):
     """
@@ -460,6 +641,13 @@ def generate_demographics_from_tweets(
     # Prepare context
     sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt])
 
+    
+    style_markers = extract_style_markers(user_tweets)
+    style_line = ""
+    if style_markers:
+        style_line = f"\nStyle anchors (must reflect in voice subtly): {', '.join(style_markers)}\n"
+
+
     api_context = ""
     if api_profile:
         api_context = f"""
@@ -470,6 +658,8 @@ Additional context from Twitter profile:
 """
 
     prompt = f"""Analyze the following tweets from a Twitter user and infer their demographics.
+    
+{style_line}
 
 User: @{user_name}
 {api_context}
@@ -532,6 +722,188 @@ Output ONLY valid JSON in this exact format:
     )
 
 
+def generate_demographics_and_persona_single_call(
+    user_name: str,
+    user_tweets: List[str],
+    category_topic: str,
+    all_categories: List[str],
+    cluster_id: int,
+    original_user_id: str,
+    tweet_count: int,
+    api_profile: Optional[UserProfile] = None,
+    rng: Optional[random.Random] = None,
+) -> Persona:
+    """
+    Faster path: demographics + persona in one LLM request (vs 2 sequential calls).
+    """
+    if DRY_RUN:
+        demo = generate_demographics_from_tweets(
+            user_tweets=user_tweets,
+            user_name=user_name,
+            api_profile=api_profile,
+            rng=rng or random.Random(),
+        )
+        return generate_persona(
+            user_name=user_name,
+            demographics=demo,
+            user_tweets=user_tweets,
+            category_topic=category_topic,
+            all_categories=all_categories,
+            cluster_id=cluster_id,
+            original_user_id=original_user_id,
+            tweet_count=tweet_count,
+            rng=rng or random.Random(),
+        )
+
+    category_topic = normalize_category(category_topic) or "general"
+    all_categories = [normalize_category(c) for c in all_categories]
+    all_categories = [c for c in all_categories if c]
+    all_categories = dedupe_preserve_order(all_categories)
+    if category_topic not in all_categories:
+        all_categories.insert(0, category_topic)
+
+    demo_variant = rng.choice(DEMO_PROMPT_VARIANTS) if rng else random.choice(DEMO_PROMPT_VARIANTS)
+
+    tweets_for_prompt = select_tweets_for_prompt(
+        user_tweets,
+        rng=rng,
+        max_tweets=max(MAX_TWEETS_DEMO, MAX_TWEETS_PERSONA),
+        min_tweets=MIN_TWEETS,
+        shuffle=SHUFFLE_TWEETS,
+    )
+    sample_tweets = "\n".join([f"- {tweet}" for tweet in tweets_for_prompt])
+
+    api_context = ""
+    if api_profile:
+        api_context = f"""
+Additional context from Twitter profile:
+- Location: {api_profile.location or 'Not specified'}
+- Account created: {api_profile.created_at or 'Not specified'}
+- Bio: {api_profile.description or 'Not specified'}
+"""
+
+    if len(all_categories) > 1:
+        categories_text = (
+            f"Primary category: {category_topic}. Also active in: "
+            f"{', '.join([c for c in all_categories if c != category_topic])}"
+        )
+        category_instruction = (
+            f"the categories: {', '.join(all_categories)}. "
+            "The persona should reflect their multi-faceted interests across these areas."
+        )
+    else:
+        categories_text = category_topic
+        category_instruction = f"the category: {category_topic}"
+
+    prompt = f"""You will infer demographics AND write the persona for a Twitter user.
+
+User: @{user_name}
+{api_context}
+
+Diversity instruction (rotate styles across users):
+{demo_variant}
+
+Interest Categories: {categories_text}
+
+Persona writing requirements:
+{PERSONA_PROMPT_MASTER}
+
+Sample tweets:
+{sample_tweets}
+
+Infer demographics (grounded in tweets/profile, avoid US-by-default):
+- age: integer 18-65
+- gender: one of "male", "female", "other"
+- mbti: one of ISTJ, ISFJ, INFJ, INTJ, ISTP, ISFP, INFP, INTP, ESTP, ESFP, ENFP, ENTP, ESTJ, ESFJ, ENFJ, ENTJ
+- country: ISO code like "US", "UK", "CA", etc.
+- profession: choose exactly one from:
+  Agriculture Food & Natural Resources, Architecture & Construction, Arts Audio/Video Technology & Communications,
+  Business Management & Administration, Education & Training, Finance, Government & Public Administration, Health Science,
+  Hospitality & Tourism, Human Services, Information Technology, Law Public Safety Corrections & Security, Manufacturing,
+  Marketing, Science Technology Engineering & Mathematics, Transportation Distribution & Logistics
+
+Then generate:
+1) bio (1-2 sentences, Twitter bio style) reflecting interests in {category_instruction}
+2) persona (2-3 sentences) describing personality, habits, motivations, and how they engage with {category_instruction}
+
+Output ONLY valid JSON in this exact format:
+{{
+  "age": 28,
+  "gender": "male",
+  "mbti": "ENTP",
+  "country": "US",
+  "profession": "Information Technology",
+  "bio": "…",
+  "persona": "…"
+}}
+"""
+
+    content = chat_completion(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a demographics + persona assistant. Output only valid JSON.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.9,
+        max_tokens=520,
+    )
+
+    if content.startswith("```"):
+        content = content.split("```")[1]
+        if content.startswith("json"):
+            content = content[4:]
+        content = content.strip()
+
+    obj = json.loads(content)
+
+    demo = Demographics(
+        age=int(obj["age"]),
+        gender=str(obj["gender"]),
+        mbti=str(obj["mbti"]),
+        country=str(obj["country"]),
+        profession=str(obj["profession"]),
+    )
+
+    tweet_based_priors = infer_action_priors_from_tweets(user_tweets)
+
+    # NEW: blend + floors
+    priors = blend_action_priors(tweet_based_priors, GLOBAL_ACTION_PRIORS, smoothing=ACTION_PRIOR_SMOOTHING)
+    priors = apply_action_floors(priors, MIN_ACTION_FLOORS)
+
+    action_probs = sample_action_probabilities(
+        rng=rng or random.Random(),
+        priors=priors,
+        actions=AVAILABLE_ACTIONS,
+    )
+
+    eng_profile = infer_engagement_profile_from_tweets(user_tweets)
+    style_markers = extract_style_markers(user_tweets)
+
+    return Persona(
+        username=user_name,
+        realname=user_name,
+        bio=str(obj["bio"]),
+        persona=str(obj["persona"]),
+        age=demo.age,
+        gender=demo.gender,
+        mbti=demo.mbti,
+        country=demo.country,
+        profession=demo.profession,
+        category=category_topic,
+        all_categories=all_categories,
+        cluster_id=cluster_id,
+        original_user_name=user_name,
+        original_user_id=original_user_id,
+        tweet_count=tweet_count,
+        sample_tweets=user_tweets,
+        action_probs=action_probs,
+        style_markers=style_markers,
+        engagement_profile=eng_profile,
+    )
+
+
 def generate_persona(
     user_name: str,
     demographics: Demographics,
@@ -553,21 +925,44 @@ def generate_persona(
     # DRY RUN MODE: dummy persona
     # -----------------------------
     if DRY_RUN:
-        
+        category_topic = normalize_category(category_topic) or "general"
+        all_categories = [normalize_category(c) for c in all_categories]
+        all_categories = [c for c in all_categories if c]
+        all_categories = dedupe_preserve_order(all_categories)
+        if category_topic not in all_categories:
+            all_categories.insert(0, category_topic)
+
+        tweets_for_prompt = select_tweets_for_prompt(
+            user_tweets,
+            rng=rng,
+            max_tweets=min(12, MAX_TWEETS_PERSONA),
+            min_tweets=min(5, MIN_TWEETS),
+            shuffle=SHUFFLE_TWEETS,
+        )
+        tweet_snippets = [t.strip() for t in tweets_for_prompt if t and t.strip()]
+        tone_hint = "earnest" if any("#" in t or "$" in t for t in tweet_snippets) else "casual"
+        topics_hint = ", ".join(all_categories[:3]) if all_categories else category_topic
+
         tweet_based_priors = infer_action_priors_from_tweets(user_tweets)
+
+        # NEW: blend + floors
+        priors = blend_action_priors(tweet_based_priors, GLOBAL_ACTION_PRIORS, smoothing=ACTION_PRIOR_SMOOTHING)
+        priors = apply_action_floors(priors, MIN_ACTION_FLOORS)
 
         action_probs = sample_action_probabilities(
             rng=rng or random.Random(),
-            priors=tweet_based_priors,
+            priors=priors,
             actions=AVAILABLE_ACTIONS,
-            concentration=30.0,
-        )
+        )   
 
         return Persona(
             username=user_name,
             realname=user_name,
-            bio=f"Bio placeholder for @{user_name} (DRY RUN)",
-            persona=f"Persona description placeholder for @{user_name}. Categories: {all_categories}.",
+            bio=f"{user_name} | {demographics.profession} | {topics_hint} | {tone_hint} feed",
+            persona=(
+                f"{user_name} is a {demographics.age}-year-old {demographics.profession} based in {demographics.country} "
+                f"who posts in a {tone_hint} voice about {topics_hint} and tends to engage through replies and shares."
+            ),
             age=demographics.age,
             gender=demographics.gender,
             mbti=demographics.mbti,
@@ -717,7 +1112,14 @@ def generate_personas_for_users(
         )
         topic = normalize_category(raw_topic) or "general"
 
-        for rank, user_data in enumerate(cluster_data["top_users"], 1):
+        users = cluster_data["top_users"]
+
+        if BALANCE_USERS_BY_ACTIVITY:
+            cluster_rng = random.Random(GLOBAL_SEED + int(cluster_id))
+            users = _balanced_pick_users(users, cluster_rng, USERS_PER_CLUSTER)
+
+
+        for rank, user_data in enumerate(users, 1):
             user_id = user_data["user_id"]
 
             if user_id not in user_appearances:
@@ -736,32 +1138,23 @@ def generate_personas_for_users(
     personas = []
     processed_users = set()
 
-    for user_id, appearances in user_appearances.items():
-        if user_id in processed_users:
-            continue
-
+    def _build_work_item(user_id: str, appearances: List[Dict]) -> Dict:
         primary_appearance = max(
             appearances,
             key=lambda x: (x["user_data"]["tweet_count"], -x["rank"])
         )
 
-        cluster_data = primary_appearance["cluster_data"]
         user_data = primary_appearance["user_data"]
         cluster_id = primary_appearance["cluster_id"]
         user_name = user_data["user_name"]
         tweet_count = user_data["tweet_count"]
 
-        # Collect and sanitize ALL categories this user appears in
         raw_all_categories = [a.get("topic") for a in appearances]
         clean_all_categories = [normalize_category(c) for c in raw_all_categories]
-        clean_all_categories = [c for c in clean_all_categories if c]  # drop None/invalid
+        clean_all_categories = [c for c in clean_all_categories if c]
         clean_all_categories = dedupe_preserve_order(clean_all_categories)
 
-        # Determine primary topic:
-        # 1) Use the primary appearance's topic if valid
         primary_topic = normalize_category(primary_appearance.get("topic"))
-
-        # 2) Else choose best valid topic among appearances (same scoring: tweet_count, rank)
         if not primary_topic:
             best_valid = None
             best_score = None
@@ -774,27 +1167,18 @@ def generate_personas_for_users(
                     best_score = score
                     best_valid = t
             primary_topic = best_valid
-
-        # 3) Final fallback (guaranteed non-unspecified)
         if not primary_topic:
             primary_topic = "general"
 
-        # Ensure primary is present in all_categories and never empty
         if primary_topic not in clean_all_categories:
             clean_all_categories.insert(0, primary_topic)
 
-        topic = primary_topic
-        all_categories = clean_all_categories
-
-        # Prefer full train-split tweet context for this user when available.
-        # Fallback to merged ranking samples if full context is not provided.
         if user_all_train_tweets and user_id in user_all_train_tweets:
             tweets = user_all_train_tweets[user_id]
         else:
             all_tweets = []
             for appearance in appearances:
                 all_tweets.extend(appearance["user_data"]["sample_tweets"])
-            # Deduplicate while preserving order
             seen = set()
             unique_tweets = []
             for tweet in all_tweets:
@@ -803,53 +1187,94 @@ def generate_personas_for_users(
                     unique_tweets.append(tweet)
             tweets = unique_tweets
 
-        # If user appears in multiple categories, note it
-        if len(appearances) > 1:
-            print(
-                f"User {user_name} appears in {len(appearances)} categories: "
-                f"{', '.join(all_categories)}. Primary: {topic} ({tweet_count} tweets). "
-                "Generating multi-category persona."
-            )
-
-        # Optionally fetch from API
-        api_profile = None
-        if use_twitter_api:
-            api_profile = fetch_user_profile_from_api(user_id)
-
         base_rng = persona_rng(user_id, global_seed=GLOBAL_SEED)
-        # Split deterministic sub-streams so changes in one stage don't affect the other
-        demo_rng = random.Random(base_rng.randrange(2**63))
-        persona_rng_stream = random.Random(base_rng.randrange(2**63))
+        user_rng = random.Random(base_rng.randrange(2**63))
 
-        # Infer demographics
+        return {
+            "user_id": user_id,
+            "user_name": user_name,
+            "cluster_id": cluster_id,
+            "topic": primary_topic,
+            "all_categories": clean_all_categories,
+            "tweets": tweets,
+            "tweet_count": tweet_count,
+            "rng": user_rng,
+        }
+
+    work_items: List[Dict] = []
+    for user_id, appearances in user_appearances.items():
+        if user_id in processed_users:
+            continue
+        work_items.append(_build_work_item(user_id, appearances))
+
+    def _run_one(w: Dict) -> Optional[Persona]:
+        user_id = w["user_id"]
+        user_name = w["user_name"]
         try:
-            demographics = generate_demographics_from_tweets(
-                tweets, user_name, api_profile, rng=demo_rng
-            )
+            api_profile = fetch_user_profile_from_api(user_id) if use_twitter_api else None
 
-            # Generate persona (with all categories)
-            persona = generate_persona(
+            if SINGLE_CALL_PER_USER:
+                return generate_demographics_and_persona_single_call(
+                    user_name=user_name,
+                    user_tweets=w["tweets"],
+                    category_topic=w["topic"],
+                    all_categories=w["all_categories"],
+                    cluster_id=w["cluster_id"],
+                    original_user_id=user_id,
+                    tweet_count=w["tweet_count"],
+                    api_profile=api_profile,
+                    rng=w["rng"],
+                )
+
+            demo_rng = random.Random(w["rng"].randrange(2**63))
+            persona_rng_stream = random.Random(w["rng"].randrange(2**63))
+            demographics = generate_demographics_from_tweets(
+                w["tweets"], user_name, api_profile, rng=demo_rng
+            )
+            return generate_persona(
                 user_name=user_name,
                 demographics=demographics,
-                user_tweets=tweets,
-                category_topic=topic,
-                all_categories=all_categories,
-                cluster_id=cluster_id,
+                user_tweets=w["tweets"],
+                category_topic=w["topic"],
+                all_categories=w["all_categories"],
+                cluster_id=w["cluster_id"],
                 original_user_id=user_id,
-                tweet_count=tweet_count,
+                tweet_count=w["tweet_count"],
                 rng=persona_rng_stream,
             )
-
-            personas.append(persona)
-            processed_users.add(user_id)
-            if len(appearances) > 1:
-                print(f"Generated multi-category persona for {user_name} (categories: {', '.join(all_categories)})")
-            else:
-                print(f"Generated persona for {user_name} (category: {topic})")
-
         except Exception as e:
             print(f"Error generating persona for {user_name}: {e}")
-            continue
+            return None
+
+    try:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+    except Exception:
+        ThreadPoolExecutor = None
+
+    if ThreadPoolExecutor is None or PERSONA_WORKERS <= 1:
+        for w in work_items:
+            p = _run_one(w)
+            if p is None:
+                continue
+            personas.append(p)
+            processed_users.add(p.original_user_id)
+            if len(p.all_categories) > 1:
+                print(f"Generated multi-category persona for {p.original_user_name} (categories: {', '.join(p.all_categories)})")
+            else:
+                print(f"Generated persona for {p.original_user_name} (category: {p.category})")
+    else:
+        with ThreadPoolExecutor(max_workers=max(1, PERSONA_WORKERS)) as ex:
+            futures = [ex.submit(_run_one, w) for w in work_items]
+            for fut in as_completed(futures):
+                p = fut.result()
+                if p is None:
+                    continue
+                personas.append(p)
+                processed_users.add(p.original_user_id)
+                if len(p.all_categories) > 1:
+                    print(f"Generated multi-category persona for {p.original_user_name} (categories: {', '.join(p.all_categories)})")
+                else:
+                    print(f"Generated persona for {p.original_user_name} (category: {p.category})")
 
     return personas
 
@@ -892,6 +1317,8 @@ def save_personas(
                 "tweet_count": persona.tweet_count,
                 "sample_tweets": persona.sample_tweets,
                 "action_probs": persona.action_probs,
+                "style_markers": persona.style_markers or [],
+                "engagement_profile": persona.engagement_profile or {},
             })
 
         with output_path.open("w", encoding="utf-8") as f:
@@ -963,12 +1390,14 @@ def save_personas(
                 tweets_str = json.dumps(persona.sample_tweets) if persona.sample_tweets else "[]"
 
                 ap = persona.action_probs or {}
+                cat_desc = normalize_category(persona.category) or "general"
+                cat_label = category_label_from_topic(cat_desc)
                 writer.writerow([
                     idx,
                     persona.realname,
                     persona.username,
-                    category_label_from_topic(persona.category),
-                    persona.category,
+                    cat_label,
+                    cat_desc,
                     json.dumps(persona.all_categories),
                     json.dumps(following_list),
                     tweets_str,

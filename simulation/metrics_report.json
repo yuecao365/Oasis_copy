@@ -1,0 +1,52 @@
+{
+  "inputs": {
+    "db": "data\\simu_db\\yaml_gpt\\sweep_high_posts.db",
+    "test_csv": "persona_generation\\outputs\\test_tweets.csv",
+    "personas_csv": "persona_generation\\outputs\\user_personas.csv",
+    "filtered_jsonl": "data\\processed\\filtered_tweets.jsonl",
+    "timestep_hours": 24.0,
+    "split_info": "persona_generation\\outputs\\split_info.json"
+  },
+  "coverage": {
+    "persona_user_count": 67,
+    "gt_active_users": 56,
+    "sim_active_users": 53
+  },
+  "user_activity_fit": {
+    "spearman_posts_per_user": 0.5207230087106653,
+    "top10_overlap": 0.7
+  },
+  "temporal_fit": {
+    "day_of_week_jsd": 0.02206705993998986,
+    "cumulative_posts_daily_rmse": 45.157213300241175,
+    "cumulative_posts_daily_nrmse": 0.17919529087397293
+  },
+  "engagement_fit": {
+    "gt_total_posts": 267,
+    "sim_total_posts": 197,
+    "likes_top_share_curve_rmse": 0.10356334815625386,
+    "spearman_total_engagement_per_user": 0.2922805896673854
+  },
+  "content_fit": {
+    "engagement_source": {
+      "total_engagements_classified": 170,
+      "organic_engagements": 85,
+      "recsys_engagements": 85,
+      "pct_organic_engagements": 0.5,
+      "pct_recsys_engagements": 0.5,
+      "organic_vs_recsys_ratio": 1.0
+    },
+    "semantic_similarity": {
+      "sim_to_gt_centroid_sim": 0.9615,
+      "sim_to_gt_semantic_max_match": 0.6788,
+      "sim_post_count": 197,
+      "gt_post_count": 267
+    },
+    "repetition": {
+      "eligible_users": 38,
+      "mean_intra_user_similarity": 0.6456,
+      "high_repetition_user_rate": 0.2632,
+      "near_duplicate_rate": 0.1455
+    }
+  }
+}
