@@ -5,8 +5,9 @@ Step 5: Clustering (root tweets only) + representative posts per cluster.
 - KMeans(n_clusters=20) on L2-normalized root embeddings.
 - Representative posts: from ALL tweets in each cluster (roots + replies), top % by popularity.
 - Optional: exclude low-content roots (MIN_CONTENT_TOKENS).
-- Outputs: cluster_assignments_roots.csv, representative_posts_kmeans.json,
-  excluded roots (optional). (Noise outputs skipped for KMeans.)
+- Outputs: cluster_assignments_roots.csv, cluster_assignments_kmeans.json,
+  cluster_assignments.jsonl (same rows as kmeans JSON; JSON Lines for persona pipeline),
+  representative_posts_kmeans.json, excluded roots (optional). (Noise outputs skipped for KMeans.)
 
 Requires: sentence-transformers, sklearn
   pip install sentence-transformers scikit-learn
@@ -365,6 +366,13 @@ def save_all_tweet_cluster_assignments_json(tweet_to_cluster, filtered_tweets, o
         json.dump(rows, f, ensure_ascii=False, indent=2)
     print(f"  Saved {path} ({len(rows)} tweet-level assignments)")
 
+    # JSON Lines: same records as kmeans JSON; matches persona_generation load_cluster_assignments
+    jsonl_path = os.path.join(out_dir, "cluster_assignments.jsonl")
+    with open(jsonl_path, "w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    print(f"  Saved {jsonl_path} ({len(rows)} lines; use as CLUSTER_ASSIGNMENTS_PATH for hard KMeans)")
+
 
 def save_cluster_size_report(stats, out_dir):
     path = os.path.join(out_dir, "cluster_size_report.json")
@@ -541,7 +549,10 @@ def main():
     save_all_tweet_cluster_assignments_json(tweet_to_cluster, filtered_tweets, OUTPUT_DIR)
 
     print("\nDONE.")
-    print("Outputs: cluster_assignments_roots.csv, cluster_assignments_kmeans.json, representative_posts_kmeans.json")
+    print(
+        "Outputs: cluster_assignments_roots.csv, cluster_assignments_kmeans.json, "
+        "cluster_assignments.jsonl, representative_posts_kmeans.json"
+    )
 
 
 if __name__ == "__main__":

@@ -13,10 +13,12 @@ It will:
 - Embed the 20 topic sentences using sentence-transformers/all-mpnet-base-v2.
 - Compute cosine similarity between topics.
 - Greedily group topics whose pairwise similarity >= SIM_THRESHOLD (default 0.88).
-- Write three JSON files:
-   - data/processed/cluster_topic_groups_soft.json       (soft-merge groups, with original cluster_ids)
-   - data/processed/cluster_topics_soft.json             (soft groups: list[{cluster_id, topic}])
-   - data/processed/cluster_assignments_soft_groups.json (tweet_id -> soft group_id mapping)
+- Write JSON files matching the same *shape* as hard clustering outputs in clustering/:
+   - data/processed/cluster_topic_groups_soft.json     (full merge metadata, indented)
+   - data/processed/cluster_topics_soft.json             (same format as cluster_topics.json: {"0":"...", "1":"..."})
+   - data/processed/cluster_assignments_soft_groups.json (compact JSON array; optional)
+   - data/processed/cluster_assignments_soft.jsonl       (same format as cluster_assignments.jsonl: one {"tweet_id","cluster_id"} per line)
+   - data/processed/cluster_assignments_soft_groups.jsonl (duplicate of .jsonl for backward compatibility)
 """
 
 import json
@@ -34,6 +36,9 @@ KMEANS_ASSIGNMENTS_FILE = "cluster_assignments_kmeans.json"  # tweet_id -> hard 
 OUTPUT_GROUPS_FILE = "cluster_topic_groups_soft.json"
 OUTPUT_SOFT_TOPICS_FILE = "cluster_topics_soft.json"
 OUTPUT_SOFT_ASSIGN_FILE = "cluster_assignments_soft_groups.json"
+# Same line format as clustering/cluster_assignments.jsonl (tweet_id + cluster_id per line).
+OUTPUT_SOFT_ASSIGN_JSONL_FILE = "cluster_assignments_soft.jsonl"
+OUTPUT_SOFT_ASSIGN_JSONL_LEGACY_FILE = "cluster_assignments_soft_groups.jsonl"
 
 EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
 SIM_THRESHOLD = 0.88  # soft-merge threshold (cosine similarity)
@@ -174,19 +179,14 @@ def main() -> None:
         json.dump(groups_payload, f, ensure_ascii=False, indent=2)
     print(f"Saved soft-merged topic groups to {groups_out_path}")
 
-    # 2) FINAL topics file: list[{cluster_id (soft group id), topic}]
-    soft_topics = []
+    # 2) FINAL topics file: same shape as cluster_topics.json — {"0": "...", "1": "...", ...}
+    soft_topics_obj: Dict[str, str] = {}
     for gid, g in enumerate(groups):
-        soft_topics.append(
-            {
-                "cluster_id": gid,
-                "topic": g.get("representative_topic", ""),
-            }
-        )
+        soft_topics_obj[str(gid)] = str(g.get("representative_topic", "") or "")
     soft_topics_path = os.path.join(input_dir, OUTPUT_SOFT_TOPICS_FILE)
     with open(soft_topics_path, "w", encoding="utf-8") as f:
-        json.dump(soft_topics, f, ensure_ascii=False, indent=2)
-    print(f"Saved soft topics list to {soft_topics_path}")
+        json.dump(soft_topics_obj, f, ensure_ascii=False, indent=2)
+    print(f"Saved soft topics to {soft_topics_path} (same JSON object shape as cluster_topics.json)")
 
     # 3) FINAL tweet-level mapping: tweet_id -> soft group_id
     if not os.path.isfile(kmeans_assign_path):
@@ -221,13 +221,23 @@ def main() -> None:
             gid = cluster_to_group[cid_int]
             soft_rows.append({"tweet_id": tid, "cluster_id": gid})
 
+        # Compact JSON array (optional); primary handoff format is .jsonl like cluster_assignments.jsonl
         soft_assign_path = os.path.join(input_dir, OUTPUT_SOFT_ASSIGN_FILE)
         with open(soft_assign_path, "w", encoding="utf-8") as f:
-            json.dump(soft_rows, f, ensure_ascii=False, indent=2)
+            json.dump(soft_rows, f, ensure_ascii=False, separators=(",", ":"))
         print(
-            f"Saved {len(soft_rows)} soft-group assignments to {soft_assign_path} "
-            f"(skipped {skipped_missing} tweets without a soft group, if any)."
+            f"Saved {len(soft_rows)} soft-group rows to {soft_assign_path} (compact JSON array)"
         )
+
+        def _write_assignments_jsonl(dest_name: str) -> None:
+            dest = os.path.join(input_dir, dest_name)
+            with open(dest, "w", encoding="utf-8") as f:
+                for r in soft_rows:
+                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            print(f"Saved {len(soft_rows)} lines to {dest} (same format as cluster_assignments.jsonl)")
+
+        _write_assignments_jsonl(OUTPUT_SOFT_ASSIGN_JSONL_FILE)
+        _write_assignments_jsonl(OUTPUT_SOFT_ASSIGN_JSONL_LEGACY_FILE)
 
 
 if __name__ == "__main__":
