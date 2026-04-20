@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulation Metrics Dashboard</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 24px;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+    .slide {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    h1, h2 { margin: 0 0 10px 0; line-height: 1.1; }
+    .subtitle { color: #475569; margin-bottom: 14px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+    .k { color: #334155; font-weight: 600; }
+    .v { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .pair { margin-top: 12px; }
+    .pair-title { font-weight: 700; margin-bottom: 6px; }
+    .bars { display: grid; gap: 8px; }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 42px 1fr 90px;
+      align-items: center;
+      gap: 8px;
+    }
+    .lbl { font-weight: 700; color: #334155; }
+    .bar {
+      height: 14px;
+      border-radius: 8px;
+      min-width: 2px;
+    }
+    .bar.gt { background: linear-gradient(90deg, #111827, #374151); }
+    .bar.sim { background: linear-gradient(90deg, #1d4ed8, #2563eb); }
+    .val { text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    ul { margin: 8px 0 0 20px; }
+    .small { color: #64748b; font-size: 13px; margin-top: 10px; }
+    @media (max-width: 1000px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <section class="slide">
+    <h1>Simulation Performance: Coverage, Activity, Temporal</h1>
+    <div class="subtitle">Run tag: <span class="v">mar03_harry_final</span></div>
+    <div class="grid">
+      <div class="card">
+        <h2>Coverage</h2>
+        <div><span class="k">Persona users:</span> <span class="v">156</span></div>
+        <div><span class="k">GT active users:</span> <span class="v">132</span></div>
+        <div><span class="k">Sim active users:</span> <span class="v">83</span></div>
+      </div>
+      <div class="card">
+        <h2>User Activity Fit</h2>
+        <div><span class="k">Spearman (posts/user):</span> <span class="v">0.1961</span></div>
+        <div><span class="k">JSD (posts/user):</span> <span class="v">0.3957</span></div>
+        <div><span class="k">Top-20 overlap:</span> <span class="v">0.4500</span></div>
+      </div>
+      <div class="card">
+        <h2>Temporal Fit</h2>
+        <div><span class="k">Day-of-week JSD:</span> <span class="v">0.0146</span></div>
+        <div><span class="k">Cumulative daily NRMSE:</span> <span class="v">0.4321</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h1>User-Level Engagement Ranking Fit</h1>
+    <div class="grid">
+      <div class="card">
+        <div><span class="k">Spearman total engagement/user:</span> <span class="v">0.0909</span></div>
+        <div><span class="k">Spearman engagement-per-post/user:</span> <span class="v">0.0600</span></div>
+        <div><span class="k">Top-20 overlap (total):</span> <span class="v">0.1000</span></div>
+        <div><span class="k">Top-20 overlap (per-post):</span> <span class="v">0.1000</span></div>
+      </div>
+      <div class="card">
+        <div><span class="k">GT top-10% share:</span> <span class="v">0.7541</span></div>
+        <div><span class="k">Sim top-10% share:</span> <span class="v">1.0000</span></div>
+        <div><span class="k">GT top-20% share:</span> <span class="v">0.8995</span></div>
+        <div><span class="k">Sim top-20% share:</span> <span class="v">1.0000</span></div>
+      </div>
+      <div class="card">
+        <h2>Interpretation</h2>
+        <ul>
+          <li>Run is now valid (non-zero sim activity).</li>
+          <li>Ranking alignment exists but remains weak.</li>
+          <li>Engagement is over-concentrated in simulation.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h1>The Engagement Density Gap</h1>
+    <div class="subtitle">Simulation vs Ground Truth (Persona-user subset)</div>
+    
+    <div class="pair">
+      <div class="pair-title">Likes per Post</div>
+      <div class="bars">
+        <div class="bar-row"><span class="lbl">GT</span><div class="bar gt" style="width:100.00%"></div><span class="val">37.429</span></div>
+        <div class="bar-row"><span class="lbl">Sim</span><div class="bar sim" style="width:0.08%"></div><span class="val">0.031</span></div>
+      </div>
+    </div>
+    
+    
+    <div class="pair">
+      <div class="pair-title">Replies per Post</div>
+      <div class="bars">
+        <div class="bar-row"><span class="lbl">GT</span><div class="bar gt" style="width:100.00%"></div><span class="val">3.947</span></div>
+        <div class="bar-row"><span class="lbl">Sim</span><div class="bar sim" style="width:0.68%"></div><span class="val">0.027</span></div>
+      </div>
+    </div>
+    
+    <div class="small">
+      Total Retweets/Reposts: GT 6111 vs Sim 1
+      &nbsp;|&nbsp;
+      Total Quotes: GT 260 vs Sim 0
+    </div>
+  </section>
+</body>
+</html>

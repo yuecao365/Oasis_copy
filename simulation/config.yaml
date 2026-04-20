@@ -7,8 +7,8 @@
 
 ---
 data:
-  db_path: data/simu_db/yaml_gpt/sweep_high_posts.db
-  csv_path: persona_generation/outputs/user_personas.csv
+  db_path: data/simu_db/yue_run.db
+  csv_path: persona_generation/outputs/user_personas_yue.csv
 
 simulation:
   # If auto_num_timesteps_from_split=true, num_timesteps is ignored and derived
@@ -32,14 +32,14 @@ simulation:
   # Probability of adding one more action slot (geometric, evaluated repeatedly).
   extra_action_probability: 0.5
   # One simulation step represents this many real-world hours.
-  timestep_hours: 24.0
+  timestep_hours: 12.0
   # Value written to clock.time_step each iteration: timestep * clock_step_units.
   clock_step_units: 1
   # Increase autonomous agent action firing rate.
   agent_activation_multiplier: 2.0
   min_activation_threshold: 0.10
   clock_factor: 60
-  recsys_type: twhin-bert
+  recsys_type: random
   # "manual_probabilistic" samples actions from distribution below.
   action_selection_mode: manual_probabilistic
   # Probabilities are normalized automatically.
@@ -55,5 +55,15 @@ simulation:
     - like_post
 
 inference:
-  model_type: gpt-4o-mini
-  is_openai_model: true
+  model_name: qwen3.5-plus
+  base_url: https://coding.dashscope.aliyuncs.com/v1
+  # API key is read from this environment variable at runtime.
+  api_key_env: DASHSCOPE_API_KEY
+  # Max feed posts shown to each agent in the LLM prompt.
+  max_feed_posts: 8
+  # Max concurrent LLM calls per timestep.
+  llm_concurrency: 3
+  # Per-call timeout in seconds.
+  llm_timeout: 60.0
+  # Retries on transient API errors.
+  llm_max_retries: 2

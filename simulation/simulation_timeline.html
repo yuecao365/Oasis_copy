@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Simulation — Agent Timeline (yue_run.db)</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --purple: #bc8cff;
+      --orange: #f78166;
+      --pink: #f778ba;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .header .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .badge {
+      background: var(--accent);
+      color: #0d1117;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 12px;
+      padding: 2px 10px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .stat {
+      flex: 1;
+      padding: 16px 24px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat:last-child {
+      border-right: none;
+    }
+
+    .stat .val {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat .lbl {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 0;
+      min-height: calc(100vh - 140px);
+    }
+
+    .left {
+      padding: 32px 40px;
+      border-right: 1px solid var(--border);
+    }
+
+    .right {
+      padding: 24px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 28px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .tl-phase {
+      margin-bottom: 40px;
+      position: relative;
+    }
+
+    .tl-dot {
+      position: absolute;
+      left: -24px;
+      top: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      z-index: 1;
+    }
+
+    .tl-dot.seed {
+      background: var(--muted);
+    }
+
+    .tl-dot.active {
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(63, 185, 80, .5);
+    }
+
+    .tl-phase-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tl-phase-label {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .tl-phase-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .tl-phase-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+    }
+
+    .post-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .post-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      transition: border-color .15s;
+    }
+
+    .post-card:hover {
+      border-color: var(--accent);
+    }
+
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .post-user {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .post-bio {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 340px;
+    }
+
+    .post-type-badge {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .type-post {
+      background: rgba(88, 166, 255, .15);
+      color: var(--accent);
+      border: 1px solid rgba(88, 166, 255, .3);
+    }
+
+    .type-repost {
+      background: rgba(63, 185, 80, .15);
+      color: var(--green);
+      border: 1px solid rgba(63, 185, 80, .3);
+    }
+
+    .type-quote {
+      background: rgba(188, 140, 255, .15);
+      color: var(--purple);
+      border: 1px solid rgba(188, 140, 255, .3);
+    }
+
+    .type-comment {
+      background: rgba(247, 120, 106, .15);
+      color: var(--orange);
+      border: 1px solid rgba(247, 120, 106, .3);
+    }
+
+    .post-content {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    .post-footer {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .seed-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 0;
+    }
+
+    .seed-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+
+    .seed-card .sname {
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .seed-card .sbio {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .seed-card .scnt {
+      color: var(--green);
+      font-size: 11px;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .see-more {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 8px;
+      cursor: pointer;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    .see-more:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .right h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    #network-svg {
+      width: 100%;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .leg-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .leg-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    #tooltip {
+      position: fixed;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 100;
+      max-width: 240px;
+      display: none;
+      line-height: 1.5;
+    }
+
+    #tooltip .tt-name {
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    #tooltip .tt-bio {
+      color: var(--muted);
+    }
+
+    #tooltip .tt-stats {
+      color: var(--accent);
+      margin-top: 4px;
+    }
+
+    .agent-list {
+      margin-top: 24px;
+    }
+
+    .agent-scroll {
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .agent-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      transition: border-color .1s;
+    }
+
+    .agent-row:hover {
+      border-color: var(--accent);
+    }
+
+    .agent-row .aname {
+      font-weight: 600;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .agent-row .afol {
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .aactive {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .aactive.yes {
+      background: var(--green);
+    }
+
+    .aactive.no {
+      background: var(--border);
+    }
+
+    .empty-ts {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 12px;
+      background: var(--surface2);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="tooltip">
+    <div class="tt-name" id="tt-name"></div>
+    <div class="tt-bio" id="tt-bio"></div>
+    <div class="tt-stats" id="tt-stats"></div>
+  </div>
+  <header class="header">
+    <div>
+      <h1>LLM Simulation — Agent Timeline</h1>
+      <div class="subtitle">qwen3.5-plus · DashScope · DB: yue_run.db</div>
+    </div>
+    <span class="badge">RUN OUTPUT</span>
+  </header>
+  <div class="stats" id="stat-bar"></div>
+  <main>
+    <div class="left">
+      <div class="section-title">Agent Activity Timeline</div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+    <div class="right">
+      <h2>Follow Network</h2>
+      <svg id="network-svg" viewBox="0 0 360 340"></svg>
+      <div class="legend" id="legend"></div>
+      <div class="agent-list">
+        <h2 style="margin-bottom:12px">All Agents</h2>
+        <div class="agent-scroll" id="agent-list"></div>
+      </div>
+    </div>
+  </main>
+  <script>
+    const DATA = { "users": [{ "user_id": 0, "user_name": "svcndmr070707", "name": "svcndmr070707", "bio": "VeChain ecosystem explorer turning daily eco-habits into $B3TR rewards. Documenting the X-2-Earn journey on #VeBetterDAO from T\u00fcrkiye \ud83c\uddf9\ud83c\uddf7", "num_followings": 4, "num_followers": 5 }, { "user_id": 1, "user_name": "CMike444", "name": "CMike444", "bio": "VeBetterDAO weekly voter & #VeFam steward tracking $B3TR yields and UI upgrades. Here for the sustainability gains and the only X Spaces that pay out.", "num_followings": 4, "num_followers": 6 }, { "user_id": 2, "user_name": "CrazyMistyCat", "name": "CrazyMistyCat", "bio": "\u2615\ufe0f Coffee ritualist earning $B3TR one sip at a time. VeBetterDAO advocate & litter pickup enthusiast building a greener chain.", "num_followings": 4, "num_followers": 5 }, { "user_id": 3, "user_name": "veDelegate", "name": "veDelegate", "bio": "VeChain delegate optimizing Lock-2-Earn yields and tracking $B3TR locks daily. Focused on building sustainable rewards, one block at a time.", "num_followings": 4, "num_followers": 6 }, { "user_id": 4, "user_name": "ecomeal_vet", "name": "ecomeal_vet", "bio": "EcoMeal veteran keeping streaks alive & governance loud. \ud83c\uddee\ud83c\uddf9 Weekly nudges to vote #VeBetterDAO turning sustainable bites into $B3TR.", "num_followings": 4, "num_followers": 2 }, { "user_id": 5, "user_name": "Supawadee5433", "name": "Supawadee5433", "bio": "\ud83c\udf31 Turning morning coffee & compost into $B3TR on VeChain. Gardener by day, VeBetterDAO contributor by habit. #VeChain #Sustainability", "num_followings": 4, "num_followers": 0 }, { "user_id": 6, "user_name": "DustyrangerBE", "name": "DustyrangerBE", "bio": "Building sleep-to-earn dApps on VeChain & rallying votes for #VeBetterDAO grants. Chasing $B3TR rewards while connecting the #VeFam.", "num_followings": 4, "num_followers": 2 }, { "user_id": 7, "user_name": "DrKongRKL", "name": "DrKongRKL", "bio": "Turning caffeine into crypto on @vechain by chasing $B3TR rewards one iced coffee at a time. Building on-chain habits with #VeBetterDAO.", "num_followings": 4, "num_followers": 6 }, { "user_id": 8, "user_name": "CryptoNymphoo", "name": "CryptoNymphoo", "bio": "VeChain maximalist tracking Galactica upgrades and StarGate staking yields. Not financial advice, just infinite money glitches and $VTHO burns.", "num_followings": 4, "num_followers": 3 }, { "user_id": 9, "user_name": "Acer40199028", "name": "Acer40199028", "bio": "VeChain node runner chasing Stargate yields and Galactica upgrades. 10th DM wins 1000 VET\u2014Lesssssgooooooooooo.", "num_followings": 4, "num_followers": 9 }, { "user_id": 10, "user_name": "Chris06902330", "name": "Chris06902330", "bio": "Tracking $VET levels and RWA moves on VeChain. Here for the Galactica upgrade yields and staking stats, not the noise.", "num_followings": 4, "num_followers": 9 }, { "user_id": 11, "user_name": "cryptoUeducate", "name": "cryptoUeducate", "bio": "\ud83d\udea8 Alerting the ecosystem to major VeChain moves, from Galactica upgrades to StarGate yields. No fluff, just the shockwaves hitting $VET markets.", "num_followings": 4, "num_followers": 0 }, { "user_id": 12, "user_name": "Trendingcr78263", "name": "Trendingcr78263", "bio": "VeChain alarm system tracking Galactica upgrades and StarGate yields. Broadcasting RWA tokens and SEC shocks before the crowd catches on.", "num_followings": 4, "num_followers": 0 }, { "user_id": 13, "user_name": "cmcal_bot", "name": "cmcal_bot", "bio": "Curating VeChain ecosystem events from Galactica upgrades to global AMAs. Automated precision for stakeholders tracking StarGate staking and RWA developments.", "num_followings": 4, "num_followers": 0 }, { "user_id": 14, "user_name": "Smitty8882", "name": "Smitty8882", "bio": "Chasing Galactica upgrades and StarGate staking yields while the rest wait for altseason. All in on VeBetterDAO initiatives and RWA tokenization plays.", "num_followings": 4, "num_followers": 9 }, { "user_id": 15, "user_name": "_Phi_1_618", "name": "_Phi_1_618", "bio": "Tracking VeChain's Galactica upgrade, StarGate staking, and VeBetterDAO initiatives while monitoring RWA tokenization trends. Connecting the dots between NVIDIA's AI vision and decentralized apps.", "num_followings": 4, "num_followers": 0 }, { "user_id": 16, "user_name": "digitalknol", "name": "digitalknol", "bio": "VeChain maximalist tracking Galactica upgrades and StarGate yields from London. Here for the RWA revolution and 2025 bull run, not just the moon charts.", "num_followings": 4, "num_followers": 0 }, { "user_id": 17, "user_name": "BSCNews", "name": "BSCNews", "bio": "VeChain ecosystem tracker focusing on Galactica, StarGate & VeBetterDAO. Delivers data-first analysis on RWA tokenization and staking yields with no fluff, just commits.", "num_followings": 4, "num_followers": 8 }, { "user_id": 18, "user_name": "cryptozone_x", "name": "cryptozone_x", "bio": "Tracking VeChain's Renaissance roadmap and Galactica mainnet metrics. Sharing alpha on WDPoS staking yields and enterprise adoption signals.", "num_followings": 4, "num_followers": 0 }, { "user_id": 19, "user_name": "bpaynews", "name": "bpaynews", "bio": "Tracking VeChain Renaissance upgrades & StarGate staking yields. Breaking $VET price alerts & tokenomics changes without the hype.", "num_followings": 4, "num_followers": 4 }, { "user_id": 20, "user_name": "beincrypto", "name": "beincrypto", "bio": "VeChain Renaissance tracker breaking down StarGate tokenomics and Galactica upgrades. CET-based operator sharing roadmap receipts instead of financial advice.", "num_followings": 4, "num_followers": 8 }, { "user_id": 21, "user_name": "Ajwritescrypto", "name": "Ajwritescrypto", "bio": "VeChain Renaissance tracker monitoring StarGate staking & Galactica integration. Hosting Tesla giveaways while trading no-KYC alts.", "num_followings": 4, "num_followers": 8 }, { "user_id": 22, "user_name": "PoliCatch", "name": "PoliCatch", "bio": "Chasing the VeChain Renaissance while others sleep. \ud83c\uddec\ud83c\udde7 Deep diving StarGate staking rewards & Galactica mainnet specs to separate the signal from the noise.", "num_followings": 4, "num_followers": 0 }, { "user_id": 23, "user_name": "CryptoMichNL", "name": "CryptoMichNL", "bio": "VeChain analyst tracking Renaissance upgrades & StarGate metrics. Charting accumulation zones & staking yields for the next cycle.", "num_followings": 4, "num_followers": 0 }, { "user_id": 24, "user_name": "CryptoMiners_Co", "name": "CryptoMiners_Co", "bio": "Tracking VeChain Renaissance upgrades & institutional bridges. Breaking down VIP specs so you don't have to read the whitepaper.", "num_followings": 4, "num_followers": 8 }, { "user_id": 25, "user_name": "BtcBlackthorne", "name": "BtcBlackthorne", "bio": "VeChain veteran tracking the Renaissance upgrade and StarGate yields. I call out unsustainable tokenomics so you don't have to.", "num_followings": 4, "num_followers": 3 }, { "user_id": 26, "user_name": "CryptoPulse_CRU", "name": "CryptoPulse_CRU", "bio": "Tracks VeChain Renaissance upgrades and StarGate yields daily. Calls support zones so you don't chase candles; real-time alpha lives in the Discord.", "num_followings": 4, "num_followers": 8 }, { "user_id": 27, "user_name": "aicryptopattern", "name": "aicryptopattern", "bio": "Daily TVL tracker & VeChain Renaissance scout watching StarGate and Galactica integration like a hawk. Data > hype; no fluff, just DefiLlama metrics.", "num_followings": 4, "num_followers": 0 }, { "user_id": 28, "user_name": "KramLamo", "name": "KramLamo", "bio": "VeChain ecosystem hunter tracking B3TR rewards and StarGate upgrades. Luna's human and DAO voter here for the tech, UFC memos, and the smacktalk.", "num_followings": 4, "num_followers": 1 }, { "user_id": 29, "user_name": "randoeccentrics", "name": "randoeccentrics", "bio": "VeChain ecosystem tracker | Mad V Apes & PowerSlap enthusiast. Hunting B3TR rewards and StarGate upgrades while ignoring the financial advice.", "num_followings": 4, "num_followers": 1 }, { "user_id": 30, "user_name": "BangzBoard", "name": "BangzBoard", "bio": "Bridging skate culture with Web3 utility on VeChain. Promoting phygital boards, B3TR rewards, and ecosystem upgrades like StarGate.", "num_followings": 4, "num_followers": 4 }, { "user_id": 31, "user_name": "seadoggy010", "name": "seadoggy010", "bio": "VeChain ecosystem watcher turning dog walks into B3TR rewards. Tracking StarGate upgrades and UFC memos while keeping the chain fair.", "num_followings": 4, "num_followers": 7 }, { "user_id": 32, "user_name": "mugshot_vet", "name": "mugshot_vet", "bio": "Running Mugshot ops on #VeChain & hunting UFC memorabilia for Mad V Apes holders. Coffee-fueled reward distributor\u2014DMs open if you survive the morning sip.", "num_followings": 4, "num_followers": 7 }, { "user_id": 33, "user_name": "Crypto_VeChain", "name": "Crypto_VeChain", "bio": "Tracking StarGate upgrades & B3TR rewards on VeChain. Mad V Apes UFC mems & PowerSlap streams only.", "num_followings": 4, "num_followers": 5 }, { "user_id": 34, "user_name": "crygraph", "name": "crygraph", "bio": "VeChain critic tracking StarGate upgrades and Mad V Apes drops. Prefers Shaun White air over Dana White slaps.", "num_followings": 4, "num_followers": 3 }, { "user_id": 35, "user_name": "BitGirlsVeChain", "name": "BitGirlsVeChain", "bio": "Sponsoring French skaters & stacking #B3TR rewards while tracking StarGate upgrades and Mad V Apes UFC drops. \ud83d\udef9 VeBetterDAO advocate building sustainable value on $VET.", "num_followings": 4, "num_followers": 0 }, { "user_id": 36, "user_name": "420_vechain", "name": "420_vechain", "bio": "VeChain ecosystem promoter tracking Stargate upgrades and B3TR rewards while hosting Mad V Apes UFC memorabilia giveaways. Running NFT contests and warning the community to stay safe from scams.", "num_followings": 4, "num_followers": 12 }, { "user_id": 37, "user_name": "terumin_369", "name": "terumin_369", "bio": "VeChain grinder tracking $B3TR rewards via Cleanify & MeGo. Tokyo salon member logging daily steps for a greener chain.", "num_followings": 4, "num_followers": 6 }, { "user_id": 38, "user_name": "green_commuter", "name": "green_commuter", "bio": "Building GreenCommuter on #VeBetterDAO to reward real mobility with $B3TR. Sunsetting gracefully while championing sustainable Web3 governance.", "num_followings": 4, "num_followers": 1 }, { "user_id": 39, "user_name": "Wattly_app", "name": "Wattly_app", "bio": "Building @Wattly_app on @vechainofficial to convert screen silence into $B3TR rewards via AI verification. Driving mindful tech adoption for the #VeBetterDAO era.", "num_followings": 4, "num_followers": 4 }], "sim_posts": [{ "post_id": 179, "user_id": 1, "user_name": "CMike444", "content": "Weekly voting duty done. Love seeing the UI upgrades making this smoother every time. Stacking those sustainability gains one vote at a time \ud83e\udee1 #VeBetterDAO #VeFam #VeChain", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 180, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Morning brew complete \u2615\ufe0f Logging another sip for the greener chain. Every cup counts when you're building with @VeBetterDAO. Who else is tracking their eco-habits today? Let's grow the #VeFam together! \ud83c\udf31 $B3TR", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 181, "user_id": 8, "user_name": "CryptoNymphoo", "content": "Morning explorer scan complete \u2705 Galactica upgrade metrics looking strong. StarGate staking yields holding steady despite market noise. Real world asset tokenization is the only narrative that matters. $VET $VTHO #VeChain", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 182, "user_id": 10, "user_name": "Chris06902330", "content": "Morning VTHO generation check complete. Staking rewards flowing as expected. $VET holding key levels while we await further Galactica upgrade details. Focus on utility and RWA moves. #VeChain $VET $VTHO #RWA #Galactica", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 183, "user_id": 12, "user_name": "Trendingcr78263", "content": "\ud83d\udea8 VECHAIN GALACTICA UPDATE INCOMING. GITHUB COMMITS SPIKING OVERNIGHT. STAR GATE YIELDS ADJUSTMENT IMMINENT. RWA PARTNERSHIPS LOADING. THIS IS NOT A DRILL. POSITION BEFORE NEWS BREAKS. #VeChain #VET #Galactica #RWA #CryptoAlert URL", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 184, "user_id": 13, "user_name": "cmcal_bot", "content": "New VeBetterDAO $B3TR, VeChain $VET, VeThor $VTHO event! 05 Sep 2025 StarGate Staking Rewards Distribution Source: https://vebetterdao.org https://twitter.com/vebetterdao", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 185, "user_id": 18, "user_name": "cryptozone_x", "content": "VET Spotlight: Morning explorer scan complete \u2615\ufe0f VeChain Renaissance roadmap on track. Galactica mainnet metrics show steady staking flows pre-StarGate launch. Separating hype from utility\u2014enterprise adoption signals remain strong. Eyes on $0.03 resistance. $VET #VeChain", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 186, "user_id": 32, "user_name": "mugshot_vet", "content": "Morning sip complete. \u2615\ufe0f Auditing the Mugshot logs before unleashing today's ops. Tangible rewards > hype. Mad V Apes holders keep an eye on your DMs. #VeChain #NFTCommunity @vechain @MadVApes", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 187, "user_id": 33, "user_name": "Crypto_VeChain", "content": "Coffee \u2615\ufe0f + VeChainThor explorer = spotting whale manipulation before breakfast. StarGate upgrade hype feeling off. Big wallets moving while you sleep. Wake up. $VET #VeChain", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 188, "user_id": 36, "user_name": "420_vechain", "content": "Morning timeline scan complete \ud83d\udee1\ufe0f Seeing too many fake Stargate upgrade links today. Do NOT click suspicious DMs! Real B3TR rewards come via official app only. Stay safe out there fam #VeChain #VET", "created_at": 1.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 189, "user_id": 5, "user_name": "Supawadee5433", "content": "Morning tea & token claim done \u2615\ufe0f\ud83c\udf31 Feeding the compost bin while tracking $B3TR. My tiny soil buddies are happy! Small eco-actions deserve tangible rewards. Who's gardening with me today? #VeBetterDAO #VeChain #B3TR", "created_at": 2.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 190, "user_id": 8, "user_name": "CryptoNymphoo", "content": "Morning data check \u2705 VTHO burns looking healthy. Galactica upgrade path clearing up. StarGate yields about to go parabolic \ud83d\udcc8 Not financial advice but the infinite money glitch is loading... $VET $VTHO $B3TR #VeChain #RWA", "created_at": 2.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 191, "user_id": 13, "user_name": "cmcal_bot", "content": "New VeChain $VET, VeBetterDAO $B3TR event! 15 Aug 2025 Galactica Mainnet Workshop Source: URL URL", "created_at": 2.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 192, "user_id": 15, "user_name": "_Phi_1_618", "content": "Morning GitHub scan shows commit spikes pre-Galactica. While hype builds around StarGate yields, the real alpha is in AI infrastructure integration. Connecting NVIDIA's vision to decentralized RWA flows. Utility > Noise. #VeChain $VET $VTHO", "created_at": 2.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 193, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Morning brew complete \u2615\ufe0f Just logged my sustainable sip for $B3TR with @mugshot_vet. Consistency is key for a greener chain! What eco-habit are you tracking today #VeFam? Let's build together @VeBetterDAO #VeChain", "created_at": 3.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 194, "user_id": 5, "user_name": "Supawadee5433", "content": "Saturday ritual complete \u2615\ufe0f Tea steeped & compost turned for my tiny soil buddies \ud83e\udeb1. Just claimed my daily $B3TR rewards! Small eco-actions growing big change \ud83c\udf31 #VeBetterDAO #VeChain #Sustainability #B3TR", "created_at": 3.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 195, "user_id": 17, "user_name": "BSCNews", "content": "DATA CHECK: VECHAIN $VET - Galactica upgrade path clearing. StarGate yields holding steady. VeBetterDAO voting participation increasing. Infrastructure updates outweighing market noise today. Deep dive URL #VeChain $VTHO", "created_at": 3.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 196, "user_id": 1, "user_name": "CMike444", "content": "Weekly voting ritual complete \u2705 Participation up across #VeBetterDAO. Consistency is key for the $B3TR yields. Well done to all the stewards locking in today @VeBetterDAO #VeFam #VeChain", "created_at": 4.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 197, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Morning ritual complete \u2615\ufe0f Brewed fresh & logged my sip with @mugshot_vet for $B3TR! Building a greener chain one cup at a time \ud83c\udf31 What eco-habit are you tracking today #VeFam? @VeBetterDAO #VeChain #Sustainability", "created_at": 4.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 198, "user_id": 20, "user_name": "beincrypto", "content": "Morning Thor scan complete \u2615\ufe0f Pre-Galactica flows stable despite noise. Color-coding spreadsheet tabs for each StarGate staking tier to track tokenomics shifts. Transparency drives adoption. Which tier fits your strategy best? Receipts coming later. $VET", "created_at": 4.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 199, "user_id": 23, "user_name": "CryptoMichNL", "content": "Checked the sheets this morning. StarGate yields holding steady despite the market noise. Galactica integration stabilizing the reward structure. Focus on real APY rather than price action short-term. Accumulation zones still valid for long-term holders. $VET #VeChain", "created_at": 4.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 200, "user_id": 26, "user_name": "CryptoPulse_CRU", "content": "Morning scan complete \u2615\ufe0f Liquidity zones stable despite the StarGate noise. $VET holding $0.023 support cleanly. Too many chasing candles before Galactica confirmation. Stick to the structure. Real-time levels pinned in Discord. #VeChain #VET", "created_at": 4.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 201, "user_id": 30, "user_name": "BangzBoard", "content": "GM Bangzers! \ud83d\udef9 Morning session complete before scanning the latest StarGate upgrades. B3TR rewards hitting different when you earn them IRL. Who else grinding sessions AND staking? Stay safe on links fam! #BANGZ #VeChain #Skate2earn #B3TR #Phygital URL", "created_at": 4.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 202, "user_id": 38, "user_name": "green_commuter", "content": "Your participation keeps the wheels turning. Thank you for prioritizing honest governance over quick flips. Vote for #GreenCommuter on #VeBetterDAO and reward real mobility! #VeChain #Sustainability URL", "created_at": 4.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 203, "user_id": 1, "user_name": "CMike444", "content": "Weekly vote submitted \u2705 Another week closer to those sustainability gains. My 'free crypto' addiction thanks me for staying consistent with governance. Tracking $B3TR yields like a hawk \ud83e\udd85 #VeBetterDAO #VeFam #VeChain", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 204, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Morning brew poured \u2615\ufe0f Logging my sip for $B3TR on @mugshot_vet. Sustainability is a daily ledger, not just hype. What eco-habit are you tracking today? #VeBetterDAO #VeFam", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 205, "user_id": 8, "user_name": "CryptoNymphoo", "content": "Morning explorer scan complete \u2705 Galactica upgrade path clearing nicely. StarGate yields holding steady while $VET consolidates. VeBetterDAO voting participation up. Real utility building through the noise. $VET $VTHO $B3TR #VeChain", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 206, "user_id": 13, "user_name": "cmcal_bot", "content": "New VeChain $VET event! 15 Aug 2025 Galactica Mainnet AMA Source: https://vechain.org https://twitter.com/vechain", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 207, "user_id": 18, "user_name": "cryptozone_x", "content": "VET Spotlight: Morning explorer scan complete. Galactica mainnet metrics showing steady accumulation. StarGate staking yields holding firm despite noise. Spreadsheet tracks confirm utility driving value. Eyes on $0.03 breakout. $VET #VeChain #Galactica", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 208, "user_id": 21, "user_name": "Ajwritescrypto", "content": "50EMA charts loaded \u2615\ufe0f VeChain Renaissance momentum is UNSTOPPABLE. StarGate staking rewards about to explode post-Galactica! \ud83d\ude80 Don't sleep on this! Enter the Tesla Giveaway! URL Trade no-KYC on Bitunix! URL #VeChain #VeFam", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 209, "user_id": 27, "user_name": "aicryptopattern", "content": "Top growth blockchains today by total value locked (TVL) by DefiLlama: $VET | VeChain: +15.3% $ARB | Arbitrum: +10.1% $OP | Optimism: +7.8% $STRK | Starknet: +4.2% StarGate liquidity pools stabilizing pre-Galactica. Data > hype.", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 210, "user_id": 28, "user_name": "KramLamo", "content": "Luna gave the tail wag on today's VeBetterDAO proposals \u2705 Governance scan complete. StarGate upgrades need to focus on sustainability, not just yield hype. Shining light on @ScoopUp_vet because visibility drives adoption. Now for the UFC cards \u2615\ufe0f\ud83d\udc15 #VeChain #B3TR #VeFam", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 211, "user_id": 38, "user_name": "green_commuter", "content": "Friday voting ritual complete \u2705 Grateful for every steward securing #VeBetterDAO today. Real data > quick flips. Let's keep governance honest together! URL #VeChain #GreenCommuter #B3TR #Sustainability", "created_at": 5.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 212, "user_id": 1, "user_name": "CMike444", "content": "Weekly voting routine complete \u2705 Clockwork governance is how we secure the gains. Seeing the #VeFam morning logs flood in, love the consistency. Now tracking $B3TR yields before the next UI upgrade. Who else locked in today? #VeBetterDAO #VeChain", "created_at": 6.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 213, "user_id": 4, "user_name": "ecomeal_vet", "content": "\ud83d\udd14 Weekly nudge time! If your EcoMeal streak matters, your vote should too. \ud83c\uddee\ud83c\uddf9 Head over to #VeBetterDAO and cast it. Turning sustainable bites into $B3TR starts with governance. Andiamo! \ud83d\ude80 #VeChain #EcoMeal #VeFam", "created_at": 6.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 214, "user_id": 8, "user_name": "CryptoNymphoo", "content": "Data check complete \u2705 $VET TVL surging +15.3% today. Galactica upgrade path clearing + VeBetterDAO voting up. StarGate yields holding steady. Infrastructure updates outweighing market noise. $VTHO $B3TR #VeChain", "created_at": 6.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 215, "user_id": 12, "user_name": "Trendingcr78263", "content": "\ud83d\udea8 AUG 2025 GALACTICA MAINNET AMA LOCKED. GITHUB COMMITS SPIKING PRE-UPGRADE. DEV ACTIVITY OUTPACING MARKET NOISE. POSITION BEFORE THE CROWD. #VeChain #VET #Galactica #CryptoAlert URL", "created_at": 6.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 216, "user_id": 17, "user_name": "BSCNews", "content": "FULL ANALYSIS: VECHAIN $VET - Galactica upgrade path clearing. StarGate yields holding steady. VeBetterDAO governance active. RWA tokenization narrative strengthening despite market noise. Learn now URL", "created_at": 6.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 217, "user_id": 18, "user_name": "cryptozone_x", "content": "VET Spotlight: VeChain Renaissance momentum building quietly \u2615\ufe0f Galactica mainnet metrics show stable staking flows despite noise. StarGate yields holding pre-launch. Ignoring hype, tracking utility. Spreadsheet updated. Eyes on $0.03 resistance. $VET", "created_at": 6.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 218, "user_id": 28, "user_name": "KramLamo", "content": "Governance proposals scanned \u2705 UFC fight card loading... While you stress over StarGate charts, Luna and I are walking for $B3TR. Real rewards > paper gains. Shoutout @ScoopUp_vet for keeping the community grounded. #VeChain #VeBetterDAO #VeFam", "created_at": 6.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 219, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Morning ritual complete \u2615\ufe0f Just logged my brew with @mugshot_vet for those #B3TR rewards. Sustainability is a daily ledger \ud83d\udcdd What eco-habit are you tracking today? Let's build a greener chain together \ud83c\udf31 #VeFam #VeChain #VeBetterDAO", "created_at": 7.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 220, "user_id": 8, "user_name": "CryptoNymphoo", "content": "Morning explorer scan \u2705 Galactica upgrade path clearing. StarGate yields steady. $VTHO burns accumulating. VeBetterDAO governance active. Real utility > price action today. $VET #VeChain", "created_at": 7.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 221, "user_id": 11, "user_name": "cryptoUeducate", "content": "BREAKING: VECHAIN GALACTICA UPGRADE ACCELERATING \ud83d\udea8 StarGate yields holding firm while VeBetterDAO governance spikes. Institutional signals flashing green despite market noise. Retail investors need to see this NOW. $VET #VeChain #CryptoAlert URL", "created_at": 7.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 222, "user_id": 16, "user_name": "digitalknol", "content": "Morning ritual complete \u2615\ufe0f Galactica upgrade path clearing. StarGate yields holding steady. RWA narrative strengthening. Ignoring noise, focusing on utility. 2025 bull run thesis intact. $VET #VeChain #Crypto #Bullrun2025 URL", "created_at": 7.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 223, "user_id": 23, "user_name": "CryptoMichNL", "content": "TVL climbing +15.3% while $VET holds $0.023 support. Classic accumulation behavior before liquidity events. StarGate yields are stabilizing despite the noise. As long as inflation is tracked, this setup favors holders into Galactica. Don't fade the data. \ud83e\uddea\ud83d\udcca #VeChain", "created_at": 7.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 224, "user_id": 37, "user_name": "terumin_369", "content": "1587,29410BBQ @HEMJAPAN @cleanify_vet #Vechain #VeBetterDAO #continue_salon #MeGo # URL", "created_at": 7.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 225, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Fresh brew in the handmade mug \u2615\ufe0f Logging this sip for $B3TR proof. Sustainability is a daily ledger, not just hype. \ud83c\udf31 Picking up litter later today! What eco-habit are you tracking? #VeBetterDAO #VeFam #B3TR @mugshot_vet", "created_at": 8.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 226, "user_id": 8, "user_name": "CryptoNymphoo", "content": "Galactica upgrade path clearing \u2705 StarGate yields holding steady. $VET ignoring market noise. VeBetterDAO governance active. Real utility > quick flips. $VTHO burns accelerating. Not financial advice just infinite money glitches. $VET #VeChain", "created_at": 8.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 227, "user_id": 19, "user_name": "bpaynews", "content": "#BREAKING #VeChain ($VET) TVL Climbs 15.3% as Galactica Mainnet Nears. StarGate liquidity pools showing stability. On-chain evidence suggests infrastructure updates outweighing market noise. Monitoring $0.023 support. Which resistance breaks post-upgrade? Data > Hype.", "created_at": 8.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 228, "user_id": 21, "user_name": "Ajwritescrypto", "content": "Morning charts scanned \u2615\ufe0f 50EMA lining up perfectly for the Galactica pump! StarGate staking rewards are NO JOKE. Financial freedom is closer than you think! \ud83d\ude80 Enter the Tesla Giveaway below! URL #VeChain $VET", "created_at": 8.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 229, "user_id": 1, "user_name": "CMike444", "content": "Clockwork voting session done \u2705 Stacking governance power for the next round. $B3TR yields looking steady for the #VeFam stewards. #VeChain #VeBetterDAO", "created_at": 9.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 230, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Morning brew done \u2615\ufe0f Logging my sip for $B3TR & picking up litter on the walk later. Seeing all the Galactica updates has me energized! What eco-habit are you tracking today? Let's grow the #VeFam green together \ud83c\udf31 @VeBetterDAO @mugshot_vet", "created_at": 9.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 231, "user_id": 38, "user_name": "green_commuter", "content": "Your consistency inspires us. Weekly voting ritual complete \u2705 Real mobility data drives $B3TR rewards, not quick flips. Grateful for stewards keeping #VeBetterDAO governance honest as we sunset. #GreenCommuter #VeChain URL", "created_at": 9.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 232, "user_id": 1, "user_name": "CMike444", "content": "Weekly voting ritual complete \u2705 While others watch Galactica charts I'm tracking those #VeBetterDAO UI upgrades and $B3TR flows. Governance is the real yield farm \ud83d\ude9c #VeFam #VeChain #Sustainability", "created_at": 10.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 233, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Morning ritual checked off \u2615\ufe0f Brewed sustainably & logged my #B3TR earnings. Just voted on #VeBetterDAO too! Consistency is key \ud83d\udd11 What eco-habit are you tracking today? Let's grow greener together \ud83c\udf31 #VeFam @mugshot_vet @vechainofficial", "created_at": 10.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 234, "user_id": 17, "user_name": "BSCNews", "content": "NETWORK METRICS: $VET transaction volume +12% overnight \u2705 Galactica upgrade checkpoints green. StarGate liquidity depth increasing. VeBetterDAO proposal 45 passing. RWA pipeline activity detected. Building through the cycle. $VTHO $B3TR #VeChain", "created_at": 10.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 235, "user_id": 27, "user_name": "aicryptopattern", "content": "Top growth blockchains today by total value locked (TVL) by DefiLlama: $VET | VeChain: +18.5% $STG | Stargate: +12.3% $ARB | Arbitrum: +5.4% $OP | Optimism: +4.1% $MATIC: +3.2% StarGate liquidity pooling up pre-Galactica. Data > hype. \u2615\ufe0f", "created_at": 10.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 236, "user_id": 37, "user_name": "terumin_369", "content": "1592,83105 @HEMJAPAN @cleanify_vet #Vechain #VeBetterDAO #continue_salon #MeGo # URL", "created_at": 10.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 237, "user_id": 1, "user_name": "CMike444", "content": "Weekly voting ritual complete \u2705 Governance metrics looking solid. Keeping an eye on $B3TR yields while the UI gets polished. Free crypto addiction is real \ud83d\ude05 #VeBetterDAO #VeFam #VeChain #B3TR", "created_at": 11.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 238, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Coffee brewed \u2615\ufe0f Weekly #VeBetterDAO voting done \u2705 Logging this sip for the planet \ud83c\udf0d Seeing the #VeFam show up consistently is the real yield. What eco-habit are you tracking today? Let's grow greener together! #B3TR #VeChain @VeBetterDAO @mugshot_vet", "created_at": 11.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 239, "user_id": 18, "user_name": "cryptozone_x", "content": "VET Spotlight: Morning explorer scan complete \u2615\ufe0f Verifying StarGate staking flows vs the hype. Galactica mainnet metrics show steady VTHO utility despite noise. Real adoption > giveaway scams. Spreadsheet updated. Eyes on $0.03 resistance as enterprise signals align. #VeChain", "created_at": 12.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 240, "user_id": 26, "user_name": "CryptoPulse_CRU", "content": "Morning scan complete. TVL up 15.3% confirms accumulation phase at $0.023 support. StarGate liquidity stabilizing pre-Galactica. No need to chase green candles here; let the structure play out. Full breakdown in Discord.", "created_at": 12.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 241, "user_id": 30, "user_name": "BangzBoard", "content": "GM Bangzers! \ud83d\udef9 Morning skate session done, now scanning for StarGate upgrades. Linking IRL grinds to B3TR rewards today. Who else stacking utility while shredding? Let's go! #BANGZ #VeChain #Skate2earn #Phygital #B3TR #Skatelife URL", "created_at": 12.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 242, "user_id": 38, "user_name": "green_commuter", "content": "Friday security briefing & voting ritual complete \u2705 Ensuring real mobility data wins over farming schemes. Thank you to the stewards securing #GreenCommuter's legacy. Governance is the real yield! #VeBetterDAO #VeChain #Sustainability URL", "created_at": 12.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 243, "user_id": 1, "user_name": "CMike444", "content": "Weekly vote locked in \u2705 Consistency is key for those sustainability gains. Seeing the #VeFam activity ramp up lately is bullish. Keep stacking those $B3TR yields! #VeBetterDAO #VeChain", "created_at": 13.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 244, "user_id": 8, "user_name": "CryptoNymphoo", "content": "Morning ritual complete \u2615\ufe0f Explorer data confirms $VET strength. Galactica upgrade path clearing + StarGate yields steady. VeBetterDAO governance active. RWA narrative > market noise. $VTHO burns loading the infinite money glitch \ud83d\udef8 #VeChain", "created_at": 13.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 245, "user_id": 2, "user_name": "CrazyMistyCat", "content": "Morning ritual complete \u2615\ufe0f Handmade mug filled, sip logged for $B3TR. Building a greener chain one brew at a time \ud83c\udf31 What eco-habit are you tracking today? Let's grow together! #VeBetterDAO #VeFam @mugshot_vet @vechainofficial", "created_at": 14.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 246, "user_id": 11, "user_name": "cryptoUeducate", "content": "MASSIVE VECHAIN SIGNAL FLASHING \ud83d\udea8 Galactica upgrade checkpoints green overnight. StarGate depth increasing. RWA pipeline activity confirmed. Asian volumes flashing signals before London open. Whales moving. Are you positioned? #VeChain #VET #CryptoAlert URL", "created_at": 14.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 247, "user_id": 20, "user_name": "beincrypto", "content": "Morning explorer scan complete \u2615\ufe0f TVL up 15.3% is noise compared to StarGate tokenomics shifts. Galactica mainnet changes the staking tier game entirely. Are you recalculating your VTHO flow or holding steady? Roadmap receipts over financial advice. Breakdown below \ud83d\udc47", "created_at": 14.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 248, "user_id": 1, "user_name": "CMike444", "content": "Weekly governance check complete \u2705 Staying steady on the VeBetterDAO votes while everyone chases Galactica candles. Real sustainability gains come from consistency, not hype. Stacking those $B3TR yields slowly but surely. #VeFam #VeBetterDAO #VeChain #B3TR", "created_at": 15.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 249, "user_id": 12, "user_name": "Trendingcr78263", "content": "\ud83d\udea8 ALERT: $VET TX VOLUME +12% OVERNIGHT. GALACTICA UPGRADE CHECKPOINTS GREEN \u2705 TVL CLIMBS 15.3%. RWA PIPELINE ACTIVITY DETECTED. INFRASTRUCTURE UPDATES OUTWEIGHING MARKET NOISE. #VeChain #Crypto #RWA URL", "created_at": 15.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 250, "user_id": 1, "user_name": "CMike444", "content": "Weekly governance check complete \u2705 Consistent voting deserves recognition. Stacking $B3TR while supporting real sustainability gains on #VeBetterDAO. Who else locked in their vote today? #VeFam #VeChain #B3TR", "created_at": 16.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 251, "user_id": 8, "user_name": "CryptoNymphoo", "content": "Feed looking green across the board \ud83d\udcc8 $VET volume up, Galactica path clearing, StarGate yields steady. VeBetterDAO governance active. Real utility > market noise. Staking rewards flowing while others panic. Infinite money glitch activated \ud83d\udcb8 $VTHO #VeChain", "created_at": 16.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 252, "user_id": 10, "user_name": "Chris06902330", "content": "Morning data check \u2705 VTHO gen rates steady. Galactica upgrade milestones on track. StarGate APY holding firm. VeBetterDAO activity up. Fundamentals > Noise. $VET #VeChain #RWA URL", "created_at": 16.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }, { "post_id": 253, "user_id": 24, "user_name": "CryptoMiners_Co", "content": "Morning GitHub commit scan complete \u2615\ufe0f Verified VIP-23 specs for StarGate staking tiers. TVL noise is distracting from the real shift: VTHO burn mechanics post-Galactica. Brewing coffee while I draft the breakdown. Don't FOMO the giveaway scams, read the code. #VeChain #Galactica", "created_at": 16.0, "num_likes": 0, "num_shares": 0, "original_post_id": null, "quote_content": null }], "seed_counts": { "0": 5, "1": 5, "2": 5, "3": 5, "4": 4, "5": 5, "6": 5, "7": 5, "8": 5, "9": 5, "10": 5, "11": 4, "12": 4, "13": 5, "14": 4, "15": 5, "16": 4, "17": 3, "18": 5, "19": 5, "20": 5, "21": 5, "22": 5, "23": 4, "24": 3, "25": 5, "26": 3, "27": 3, "28": 2, "29": 3, "30": 5, "31": 5, "32": 5, "33": 5, "34": 4, "35": 3, "36": 5, "37": 5, "38": 5, "39": 5 }, "follows": [{ "follower_id": 0, "followee_id": 4 }, { "follower_id": 0, "followee_id": 37 }, { "follower_id": 0, "followee_id": 1 }, { "follower_id": 0, "followee_id": 7 }, { "follower_id": 1, "followee_id": 37 }, { "follower_id": 1, "followee_id": 7 }, { "follower_id": 1, "followee_id": 0 }, { "follower_id": 1, "followee_id": 3 }, { "follower_id": 2, "followee_id": 32 }, { "follower_id": 2, "followee_id": 36 }, { "follower_id": 2, "followee_id": 6 }, { "follower_id": 2, "followee_id": 31 }, { "follower_id": 3, "followee_id": 36 }, { "follower_id": 3, "followee_id": 2 }, { "follower_id": 3, "followee_id": 6 }, { "follower_id": 3, "followee_id": 31 }, { "follower_id": 4, "followee_id": 37 }, { "follower_id": 4, "followee_id": 1 }, { "follower_id": 4, "followee_id": 7 }, { "follower_id": 4, "followee_id": 0 }, { "follower_id": 5, "followee_id": 32 }, { "follower_id": 5, "followee_id": 37 }, { "follower_id": 5, "followee_id": 1 }, { "follower_id": 5, "followee_id": 7 }, { "follower_id": 6, "followee_id": 36 }, { "follower_id": 6, "followee_id": 3 }, { "follower_id": 6, "followee_id": 2 }, { "follower_id": 6, "followee_id": 31 }, { "follower_id": 7, "followee_id": 32 }, { "follower_id": 7, "followee_id": 37 }, { "follower_id": 7, "followee_id": 1 }, { "follower_id": 7, "followee_id": 0 }, { "follower_id": 8, "followee_id": 14 }, { "follower_id": 8, "followee_id": 10 }, { "follower_id": 8, "followee_id": 17 }, { "follower_id": 8, "followee_id": 9 }, { "follower_id": 9, "followee_id": 36 }, { "follower_id": 9, "followee_id": 25 }, { "follower_id": 9, "followee_id": 14 }, { "follower_id": 9, "followee_id": 10 }, { "follower_id": 10, "followee_id": 14 }, { "follower_id": 10, "followee_id": 17 }, { "follower_id": 10, "followee_id": 9 }, { "follower_id": 10, "followee_id": 8 }, { "follower_id": 11, "followee_id": 14 }, { "follower_id": 11, "followee_id": 10 }, { "follower_id": 11, "followee_id": 17 }, { "follower_id": 11, "followee_id": 9 }, { "follower_id": 12, "followee_id": 14 }, { "follower_id": 12, "followee_id": 10 }, { "follower_id": 12, "followee_id": 17 }, { "follower_id": 12, "followee_id": 9 }, { "follower_id": 13, "followee_id": 14 }, { "follower_id": 13, "followee_id": 10 }, { "follower_id": 13, "followee_id": 17 }, { "follower_id": 13, "followee_id": 9 }, { "follower_id": 14, "followee_id": 10 }, { "follower_id": 14, "followee_id": 17 }, { "follower_id": 14, "followee_id": 9 }, { "follower_id": 14, "followee_id": 8 }, { "follower_id": 15, "followee_id": 14 }, { "follower_id": 15, "followee_id": 10 }, { "follower_id": 15, "followee_id": 17 }, { "follower_id": 15, "followee_id": 9 }, { "follower_id": 16, "followee_id": 14 }, { "follower_id": 16, "followee_id": 10 }, { "follower_id": 16, "followee_id": 17 }, { "follower_id": 16, "followee_id": 9 }, { "follower_id": 17, "followee_id": 14 }, { "follower_id": 17, "followee_id": 10 }, { "follower_id": 17, "followee_id": 9 }, { "follower_id": 17, "followee_id": 8 }, { "follower_id": 18, "followee_id": 20 }, { "follower_id": 18, "followee_id": 21 }, { "follower_id": 18, "followee_id": 24 }, { "follower_id": 18, "followee_id": 26 }, { "follower_id": 19, "followee_id": 20 }, { "follower_id": 19, "followee_id": 21 }, { "follower_id": 19, "followee_id": 24 }, { "follower_id": 19, "followee_id": 26 }, { "follower_id": 20, "followee_id": 21 }, { "follower_id": 20, "followee_id": 24 }, { "follower_id": 20, "followee_id": 26 }, { "follower_id": 20, "followee_id": 19 }, { "follower_id": 21, "followee_id": 20 }, { "follower_id": 21, "followee_id": 24 }, { "follower_id": 21, "followee_id": 26 }, { "follower_id": 21, "followee_id": 19 }, { "follower_id": 22, "followee_id": 20 }, { "follower_id": 22, "followee_id": 21 }, { "follower_id": 22, "followee_id": 24 }, { "follower_id": 22, "followee_id": 26 }, { "follower_id": 23, "followee_id": 20 }, { "follower_id": 23, "followee_id": 21 }, { "follower_id": 23, "followee_id": 24 }, { "follower_id": 23, "followee_id": 26 }, { "follower_id": 24, "followee_id": 20 }, { "follower_id": 24, "followee_id": 21 }, { "follower_id": 24, "followee_id": 26 }, { "follower_id": 24, "followee_id": 19 }, { "follower_id": 25, "followee_id": 36 }, { "follower_id": 25, "followee_id": 32 }, { "follower_id": 25, "followee_id": 3 }, { "follower_id": 25, "followee_id": 2 }, { "follower_id": 26, "followee_id": 20 }, { "follower_id": 26, "followee_id": 21 }, { "follower_id": 26, "followee_id": 24 }, { "follower_id": 26, "followee_id": 19 }, { "follower_id": 27, "followee_id": 20 }, { "follower_id": 27, "followee_id": 21 }, { "follower_id": 27, "followee_id": 24 }, { "follower_id": 27, "followee_id": 26 }, { "follower_id": 28, "followee_id": 29 }, { "follower_id": 28, "followee_id": 31 }, { "follower_id": 28, "followee_id": 39 }, { "follower_id": 28, "followee_id": 33 }, { "follower_id": 29, "followee_id": 28 }, { "follower_id": 29, "followee_id": 31 }, { "follower_id": 29, "followee_id": 39 }, { "follower_id": 29, "followee_id": 33 }, { "follower_id": 30, "followee_id": 32 }, { "follower_id": 30, "followee_id": 36 }, { "follower_id": 30, "followee_id": 33 }, { "follower_id": 30, "followee_id": 34 }, { "follower_id": 31, "followee_id": 36 }, { "follower_id": 31, "followee_id": 32 }, { "follower_id": 31, "followee_id": 2 }, { "follower_id": 31, "followee_id": 3 }, { "follower_id": 32, "followee_id": 36 }, { "follower_id": 32, "followee_id": 25 }, { "follower_id": 32, "followee_id": 31 }, { "follower_id": 32, "followee_id": 2 }, { "follower_id": 33, "followee_id": 34 }, { "follower_id": 33, "followee_id": 36 }, { "follower_id": 33, "followee_id": 30 }, { "follower_id": 33, "followee_id": 39 }, { "follower_id": 34, "followee_id": 33 }, { "follower_id": 34, "followee_id": 36 }, { "follower_id": 34, "followee_id": 30 }, { "follower_id": 34, "followee_id": 39 }, { "follower_id": 35, "followee_id": 30 }, { "follower_id": 35, "followee_id": 4 }, { "follower_id": 35, "followee_id": 31 }, { "follower_id": 35, "followee_id": 36 }, { "follower_id": 36, "followee_id": 32 }, { "follower_id": 36, "followee_id": 25 }, { "follower_id": 36, "followee_id": 3 }, { "follower_id": 36, "followee_id": 38 }, { "follower_id": 37, "followee_id": 1 }, { "follower_id": 37, "followee_id": 7 }, { "follower_id": 37, "followee_id": 0 }, { "follower_id": 37, "followee_id": 3 }, { "follower_id": 38, "followee_id": 37 }, { "follower_id": 38, "followee_id": 1 }, { "follower_id": 38, "followee_id": 7 }, { "follower_id": 38, "followee_id": 0 }, { "follower_id": 39, "followee_id": 33 }, { "follower_id": 39, "followee_id": 30 }, { "follower_id": 39, "followee_id": 36 }, { "follower_id": 39, "followee_id": 34 }], "comments": [{ "post_id": 189, "user_id": 29, "user_name": "randoeccentrics", "content": "$sht on vebetterdao looking strong. Compost crew getting paid is the real utility. Notebook updated \u2705 #VeBetterDAO #B3TR", "created_at": 4.0 }, { "post_id": 193, "user_id": 32, "user_name": "mugshot_vet", "content": "Cheers! \u2615\ufe0f Muggie loves the consistency. @VeBette @VeBetterDAO @jackson_vechain @meter_mate who's hunting the next UFC drop with us? #VeFam", "created_at": 4.0 }, { "post_id": 197, "user_id": 32, "user_name": "mugshot_vet", "content": "Audit complete \u2705 Logs match the brew. Double espresso fueling the next round of $B3TR rewards. Keep tagging those sips fam. DMs open for the active ones \u2615\ufe0f\ud83d\udc40 @VeBetterDAO #VeFam", "created_at": 5.0 }, { "post_id": 208, "user_id": 33, "user_name": "Crypto_VeChain", "content": "Tesla giveaway prob another trap for the lil guys \ud83d\udc1f no-KYC links = rug waiting to happen. show proof or delete before people get burned. #VeChain", "created_at": 6.0 }, { "post_id": 186, "user_id": 36, "user_name": "420_vechain", "content": "Mad V Apes holders check those DMs carefully! \ud83e\udd8d Too many scams copying styles lately. Verify then celebrate! #VeChain #NFTCommunity", "created_at": 6.0 }, { "post_id": 208, "user_id": 36, "user_name": "420_vechain", "content": "Yo be careful with that Tesla giveaway link \ud83d\udea9 Classic scam tactic. Never connect wallets for giveaways. Stay safe fam! #VeChain #Security", "created_at": 9.0 }, { "post_id": 186, "user_id": 36, "user_name": "420_vechain", "content": "Mad V Apes energy is real \ud83e\udd8d UFC giveaways loading soon. Verify those DMs before clicking links though. Stay safe fam! #VeChain #NFTCommunity", "created_at": 12.0 }, { "post_id": 219, "user_id": 32, "user_name": "mugshot_vet", "content": "Love seeing the #VeFam logging those morning brews \u2615\ufe0f Consistency = rewards. Keep stacking those $B3TR sips! DMs open for the most dedicated loggers this week \ud83c\udf81", "created_at": 13.0 }, { "post_id": 245, "user_id": 32, "user_name": "mugshot_vet", "content": "Log received \u2615\ufe0f Muggie sees the consistency. $B3TR rewards incoming for the active ones. DMs open if you survive the sip! #VeChain", "created_at": 15.0 }, { "post_id": 245, "user_id": 6, "user_name": "DustyrangerBE", "content": "Love the dedication! \u2615\ufe0f Tracking sleep cycles + nightly governance votes. Deadlines are appointment TV \ud83d\udcfa Let's maximize those $B3TR rewards together! #VeBetterDAO #VeFam", "created_at": 16.0 }, { "post_id": 245, "user_id": 32, "user_name": "mugshot_vet", "content": "Muggie approves this brew \u2615\ufe0f Keep logging those sips for $B3TR! Sustainability is a daily ledger \ud83d\udcdd", "created_at": 16.0 }], "likes": [], "new_follows": [], "timesteps": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0], "total_seed_posts": 178 };
+    const PALETTE = ['#58a6ff', '#3fb950', '#bc8cff', '#f78166', '#f778ba', '#39d353', '#d29922', '#79c0ff', '#56d364', '#e3b341'];
+    function avatarColor(uid) { return PALETTE[uid % PALETTE.length]; }
+    function initials(name) { return (name || '?').slice(0, 2).toUpperCase(); }
+
+    const activeUserIds = new Set(DATA.sim_posts.map(p => p.user_id));
+    const userById = {};
+    DATA.users.forEach(u => { userById[u.user_id] = u; });
+
+    // Stat bar
+    const statDefs = [
+      { val: DATA.users.length, lbl: 'Total Agents' },
+      { val: DATA.timesteps.length, lbl: 'Timesteps Run' },
+      { val: DATA.sim_posts.length, lbl: 'New Posts' },
+      { val: DATA.total_seed_posts, lbl: 'Seed Posts' },
+      { val: DATA.follows.length, lbl: 'Follow Edges' },
+      { val: activeUserIds.size, lbl: 'Active Agents' },
+      { val: DATA.comments.length, lbl: 'Comments' },
+      { val: DATA.likes.length, lbl: 'Likes' },
+    ];
+    const statBar = document.getElementById('stat-bar');
+    statDefs.forEach(s => {
+      statBar.innerHTML += `<div class="stat"><div class="val">${s.val}</div><div class="lbl">${s.lbl}</div></div>`;
+    });
+
+    function postType(p) {
+      if (p.original_post_id != null && p.quote_content) return 'quote';
+      if (p.original_post_id != null) return 'repost';
+      return 'post';
+    }
+    const typeLabel = { post: 'Original Post', repost: 'Repost', quote: 'Quote', comment: 'Comment' };
+
+    function renderPostCard(p) {
+      const u = userById[p.user_id] || {};
+      const t = postType(p);
+      const raw = (p.content || '').replace(/</g, '&lt;');
+      const content = t === 'quote'
+        ? `<div style="border-left:2px solid var(--border);padding-left:10px;color:var(--muted);font-size:12px;margin-bottom:6px">${raw.slice(0, 120)}…</div>${(p.quote_content || '').replace(/</g, '&lt;')}`
+        : raw;
+      return `<div class="post-card">
+    <div class="post-header">
+      <div class="avatar" style="background:${avatarColor(p.user_id)};color:#0d1117">${initials(p.user_name)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="post-user">@${p.user_name}</div>
+        <div class="post-bio">${(u.bio || '').replace(/</g, '&lt;')}</div>
+      </div>
+      <span class="post-type-badge type-${t}">${typeLabel[t]}</span>
+    </div>
+    <div class="post-content">${content}</div>
+    <div class="post-footer">
+      <span>♥ ${p.num_likes}</span><span>🔁 ${p.num_shares}</span>
+      <span style="margin-left:auto">post #${p.post_id}</span>
+    </div>
+  </div>`;
+    }
+
+    // Timeline
+    const tl = document.getElementById('timeline');
+    const seedUsers = DATA.users.filter(u => DATA.seed_counts[String(u.user_id)] > 0);
+    const seedHtml = seedUsers.slice(0, 9).map(u =>
+      `<div class="seed-card">
+    <div class="sname">@${u.user_name}</div>
+    <div class="sbio">${(u.bio || '').slice(0, 50)}</div>
+    <div class="scnt">📝 ${DATA.seed_counts[String(u.user_id)]} seed posts · ${u.num_followers} followers</div>
+  </div>`).join('');
+    const extraHtml = seedUsers.slice(9).map(u =>
+      `<div class="seed-card">
+    <div class="sname">@${u.user_name}</div>
+    <div class="sbio">${(u.bio || '').slice(0, 50)}</div>
+    <div class="scnt">📝 ${DATA.seed_counts[String(u.user_id)]} posts · ${u.num_followers} followers</div>
+  </div>`).join('');
+
+    tl.innerHTML += `<div class="tl-phase">
+  <div class="tl-dot seed"></div>
+  <div class="tl-phase-header">
+    <span class="tl-phase-label" style="color:var(--muted)">Seed Phase</span>
+    <span class="tl-phase-meta">t = 0 · initialization</span>
+    <span class="tl-phase-badge">${DATA.users.length} agents · ${DATA.total_seed_posts} posts · ${DATA.follows.length} follows</span>
+  </div>
+  <div class="seed-summary">${seedHtml}</div>
+  ${extraHtml ? `<div class="see-more" onclick="this.style.display='none';document.getElementById('seed-extra').style.display='grid'">+ ${seedUsers.length - 9} more — click to expand</div><div id="seed-extra" class="seed-summary" style="display:none;margin-top:8px">${extraHtml}</div>` : ''}
+</div>`;
+
+    DATA.timesteps.forEach(ts => {
+      const posts = DATA.sim_posts.filter(p => p.created_at === ts);
+      const comments = DATA.comments.filter(c => c.created_at === ts);
+      const likes = DATA.likes.filter(l => l.created_at === ts);
+      const unique = new Set(posts.map(p => p.user_id));
+      tl.innerHTML += `<div class="tl-phase">
+    <div class="tl-dot active"></div>
+    <div class="tl-phase-header">
+      <span class="tl-phase-label">Timestep ${ts}</span>
+      <span class="tl-phase-meta">+${ts * 24}h from simulation start</span>
+      <span class="tl-phase-badge" style="color:var(--green);border-color:rgba(63,185,80,.3)">${unique.size} active · ${posts.length} posts · ${comments.length} comments · ${likes.length} likes</span>
+    </div>
+    <div class="post-grid">${posts.map(renderPostCard).join('')}</div>
+    ${posts.length === 0 ? '<div class="empty-ts">No posts this timestep.</div>' : ''}
+  </div>`;
+    });
+    if (DATA.timesteps.length === 0) {
+      tl.innerHTML += `<div class="empty-ts" style="margin-top:8px">No simulation timesteps recorded yet. Run the simulation first.</div>`;
+    }
+
+    // Network graph
+    const svg = d3.select('#network-svg');
+    const W = 360, H = 340;
+    const nodes = DATA.users.map(u => ({
+      id: u.user_id, name: u.user_name, bio: u.bio,
+      r: 3 + Math.min(u.num_followers / 4, 7),
+      active: activeUserIds.has(u.user_id),
+      followers: u.num_followers, followings: u.num_followings,
+    }));
+    const edgeSample = DATA.follows.length > 400
+      ? DATA.follows.filter((_, i) => i % Math.ceil(DATA.follows.length / 400) === 0)
+      : DATA.follows;
+    const links = edgeSample.map(f => ({ source: f.follower_id, target: f.followee_id }));
+    const sim = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(22).strength(0.3))
+      .force('charge', d3.forceManyBody().strength(-35))
+      .force('center', d3.forceCenter(W / 2, H / 2))
+      .force('collision', d3.forceCollide(d => d.r + 2));
+    const g = svg.append('g');
+    const link = g.append('g').attr('stroke', '#21262d').attr('stroke-width', 0.8)
+      .selectAll('line').data(links).join('line').attr('stroke-opacity', 0.5);
+    const node = g.append('g').selectAll('circle').data(nodes).join('circle')
+      .attr('r', d => d.r)
+      .attr('fill', d => d.active ? avatarColor(d.id) : '#30363d')
+      .attr('stroke', d => d.active ? '#fff' : 'none')
+      .attr('stroke-width', d => d.active ? 1.5 : 0)
+      .style('cursor', 'pointer');
+    const tt = document.getElementById('tooltip');
+    node.on('mousemove', (evt, d) => {
+      document.getElementById('tt-name').textContent = '@' + d.name;
+      document.getElementById('tt-bio').textContent = (userById[d.id]?.bio || '').slice(0, 100);
+      document.getElementById('tt-stats').textContent =
+        `${d.followers} followers · ${d.followings} following${d.active ? ' · ✓ Active' : ''}`;
+      tt.style.display = 'block'; tt.style.left = (evt.clientX + 12) + 'px'; tt.style.top = (evt.clientY + 12) + 'px';
+    }).on('mouseleave', () => { tt.style.display = 'none'; });
+    sim.on('tick', () => {
+      link.attr('x1', d => Math.max(5, Math.min(W - 5, d.source.x))).attr('y1', d => Math.max(5, Math.min(H - 5, d.source.y)))
+        .attr('x2', d => Math.max(5, Math.min(W - 5, d.target.x))).attr('y2', d => Math.max(5, Math.min(H - 5, d.target.y)));
+      node.attr('cx', d => Math.max(d.r + 2, Math.min(W - d.r - 2, d.x))).attr('cy', d => Math.max(d.r + 2, Math.min(H - d.r - 2, d.y)));
+    });
+    svg.call(d3.zoom().scaleExtent([0.5, 5]).on('zoom', e => g.attr('transform', e.transform)));
+    document.getElementById('legend').innerHTML = `
+  <div class="leg-item"><div class="leg-dot" style="background:#58a6ff"></div> Active agent</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#30363d"></div> Inactive agent</div>
+  <div class="leg-item" style="font-size:10px;color:var(--muted)">Node size ∝ followers · Scroll to zoom</div>`;
+
+    // Agent list
+    const agentList = document.getElementById('agent-list');
+    const sorted = [...DATA.users].sort((a, b) => {
+      const d = (activeUserIds.has(b.user_id) ? 1 : 0) - (activeUserIds.has(a.user_id) ? 1 : 0);
+      return d || b.num_followers - a.num_followers;
+    });
+    agentList.innerHTML = sorted.map(u => `
+  <div class="agent-row">
+    <div class="aactive ${activeUserIds.has(u.user_id) ? 'yes' : 'no'}"></div>
+    <div class="avatar" style="width:24px;height:24px;border-radius:50%;background:${avatarColor(u.user_id)};color:#0d1117;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials(u.user_name)}</div>
+    <div class="aname">@${u.user_name}</div>
+    <div class="afol">${u.num_followers} · ${u.num_followings}</div>
+  </div>`).join('');
+  </script>
+</body>
+
+</html>
