@@ -1,35 +1,31 @@
-# =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
-# flake8: noqa: E402
 """
-Oasis Twitter simulation. Run from repo root.
+LLM-driven Twitter simulation. Run from repo root:
 
   python simulation/twitter_simulation.py --config_path simulation/config.yaml
 
-Edit simulation/config.yaml to set csv_path and db_path to your own data.
+Requires DASHSCOPE_API_KEY (or the env var named in inference.api_key_env) to be set.
 Paths in the config are relative to the repo root.
+
+Pipeline:
+  persona_generation/outputs/user_personas.csv  (agent profiles)
+  persona_generation/outputs/split_info.json     (test-period timing)
+  persona_generation/outputs/train_tweets.csv    (activity profiles)
+     → LLM-driven simulation
+     → data/simu_db/.../*.db                     (SQLite output)
 """
 from __future__ import annotations
 
 import argparse
 import ast
 import asyncio
-import math
+import json
 import logging
+import math
 import os
 import random
+import sqlite3
 import sys
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -38,43 +34,44 @@ import pandas as pd
 from colorama import Back
 from yaml import safe_load
 
-# Repo root = parent of simulation (Oasis_copy root). Used for data/config paths.
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-# Oasis package from submodule at oasis/ (camel-ai/oasis). Add submodule root so
-# "import oasis" resolves to oasis/oasis/.
-_OASIS_SUBMODULE = os.path.join(_REPO_ROOT, "oasis")
-if os.path.isdir(_OASIS_SUBMODULE) and _OASIS_SUBMODULE not in sys.path:
-    sys.path.insert(0, _OASIS_SUBMODULE)
-elif _REPO_ROOT not in sys.path:
+_SIMULATION_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Add simulation/ to path so we can import llm_client
+if _SIMULATION_DIR not in sys.path:
+    sys.path.insert(0, _SIMULATION_DIR)
+if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from camel.models import ModelFactory
-from camel.types import ModelPlatformType, ModelType
+import llm_client as _llm  # noqa: E402  (after sys.path setup)
 
-from oasis.clock.clock import Clock
-from oasis.social_agent.agents_generator import generate_agents
-from oasis.social_platform.channel import Channel
-from oasis.social_platform.platform import Platform
-from oasis.social_platform.typing import ActionType
+_DEFAULT_CSV = os.path.join(
+    _REPO_ROOT, "persona_generation", "outputs", "user_personas.csv"
+)
+_DEFAULT_DB = ":memory:"
 
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
 social_log = logging.getLogger(name="social")
 social_log.propagate = False
 social_log.setLevel("DEBUG")
+_fh = logging.FileHandler("social.log")
+_fh.setLevel("DEBUG")
+_fh.setFormatter(logging.Formatter("%(levelname)s - %(asctime)s - %(name)s - %(message)s"))
+social_log.addHandler(_fh)
+_sh = logging.StreamHandler()
+_sh.setLevel("INFO")
+_sh.setFormatter(logging.Formatter("%(levelname)s - %(asctime)s - %(name)s - %(message)s"))
+social_log.addHandler(_sh)
 
-file_handler = logging.FileHandler("social.log")
-file_handler.setLevel("DEBUG")
-file_handler.setFormatter(
-    logging.Formatter("%(levelname)s - %(asctime)s - %(name)s - %(message)s")
-)
-social_log.addHandler(file_handler)
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel("DEBUG")
-stream_handler.setFormatter(
-    logging.Formatter("%(levelname)s - %(asctime)s - %(name)s - %(message)s")
-)
-social_log.addHandler(stream_handler)
-
-parser = argparse.ArgumentParser(description="Oasis Twitter simulation.")
+# ---------------------------------------------------------------------------
+# Argparse
+# ---------------------------------------------------------------------------
+parser = argparse.ArgumentParser(description="LLM-driven Twitter simulation.")
 parser.add_argument(
     "--config_path",
     type=str,
@@ -83,16 +80,360 @@ parser.add_argument(
     default="",
 )
 
-if os.path.isdir(_OASIS_SUBMODULE):
-    _DATA_PREFIX = os.path.join(_REPO_ROOT, "oasis", "data")
-else:
-    _DATA_PREFIX = os.path.join(_REPO_ROOT, "data")
-_ALL_TOPICS_CSV = os.path.join(_DATA_PREFIX, "twitter_dataset", "all_topics.csv")
-_DEFAULT_CSV = os.path.join(
-    _DATA_PREFIX, "twitter_dataset", "anonymous_topic_200_1h", "False_Business_0.csv"
-)
-_DEFAULT_DB = ":memory:"
 
+# ---------------------------------------------------------------------------
+# Agent dataclass
+# ---------------------------------------------------------------------------
+@dataclass
+class Agent:
+    agent_id: int
+    username: str
+    name: str
+    bio: str
+    user_char: str
+    category_description: str
+    previous_tweets: list[str] = field(default_factory=list)
+    following_ids: list[int] = field(default_factory=list)
+    action_probs: dict[str, float] = field(default_factory=dict)
+    activity_hourly: list[float] | None = None
+    activity_weekly: list[float] | None = None
+
+
+# ---------------------------------------------------------------------------
+# SimDB — owns the SQLite connection for simulation output
+# ---------------------------------------------------------------------------
+class SimDB:
+    """
+    Minimal SQLite backend that produces the schema expected by
+    simulation/compare_sim_to_test.py.
+
+    Tables: user, follow, post, comment, like
+    """
+
+    _SCHEMA = """
+    CREATE TABLE IF NOT EXISTS user (
+        user_id         INTEGER PRIMARY KEY,
+        agent_id        INTEGER,
+        user_name       TEXT,
+        name            TEXT,
+        bio             TEXT,
+        created_at      REAL    DEFAULT 0,
+        num_followings  INTEGER DEFAULT 0,
+        num_followers   INTEGER DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS follow (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        follower_id INTEGER,
+        followee_id INTEGER,
+        created_at  REAL    DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS post (
+        post_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id          INTEGER,
+        content          TEXT,
+        created_at       REAL    DEFAULT 0,
+        num_likes        INTEGER DEFAULT 0,
+        num_shares       INTEGER DEFAULT 0,
+        num_dislikes     INTEGER DEFAULT 0,
+        original_post_id INTEGER DEFAULT NULL,
+        quote_content    TEXT    DEFAULT NULL
+    );
+    CREATE TABLE IF NOT EXISTS comment (
+        comment_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id     INTEGER,
+        user_id     INTEGER,
+        content     TEXT,
+        created_at  REAL    DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS "like" (
+        like_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id     INTEGER,
+        user_id     INTEGER,
+        created_at  REAL    DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS observation (
+        obs_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestep        REAL,
+        agent_id        INTEGER,
+        username        TEXT,
+        feed_total      INTEGER DEFAULT 0,
+        feed_following  INTEGER DEFAULT 0,
+        feed_rec        INTEGER DEFAULT 0,
+        action_taken    TEXT,
+        action_success  INTEGER DEFAULT 0
+    );
+    """
+
+    def __init__(self, db_path: str) -> None:
+        self._path = db_path
+        if db_path == ":memory:":
+            self._con = sqlite3.connect(":memory:", check_same_thread=False)
+        else:
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            self._con = sqlite3.connect(db_path, check_same_thread=False)
+        self._con.row_factory = sqlite3.Row
+
+    def initialize_schema(self) -> None:
+        cur = self._con.cursor()
+        cur.executescript(self._SCHEMA)
+        self._con.commit()
+
+    # ------------------------------------------------------------------
+    # Bulk initialization (called once before the simulation loop)
+    # ------------------------------------------------------------------
+    def insert_users(self, agents: list[Agent], start_time: float = 0.0) -> None:
+        rows = [
+            (a.agent_id, a.agent_id, a.username, a.name, a.bio, start_time, 0, 0)
+            for a in agents
+        ]
+        self._con.executemany(
+            "INSERT OR IGNORE INTO user "
+            "(user_id, agent_id, user_name, name, bio, created_at, num_followings, num_followers) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+        self._con.commit()
+
+    def insert_initial_follows(
+        self,
+        follows: list[tuple[int, int]],
+        start_time: float = 0.0,
+    ) -> None:
+        if not follows:
+            return
+        self._con.executemany(
+            "INSERT INTO follow (follower_id, followee_id, created_at) VALUES (?, ?, ?)",
+            [(f, t, start_time) for f, t in follows],
+        )
+        # Update counters
+        from collections import Counter
+        following_count = Counter(f for f, _ in follows)
+        follower_count = Counter(t for _, t in follows)
+        for uid, cnt in following_count.items():
+            self._con.execute(
+                "UPDATE user SET num_followings = num_followings + ? WHERE user_id = ?",
+                (cnt, uid),
+            )
+        for uid, cnt in follower_count.items():
+            self._con.execute(
+                "UPDATE user SET num_followers = num_followers + ? WHERE user_id = ?",
+                (cnt, uid),
+            )
+        self._con.commit()
+
+    def insert_initial_posts(
+        self,
+        posts: list[tuple[int, str]],
+        start_time: float = 0.0,
+    ) -> None:
+        """Seed previous_tweets into the post table with created_at=0 (filtered out by compare script)."""
+        if not posts:
+            return
+        self._con.executemany(
+            "INSERT INTO post (user_id, content, created_at, num_likes, num_shares) "
+            "VALUES (?, ?, ?, 0, 0)",
+            [(uid, content, start_time) for uid, content in posts],
+        )
+        self._con.commit()
+
+    # ------------------------------------------------------------------
+    # Feed
+    # ------------------------------------------------------------------
+    def get_feed(self, agent_id: int, limit: int = 8) -> list[dict[str, Any]]:
+        """
+        Return up to `limit` feed posts for this agent:
+          - Posts from users they follow (ordered by num_likes desc)
+          - Plus random recent posts for discovery
+        Only returns original posts (original_post_id IS NULL) created during simulation (created_at > 0).
+        """
+        cur = self._con.cursor()
+        # Posts from followed users
+        cur.execute(
+            """
+            SELECT post_id, user_id, content, created_at, num_likes
+            FROM post
+            WHERE user_id IN (SELECT followee_id FROM follow WHERE follower_id = ?)
+              AND original_post_id IS NULL
+              AND CAST(created_at AS REAL) > 0
+            ORDER BY num_likes DESC, created_at DESC
+            LIMIT ?
+            """,
+            (agent_id, limit),
+        )
+        followed_posts = [{**dict(r), "source": "following"} for r in cur.fetchall()]
+
+        # Random posts for discovery (recommendation system)
+        cur.execute(
+            """
+            SELECT post_id, user_id, content, created_at, num_likes
+            FROM post
+            WHERE original_post_id IS NULL
+              AND CAST(created_at AS REAL) > 0
+            ORDER BY RANDOM()
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        random_posts = [{**dict(r), "source": "recommendation"} for r in cur.fetchall()]
+
+        # Merge: following posts first, then fill with recommendation posts.
+        # Deduplicate by post_id; exclude agent's own posts.
+        seen: set[int] = set()
+        merged: list[dict[str, Any]] = []
+        for p in followed_posts + random_posts:
+            pid = p["post_id"]
+            if pid not in seen and pid is not None:
+                if p["user_id"] != agent_id:
+                    seen.add(pid)
+                    merged.append(p)
+            if len(merged) >= limit:
+                break
+        return merged
+
+    # ------------------------------------------------------------------
+    # Actions (called during the simulation loop)
+    # ------------------------------------------------------------------
+    def create_post(self, user_id: int, content: str, timestep: int) -> int:
+        """Insert a new post and return its post_id."""
+        cur = self._con.cursor()
+        cur.execute(
+            "INSERT INTO post (user_id, content, created_at, num_likes, num_shares) "
+            "VALUES (?, ?, ?, 0, 0)",
+            (user_id, content, float(timestep)),
+        )
+        self._con.commit()
+        return cur.lastrowid  # type: ignore[return-value]
+
+    def create_comment(
+        self, user_id: int, post_id: int, content: str, timestep: int
+    ) -> bool:
+        """Add a comment to an existing post. Returns False if post not found."""
+        cur = self._con.cursor()
+        cur.execute("SELECT 1 FROM post WHERE post_id = ?", (post_id,))
+        if not cur.fetchone():
+            return False
+        cur.execute(
+            "INSERT INTO comment (post_id, user_id, content, created_at) VALUES (?, ?, ?, ?)",
+            (post_id, user_id, content, float(timestep)),
+        )
+        self._con.commit()
+        return True
+
+    def repost(self, user_id: int, post_id: int, timestep: int) -> bool:
+        """Repost an existing post. Guards against duplicates. Returns False on failure."""
+        cur = self._con.cursor()
+        cur.execute("SELECT content FROM post WHERE post_id = ? AND original_post_id IS NULL", (post_id,))
+        row = cur.fetchone()
+        if not row:
+            return False
+        # Guard: has this user already reposted this post?
+        cur.execute(
+            "SELECT 1 FROM post WHERE user_id = ? AND original_post_id = ? AND quote_content IS NULL",
+            (user_id, post_id),
+        )
+        if cur.fetchone():
+            return False
+        original_content = row["content"]
+        cur.execute(
+            "INSERT INTO post (user_id, content, created_at, num_likes, num_shares, original_post_id) "
+            "VALUES (?, ?, ?, 0, 0, ?)",
+            (user_id, original_content, float(timestep), post_id),
+        )
+        cur.execute("UPDATE post SET num_shares = num_shares + 1 WHERE post_id = ?", (post_id,))
+        self._con.commit()
+        return True
+
+    def quote_post(
+        self, user_id: int, post_id: int, quote_content: str, timestep: int
+    ) -> bool:
+        """Quote-tweet an existing post with commentary. Returns False on failure."""
+        cur = self._con.cursor()
+        cur.execute("SELECT content FROM post WHERE post_id = ? AND original_post_id IS NULL", (post_id,))
+        row = cur.fetchone()
+        if not row:
+            return False
+        original_content = row["content"]
+        cur.execute(
+            "INSERT INTO post (user_id, content, created_at, num_likes, num_shares, original_post_id, quote_content) "
+            "VALUES (?, ?, ?, 0, 0, ?, ?)",
+            (user_id, original_content, float(timestep), post_id, quote_content),
+        )
+        cur.execute("UPDATE post SET num_shares = num_shares + 1 WHERE post_id = ?", (post_id,))
+        self._con.commit()
+        return True
+
+    def like_post(self, user_id: int, post_id: int, timestep: int = 0) -> bool:
+        """Like a post. Guards against duplicate likes. Returns False if already liked or not found."""
+        cur = self._con.cursor()
+        cur.execute("SELECT 1 FROM post WHERE post_id = ?", (post_id,))
+        if not cur.fetchone():
+            return False
+        cur.execute(
+            'SELECT 1 FROM "like" WHERE post_id = ? AND user_id = ?',
+            (post_id, user_id),
+        )
+        if cur.fetchone():
+            return False  # Already liked
+        cur.execute(
+            'INSERT INTO "like" (post_id, user_id, created_at) VALUES (?, ?, ?)',
+            (post_id, user_id, float(timestep)),
+        )
+        cur.execute("UPDATE post SET num_likes = num_likes + 1 WHERE post_id = ?", (post_id,))
+        self._con.commit()
+        return True
+
+    def follow(self, follower_id: int, followee_id: int, timestep: int) -> bool:
+        """Follow a user. Guards against duplicates. Returns False if already following or self-follow."""
+        if follower_id == followee_id:
+            return False
+        cur = self._con.cursor()
+        cur.execute(
+            "SELECT 1 FROM follow WHERE follower_id = ? AND followee_id = ?",
+            (follower_id, followee_id),
+        )
+        if cur.fetchone():
+            return False
+        cur.execute(
+            "INSERT INTO follow (follower_id, followee_id, created_at) VALUES (?, ?, ?)",
+            (follower_id, followee_id, float(timestep)),
+        )
+        cur.execute(
+            "UPDATE user SET num_followings = num_followings + 1 WHERE user_id = ?",
+            (follower_id,),
+        )
+        cur.execute(
+            "UPDATE user SET num_followers = num_followers + 1 WHERE user_id = ?",
+            (followee_id,),
+        )
+        self._con.commit()
+        return True
+
+    def log_observation(
+        self,
+        timestep: int,
+        agent_id: int,
+        username: str,
+        feed_total: int,
+        feed_following: int,
+        feed_rec: int,
+        action_taken: str,
+        action_success: bool,
+    ) -> None:
+        self._con.execute(
+            "INSERT INTO observation "
+            "(timestep, agent_id, username, feed_total, feed_following, feed_rec, action_taken, action_success) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (float(timestep), agent_id, username, feed_total, feed_following, feed_rec, action_taken, int(action_success)),
+        )
+        self._con.commit()
+
+    def close(self) -> None:
+        self._con.close()
+
+
+# ---------------------------------------------------------------------------
+# Utility functions (preserved from original twitter_simulation.py)
+# ---------------------------------------------------------------------------
 
 def _resolve(path: str, base: str) -> str:
     if os.path.isabs(path):
@@ -102,7 +443,7 @@ def _resolve(path: str, base: str) -> str:
 
 def _normalize_action_probabilities(
     action_probabilities: dict[str, float] | None,
-    available_actions: list[ActionType] | None,
+    available_actions: list[str] | None,
 ) -> dict[str, float]:
     if action_probabilities:
         probs = {
@@ -110,13 +451,10 @@ def _normalize_action_probabilities(
             for k, v in action_probabilities.items()
         }
     else:
-        actions = [
-            a.value if isinstance(a, ActionType) else str(a)
-            for a in (available_actions or [])
-        ]
+        actions = list(available_actions or [])
         if not actions:
             actions = ["create_post", "create_comment", "repost", "like_post"]
-        probs = {a: 1.0 for a in actions}
+        probs = {str(a): 1.0 for a in actions}
 
     total = sum(probs.values())
     if total <= 0:
@@ -126,7 +464,7 @@ def _normalize_action_probabilities(
 
 def _extract_action_probabilities_by_username(
     csv_path: str,
-    available_actions: list[ActionType] | None,
+    available_actions: list[str] | None,
 ) -> dict[str, dict[str, float]]:
     try:
         df = pd.read_csv(csv_path)
@@ -309,182 +647,22 @@ def _estimate_target_posts_per_step(
 
 
 def _choose_threshold(
-    agent,
+    agent: Agent,
     simulation_dt: datetime,
     activity_granularity: str,
 ) -> float:
-    other = agent.user_info.profile.get("other_info", {})
     if activity_granularity == "hourly":
-        vec = other.get("activity_hourly") or other.get("active_threshold") or [0.1] * 24
+        vec = agent.activity_hourly or [0.1] * 24
         idx = int(simulation_dt.hour) % 24
     else:
-        vec = other.get("activity_weekly")
+        vec = agent.activity_weekly
         if not vec:
-            hour_vec = other.get("active_threshold") or [0.1] * 24
-            return float(hour_vec[int(simulation_dt.hour) % 24])
+            return 0.1
         idx = int(simulation_dt.weekday()) % 7
     try:
         return float(vec[idx])
     except Exception:
         return 0.1
-
-
-def _make_post_content(agent) -> str:
-    other = agent.user_info.profile.get("other_info", {})
-    seeds = other.get("previous_tweets") or []
-    if seeds:
-        return random.choice(seeds)
-    user_profile = str(other.get("user_profile", "")).strip()
-    if user_profile:
-        return f"Thought of the day: {user_profile[:180]}"
-    return "Sharing a quick update."
-
-
-def _make_comment_content(agent) -> str:
-    other = agent.user_info.profile.get("other_info", {})
-    seeds = other.get("previous_tweets") or []
-    if seeds:
-        return random.choice(seeds)[:180]
-    return random.choice([
-        "Interesting point, thanks for sharing.",
-        "I see this differently, but appreciate the post.",
-        "Good thread. Curious what others think.",
-    ])
-
-
-def _make_quote_content(agent) -> str:
-    other = agent.user_info.profile.get("other_info", {})
-    seeds = other.get("previous_tweets") or []
-    if seeds:
-        return f"My take: {random.choice(seeds)[:160]}"
-    return "Adding context to this."
-
-
-async def _try_action_on_feed_posts(agent, action_name: str, feed_posts: list[dict[str, Any]], *extra_args):
-    if not feed_posts:
-        return {"success": False, "error": "No feed posts"}
-    shuffled = feed_posts[:]
-    random.shuffle(shuffled)
-    for post in shuffled:
-        post_id = post.get("post_id")
-        if post_id is None:
-            continue
-        try:
-            result = await agent.perform_action_by_data(action_name, int(post_id), *extra_args)
-        except Exception as e:
-            result = {"success": False, "error": str(e)}
-        if isinstance(result, dict) and result.get("success"):
-            return result
-    return {"success": False, "error": f"No valid candidate for {action_name}"}
-
-
-async def _try_follow_on_feed_posts(agent, feed_posts: list[dict[str, Any]]):
-    if not feed_posts:
-        return {"success": False, "error": "No feed posts"}
-
-    own_user_id = None
-    try:
-        own_user_id = int(agent.social_agent_id)
-    except Exception:
-        own_user_id = None
-
-    candidates = []
-    for post in feed_posts:
-        user_id = post.get("user_id")
-        if user_id is None:
-            continue
-        try:
-            uid = int(user_id)
-        except Exception:
-            continue
-        if own_user_id is not None and uid == own_user_id:
-            continue
-        candidates.append(uid)
-
-    if not candidates:
-        return {"success": False, "error": "No valid follow candidate"}
-
-    random.shuffle(candidates)
-    seen = set()
-    for uid in candidates:
-        if uid in seen:
-            continue
-        seen.add(uid)
-        try:
-            result = await agent.perform_action_by_data("follow", uid)
-        except Exception as e:
-            result = {"success": False, "error": str(e)}
-        if isinstance(result, dict) and result.get("success"):
-            return result
-
-    return {"success": False, "error": "No valid follow candidate"}
-
-
-async def _perform_manual_probabilistic_action(
-    agent,
-    action_probs: dict[str, float],
-    blocked_actions: set[str] | None = None,
-) -> dict[str, Any]:
-    refresh_result = await agent.env.action.refresh()
-    feed_posts = refresh_result.get("posts", []) if isinstance(refresh_result, dict) else []
-    blocked = blocked_actions or set()
-
-    candidates: list[tuple[str, float]] = []
-    for action_name, prob in action_probs.items():
-        if prob <= 0:
-            continue
-        if action_name in blocked:
-            continue
-        if action_name in {"like_post", "create_comment", "repost", "quote_post", "follow"} and not feed_posts:
-            continue
-        candidates.append((action_name, prob))
-
-    if not candidates:
-        result = await agent.perform_action_by_data("do_nothing")
-        return {"action": "do_nothing", "result": result}
-
-    total = sum(w for _, w in candidates)
-    normalized = [(a, w / total) for a, w in candidates]
-    action_name = random.choices(
-        [a for a, _ in normalized],
-        weights=[w for _, w in normalized],
-        k=1,
-    )[0]
-
-    if action_name == "create_post":
-        result = await agent.perform_action_by_data("create_post", _make_post_content(agent))
-        return {"action": action_name, "result": result}
-    if action_name == "create_comment":
-        result = await _try_action_on_feed_posts(
-            agent,
-            "create_comment",
-            feed_posts,
-            _make_comment_content(agent),
-        )
-        return {"action": action_name, "result": result}
-    if action_name == "repost":
-        result = await _try_action_on_feed_posts(agent, "repost", feed_posts)
-        return {"action": action_name, "result": result}
-    if action_name == "quote_post":
-        result = await _try_action_on_feed_posts(
-            agent,
-            "quote_post",
-            feed_posts,
-            _make_quote_content(agent),
-        )
-        return {"action": action_name, "result": result}
-    if action_name == "like_post":
-        result = await _try_action_on_feed_posts(agent, "like_post", feed_posts)
-        return {"action": action_name, "result": result}
-    if action_name == "follow":
-        result = await _try_follow_on_feed_posts(agent, feed_posts)
-        return {"action": action_name, "result": result}
-    if action_name == "do_nothing":
-        result = await agent.perform_action_by_data("do_nothing")
-        return {"action": action_name, "result": result}
-
-    result = await agent.perform_action_by_data("do_nothing")
-    return {"action": "do_nothing", "result": result}
 
 
 def _sample_num_actions_per_agent(
@@ -499,13 +677,131 @@ def _sample_num_actions_per_agent(
     return actions
 
 
+# ---------------------------------------------------------------------------
+# Agent loading
+# ---------------------------------------------------------------------------
+
+def load_agents(
+    csv_path: str,
+    available_actions: list[str] | None,
+    global_action_probs: dict[str, float],
+) -> list[Agent]:
+    """Load agents from the persona CSV. Returns a list ordered by user_id."""
+    df = pd.read_csv(csv_path)
+    action_probs_by_username = _extract_action_probabilities_by_username(
+        csv_path=csv_path,
+        available_actions=available_actions,
+    )
+    prev_tweets_by_username = _extract_previous_tweets_by_username(csv_path)
+
+    agents: list[Agent] = []
+    for idx, row in df.iterrows():
+        agent_id = int(row.get("user_id", idx))
+        username = str(row.get("username", f"user_{agent_id}")).strip()
+        uname_lower = username.lower()
+
+        # Parse following list
+        following_ids: list[int] = []
+        raw_following = row.get("following_agentid_list", "[]")
+        try:
+            parsed = ast.literal_eval(raw_following) if isinstance(raw_following, str) else raw_following
+            if isinstance(parsed, list):
+                following_ids = [int(x) for x in parsed if str(x).strip()]
+        except Exception:
+            pass
+
+        # Action probabilities (per-agent from CSV, fall back to global)
+        action_probs = action_probs_by_username.get(uname_lower) or global_action_probs
+
+        # Previous tweets
+        previous_tweets = prev_tweets_by_username.get(uname_lower, [])
+
+        agent = Agent(
+            agent_id=agent_id,
+            username=username,
+            name=str(row.get("name", username)).strip(),
+            bio=str(row.get("description", "")).strip(),
+            user_char=str(row.get("user_char", "")).strip(),
+            category_description=str(row.get("category_description", "")).strip(),
+            previous_tweets=previous_tweets,
+            following_ids=following_ids,
+            action_probs=action_probs,
+        )
+        agents.append(agent)
+
+    social_log.info("Loaded %d agents from %s", len(agents), csv_path)
+    return agents
+
+
+# ---------------------------------------------------------------------------
+# Action application (DB writes after LLM decisions)
+# ---------------------------------------------------------------------------
+
+def _apply_decision(
+    db: SimDB,
+    agent: Agent,
+    decision: dict[str, Any],
+    timestep: int,
+    remaining_post_budget: int | None,
+    blocked_actions: set[str],
+) -> tuple[str, bool, int | None]:
+    """
+    Apply one LLM decision to the database.
+
+    Returns (action_taken, success, updated_remaining_post_budget).
+    """
+    action = decision.get("action", "do_nothing")
+    content = decision.get("content", "")
+    target_post_id = decision.get("target_post_id")
+    target_user_id = decision.get("target_user_id")
+
+    if action in blocked_actions:
+        action = "do_nothing"
+
+    success = False
+    if action == "create_post":
+        if remaining_post_budget is not None and remaining_post_budget <= 0:
+            action = "do_nothing"
+        else:
+            if content:
+                db.create_post(agent.agent_id, content, timestep)
+                success = True
+                if remaining_post_budget is not None:
+                    remaining_post_budget -= 1
+
+    elif action == "create_comment":
+        if target_post_id is not None and content:
+            success = db.create_comment(agent.agent_id, int(target_post_id), content, timestep)
+
+    elif action == "repost":
+        if target_post_id is not None:
+            success = db.repost(agent.agent_id, int(target_post_id), timestep)
+
+    elif action == "like_post":
+        if target_post_id is not None:
+            success = db.like_post(agent.agent_id, int(target_post_id), timestep)
+
+    elif action == "quote_post":
+        if target_post_id is not None and content:
+            success = db.quote_post(agent.agent_id, int(target_post_id), content, timestep)
+
+    elif action == "follow":
+        if target_user_id is not None:
+            success = db.follow(agent.agent_id, int(target_user_id), timestep)
+
+    # do_nothing: no DB write needed
+    return action, success, remaining_post_budget
+
+
+# ---------------------------------------------------------------------------
+# Main simulation runner
+# ---------------------------------------------------------------------------
+
 async def running(
     db_path: str | None = _DEFAULT_DB,
     csv_path: str | None = _DEFAULT_CSV,
     num_timesteps: int = 3,
-    clock_factor: int = 60,
-    clock_step_units: int = 1,
-    timestep_hours: float = 1.0,
+    timestep_hours: float = 24.0,
     agent_activation_multiplier: float = 1.0,
     min_activation_threshold: float = 0.0,
     auto_num_timesteps_from_split: bool = False,
@@ -517,82 +813,86 @@ async def running(
     auto_target_posts_per_step_from_train: bool = True,
     max_actions_per_active_agent: int = 1,
     extra_action_probability: float = 0.0,
-    recsys_type: str = "twhin-bert",
-    action_selection_mode: str = "manual_probabilistic",
     action_probabilities: dict[str, float] | None = None,
+    available_actions: list[str] | None = None,
     inference_configs: dict[str, Any] | None = None,
-    available_actions: list[ActionType] | None = None,
+    # Legacy OASIS params accepted but ignored:
+    recsys_type: str = "random",
+    clock_factor: int = 60,
+    clock_step_units: int = 1,
+    action_selection_mode: str = "llm",
+    **_kwargs: Any,
 ) -> None:
     db_path = _DEFAULT_DB if db_path is None else db_path
     csv_path = _DEFAULT_CSV if csv_path is None else csv_path
+
     if db_path != ":memory:":
         db_path = _resolve(db_path, _REPO_ROOT)
     csv_path = _resolve(csv_path, _REPO_ROOT)
 
+    # Clean up old DB
     if db_path != ":memory:" and os.path.exists(db_path):
         os.remove(db_path)
-    if db_path != ":memory:":
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
-    if recsys_type == "reddit":
-        start_time = datetime.now()
-    else:
-        start_time = 0
-    clock = Clock(k=clock_factor)
-    twitter_channel = Channel()
-    infra = Platform(
-        db_path=db_path,
-        channel=twitter_channel,
-        sandbox_clock=clock,
-        start_time=start_time,
-        recsys_type=recsys_type,
-        refresh_rec_post_count=2,
-        max_rec_post_len=2,
-        following_post_count=3,
-    )
-    twitter_task = asyncio.create_task(infra.running())
-    model = None
-    model_type = str((inference_configs or {}).get("model_type", ""))
-    if model_type[:3] == "gpt":
-        model = ModelFactory.create(
-            model_platform=ModelPlatformType.OPENAI,
-            model_type=ModelType(model_type),
+    # --- LLM client setup ---
+    cfg = inference_configs or {}
+    model_name: str = str(cfg.get("model_name", "qwen3.5-plus"))
+    base_url: str = str(cfg.get("base_url", "https://coding.dashscope.aliyuncs.com/v1"))
+    api_key_env: str = str(cfg.get("api_key_env", "DASHSCOPE_API_KEY"))
+    llm_timeout: float = float(cfg.get("llm_timeout", 60.0))
+    llm_max_retries: int = int(cfg.get("llm_max_retries", 2))
+    llm_concurrency: int = int(cfg.get("llm_concurrency", 20))
+    max_feed_posts: int = int(cfg.get("max_feed_posts", 8))
+
+    api_key = os.environ.get(api_key_env, "")
+    if not api_key:
+        social_log.warning(
+            "Environment variable %s is not set. LLM calls will likely fail.", api_key_env
         )
 
-    start_hour = 13.0  # Default when topic metadata unavailable
-    try:
-        all_topic_df = pd.read_csv(_ALL_TOPICS_CSV)
-        if "False" in csv_path or "True" in csv_path:
-            if "-" not in csv_path:
-                topic_name = Path(csv_path).stem
-            else:
-                topic_name = Path(csv_path).stem.split("-")[0]
-            row = all_topic_df[all_topic_df["topic_name"] == topic_name]
-            start_time_str = row["start_time"].item().split(" ")[1]
-            h, m = start_time_str.split(":")
-            start_hour = int(h) + float(m) / 60
-    except Exception:
-        social_log.info("No real-world topic data; using start_hour = 13 (1 PM).")
+    client = _llm.get_client(base_url=base_url, api_key=api_key, timeout=llm_timeout, max_retries=llm_max_retries)
 
-    agent_graph = await generate_agents(
-        agent_info_path=csv_path,
-        channel=twitter_channel,
-        start_time=start_time,
-        model=model,
-        recsys_type=recsys_type,
+    # --- Global action probabilities ---
+    normalized_action_probs = _normalize_action_probabilities(
+        action_probabilities=action_probabilities,
         available_actions=available_actions,
-        twitter=infra,
     )
 
-    prev_tweets_by_username = _extract_previous_tweets_by_username(csv_path)
-    action_probs_by_username = _extract_action_probabilities_by_username(
+    # --- Load agents ---
+    agents = load_agents(
         csv_path=csv_path,
         available_actions=available_actions,
+        global_action_probs=normalized_action_probs,
     )
-    usernames = {
-        str(agent.user_info.name).strip().lower()
-        for _node_id, agent in agent_graph.get_agents()
-    }
+    if not agents:
+        social_log.error("No agents loaded from %s — aborting.", csv_path)
+        return
+
+    # --- Initialize DB ---
+    db = SimDB(db_path)
+    db.initialize_schema()
+    db.insert_users(agents, start_time=0.0)
+
+    # Insert initial follows
+    initial_follows: list[tuple[int, int]] = [
+        (a.agent_id, fid)
+        for a in agents
+        for fid in a.following_ids
+        if 0 <= fid < len(agents)
+    ]
+    db.insert_initial_follows(initial_follows, start_time=0.0)
+
+    # Seed previous tweets as initial posts (created_at=0, filtered by compare script)
+    initial_posts: list[tuple[int, str]] = [
+        (a.agent_id, tweet)
+        for a in agents
+        for tweet in a.previous_tweets[:5]
+        if tweet.strip()
+    ]
+    db.insert_initial_posts(initial_posts, start_time=0.0)
+
+    # --- Activity profiles ---
+    usernames = {a.username.lower() for a in agents}
     activity_profiles = _build_activity_profiles(
         train_csv_path=_resolve(train_activity_csv_path, _REPO_ROOT),
         usernames=usernames,
@@ -600,22 +900,15 @@ async def running(
         timestep_hours=timestep_hours,
         default_prob=default_activity_probability,
     )
-    for _node_id, agent in agent_graph.get_agents():
-        uname = str(agent.user_info.name).strip().lower()
-        other = agent.user_info.profile.setdefault("other_info", {})
-        other["previous_tweets"] = prev_tweets_by_username.get(uname, [])
-        if uname in action_probs_by_username:
-            other["action_probabilities"] = action_probs_by_username[uname]
-        if uname in activity_profiles:
+    for agent in agents:
+        profile = activity_profiles.get(agent.username.lower())
+        if profile:
             if activity_granularity == "hourly":
-                other["activity_hourly"] = activity_profiles[uname]
+                agent.activity_hourly = profile
             else:
-                other["activity_weekly"] = activity_profiles[uname]
+                agent.activity_weekly = profile
 
-    normalized_action_probs = _normalize_action_probabilities(
-        action_probabilities=action_probabilities,
-        available_actions=available_actions,
-    )
+    # --- Post-rate estimation ---
     if auto_target_posts_per_step_from_train and target_posts_per_step is None:
         target_posts_per_step = _estimate_target_posts_per_step(
             train_csv_path=_resolve(train_activity_csv_path, _REPO_ROOT),
@@ -623,11 +916,9 @@ async def running(
             timestep_hours=timestep_hours,
         )
         if target_posts_per_step is not None:
-            social_log.info(
-                "Auto post budget enabled. target_posts_per_step=%d",
-                target_posts_per_step,
-            )
+            social_log.info("Auto post budget: target_posts_per_step=%d", target_posts_per_step)
 
+    # --- Derive num_timesteps from split info ---
     simulation_start_dt: datetime | None = None
     if auto_num_timesteps_from_split:
         try:
@@ -644,80 +935,151 @@ async def running(
                 duration_hours = max(1.0, (test_end - test_start).total_seconds() / 3600.0)
                 num_timesteps = max(1, int(math.ceil(duration_hours / max(timestep_hours, 1e-9))))
                 social_log.info(
-                    "Auto timesteps enabled. test_duration_hours=%.2f timestep_hours=%.3f num_timesteps=%d",
-                    duration_hours,
-                    timestep_hours,
-                    num_timesteps,
+                    "Auto timesteps: test_duration_hours=%.2f timestep_hours=%.3f num_timesteps=%d",
+                    duration_hours, timestep_hours, num_timesteps,
                 )
         except Exception as e:
-            social_log.warning(f"Failed to auto-set num_timesteps from split info: {e}")
+            social_log.warning("Failed to auto-set num_timesteps from split info: %s", e)
 
     if simulation_start_dt is None:
         simulation_start_dt = datetime.now()
 
+    social_log.info(
+        "Starting simulation: %d agents, %d timesteps, model=%s",
+        len(agents), num_timesteps, model_name,
+    )
+
+    # --- Concurrency semaphore for LLM calls ---
+    sem = asyncio.Semaphore(llm_concurrency)
+
+    async def _call_llm_for_agent(agent: Agent, feed: list[dict]) -> dict[str, Any]:
+        async with sem:
+            return await _llm.decide_action(
+                username=agent.username,
+                name=agent.name,
+                bio=agent.bio,
+                user_char=agent.user_char,
+                category_description=agent.category_description,
+                previous_tweets=agent.previous_tweets,
+                feed_posts=feed,
+                available_actions=list(available_actions or normalized_action_probs.keys()),
+                action_probs=agent.action_probs,
+                model=model_name,
+                client=client,
+            )
+
+    # ---------------------------------------------------------------------------
+    # Main simulation loop
+    # ---------------------------------------------------------------------------
     for timestep in range(1, num_timesteps + 1):
-        clock.time_step = timestep * clock_step_units
-        db_file = Path(db_path).name
-        print(Back.GREEN + f"DB:{db_file} timestep:{timestep}" + Back.RESET)
-        await infra.update_rec_table()
+        db_file = Path(db_path).name if db_path != ":memory:" else ":memory:"
+        print(Back.GREEN + f"DB:{db_file} timestep:{timestep}/{num_timesteps}" + Back.RESET)
 
         simulation_dt = simulation_start_dt + timedelta(hours=timestep_hours * timestep)
-        tasks = []
-        for _node_id, agent in agent_graph.get_agents():
-            if agent.user_info.is_controllable is False:
-                agent_ac_prob = random.random()
-                base_threshold = _choose_threshold(
+
+        # Determine active agents
+        active_agents: list[Agent] = []
+        for agent in agents:
+            base_threshold = _choose_threshold(
+                agent=agent,
+                simulation_dt=simulation_dt,
+                activity_granularity=activity_granularity,
+            )
+            threshold = max(
+                min_activation_threshold,
+                min(1.0, float(base_threshold) * float(agent_activation_multiplier)),
+            )
+            if random.random() < threshold:
+                active_agents.append(agent)
+
+        social_log.info(
+            "Timestep %d/%d: %d/%d agents active (sim_dt=%s)",
+            timestep, num_timesteps, len(active_agents), len(agents),
+            simulation_dt.strftime("%Y-%m-%d %H:%M"),
+        )
+
+        if not active_agents:
+            continue
+
+        # Gather feeds and LLM decisions concurrently for all active agents
+        # (each agent may take multiple actions)
+        remaining_post_budget: int | None = target_posts_per_step
+
+        # Build one flat list of (agent, action_index) tasks to run
+        # Each active agent does _sample_num_actions_per_agent() actions
+        agent_action_counts = {
+            a.agent_id: _sample_num_actions_per_agent(
+                max_actions_per_active_agent=max_actions_per_active_agent,
+                extra_action_probability=extra_action_probability,
+            )
+            for a in active_agents
+        }
+
+        # Run all LLM calls concurrently (one per action slot).
+        # Each task returns a list of (decision, feed_stats) pairs.
+        async def _agent_action_task(
+            agent: Agent,
+        ) -> list[tuple[dict[str, Any], dict[str, int]]]:
+            n = agent_action_counts[agent.agent_id]
+            results = []
+            for _ in range(n):
+                feed = db.get_feed(agent.agent_id, limit=max_feed_posts)
+                n_following = sum(1 for p in feed if p.get("source") == "following")
+                n_rec = sum(1 for p in feed if p.get("source") == "recommendation")
+                social_log.info(
+                    "t=%d @%s | obs: feed=%d (following=%d, rec=%d)",
+                    timestep, agent.username, len(feed), n_following, n_rec,
+                )
+                decision = await _call_llm_for_agent(agent, feed)
+                feed_stats = {
+                    "feed_total": len(feed),
+                    "feed_following": n_following,
+                    "feed_rec": n_rec,
+                }
+                results.append((decision, feed_stats))
+            return results
+
+        all_results: list[list[tuple[dict[str, Any], dict[str, int]]]] = await asyncio.gather(
+            *[_agent_action_task(a) for a in active_agents],
+            return_exceptions=False,
+        )
+
+        # Apply decisions to DB sequentially (safe single-threaded writes)
+        for agent, action_results in zip(active_agents, all_results):
+            for decision, feed_stats in action_results:
+                blocked: set[str] = set()
+                if remaining_post_budget is not None and remaining_post_budget <= 0:
+                    blocked.add("create_post")
+                action_taken, success, remaining_post_budget = _apply_decision(
+                    db=db,
                     agent=agent,
-                    simulation_dt=simulation_dt,
-                    activity_granularity=activity_granularity,
+                    decision=decision,
+                    timestep=timestep,
+                    remaining_post_budget=remaining_post_budget,
+                    blocked_actions=blocked,
                 )
-                threshold = max(
-                    min_activation_threshold,
-                    min(1.0, float(base_threshold) * float(agent_activation_multiplier)),
+                social_log.debug(
+                    "t=%d @%s → %s (success=%s)",
+                    timestep, agent.username, action_taken, success,
                 )
-                if agent_ac_prob < threshold:
-                    if action_selection_mode == "manual_probabilistic":
-                        tasks.append(agent)
-                    else:
-                        tasks.append(agent.perform_action_by_llm())
-            else:
-                await agent.perform_action_by_hci()
-
-        if action_selection_mode == "manual_probabilistic":
-            remaining_post_budget = target_posts_per_step
-            for agent in tasks:
-                num_actions = _sample_num_actions_per_agent(
-                    max_actions_per_active_agent=max_actions_per_active_agent,
-                    extra_action_probability=extra_action_probability,
+                db.log_observation(
+                    timestep=timestep,
+                    agent_id=agent.agent_id,
+                    username=agent.username,
+                    feed_total=feed_stats["feed_total"],
+                    feed_following=feed_stats["feed_following"],
+                    feed_rec=feed_stats["feed_rec"],
+                    action_taken=action_taken,
+                    action_success=success,
                 )
-                for _ in range(num_actions):
-                    blocked_actions: set[str] = set()
-                    if remaining_post_budget is not None and remaining_post_budget <= 0:
-                        blocked_actions.add("create_post")
-                    per_agent_probs = (
-                        agent.user_info.profile.get("other_info", {}).get("action_probabilities")
-                        or normalized_action_probs
-                    )
-                    action_out = await _perform_manual_probabilistic_action(
-                        agent=agent,
-                        action_probs=per_agent_probs,
-                        blocked_actions=blocked_actions,
-                    )
-                    selected_action = str(action_out.get("action", ""))
-                    result = action_out.get("result")
-                    if (
-                        selected_action == "create_post"
-                        and remaining_post_budget is not None
-                        and isinstance(result, dict)
-                        and result.get("success")
-                    ):
-                        remaining_post_budget -= 1
-        else:
-            await asyncio.gather(*tasks)
 
-    await twitter_channel.write_to_receive_queue((None, None, ActionType.EXIT))
-    await twitter_task
+    db.close()
+    social_log.info("Simulation finished. DB: %s", db_path)
 
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 def _default_config_path() -> str:
     return os.path.join(os.path.dirname(__file__), "config.yaml")
@@ -725,8 +1087,6 @@ def _default_config_path() -> str:
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    os.environ["SANDBOX_TIME"] = str(0)
-
     config_path = args.config_path or _default_config_path()
     config_path = _resolve(config_path, _REPO_ROOT)
 
@@ -745,6 +1105,7 @@ if __name__ == "__main__":
             )
         )
     else:
+        social_log.warning("Config not found at %s; running with defaults.", config_path)
         asyncio.run(running())
 
-    social_log.info("Simulation finished.")
+    social_log.info("Done.")
