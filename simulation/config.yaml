@@ -36,7 +36,7 @@ simulation:
   # Value written to clock.time_step each iteration: timestep * clock_step_units.
   clock_step_units: 1
   # Increase autonomous agent action firing rate.
-  agent_activation_multiplier: 2.0
+  agent_activation_multiplier: 4.0
   min_activation_threshold: 0.10
   clock_factor: 60
   recsys_type: random

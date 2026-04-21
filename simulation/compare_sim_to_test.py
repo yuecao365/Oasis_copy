@@ -487,31 +487,56 @@ def _compute_engagement_source(db_path: Path, agent_to_username: Dict[int, str])
     cur.execute("SELECT post_id, user_id FROM post WHERE original_post_id IS NULL AND CAST(created_at AS REAL) > 0")
     post_author: Dict[int, int] = {_safe_int(pid, -1): _safe_int(uid, -1) for pid, uid in cur.fetchall()}
 
-    # Fetch engagement actions from trace
-    cur.execute(
-        """
-        SELECT user_id, action, info FROM trace
-        WHERE action IN ('like_post', 'create_comment', 'repost', 'quote_post')
-        """
-    )
-    trace_rows = cur.fetchall()
+    # Collect engagements from likes, comments, and reposts directly.
+    # (actor_id, post_author_id) pairs — trace table not required.
+    engagement_pairs: List[Tuple[int, int]] = []
+
+    # Likes
+    cur.execute('SELECT user_id, post_id FROM "like" WHERE CAST(created_at AS REAL) > 0')
+    for uid, pid in cur.fetchall():
+        author = post_author.get(_safe_int(pid, -1), -1)
+        if author >= 0:
+            engagement_pairs.append((_safe_int(uid, -1), author))
+
+    # Comments
+    cur.execute("SELECT user_id, post_id FROM comment WHERE CAST(created_at AS REAL) > 0")
+    for uid, pid in cur.fetchall():
+        author = post_author.get(_safe_int(pid, -1), -1)
+        if author >= 0:
+            engagement_pairs.append((_safe_int(uid, -1), author))
+
+    # Reposts (original_post_id IS NOT NULL means it's a repost/quote)
+    cur.execute("SELECT user_id, original_post_id FROM post WHERE original_post_id IS NOT NULL AND CAST(created_at AS REAL) > 0")
+    for uid, orig_pid in cur.fetchall():
+        author = post_author.get(_safe_int(orig_pid, -1), -1)
+        if author >= 0:
+            engagement_pairs.append((_safe_int(uid, -1), author))
+
+    # Fall back to trace table if it exists (legacy OASIS DBs)
+    try:
+        cur.execute(
+            "SELECT user_id, action, info FROM trace "
+            "WHERE action IN ('like_post', 'create_comment', 'repost', 'quote_post')"
+        )
+        for user_id, action, info_str in cur.fetchall():
+            actor_id = _safe_int(user_id, -1)
+            try:
+                info = json.loads(info_str) if info_str else {}
+            except Exception:
+                continue
+            pid = _safe_int(info.get("post_id") or info.get("postId") or -1, -1)
+            author = post_author.get(pid, -1)
+            if actor_id >= 0 and author >= 0:
+                engagement_pairs.append((actor_id, author))
+    except Exception:
+        pass
+
     con.close()
 
     organic = 0
     recsys = 0
-    for user_id, action, info_str in trace_rows:
-        actor_id = _safe_int(user_id, -1)
-        if actor_id < 0:
-            continue
-        try:
-            info = json.loads(info_str) if info_str else {}
-        except Exception:
-            continue
-        pid = _safe_int(info.get("post_id") or info.get("postId") or -1, -1)
-        if pid < 0:
-            continue
-        author_id = post_author.get(pid, -1)
-        if author_id < 0:
+    for actor_id, author_id in engagement_pairs:
+        if actor_id < 0 or author_id < 0 or actor_id == author_id:
             continue
         if (actor_id, author_id) in follow_set:
             organic += 1
