@@ -129,7 +129,7 @@ def main() -> None:
     print("=" * 60)
 
     sys.path.insert(0, str(_REPO_ROOT / "simulation"))
-    import generate_timeline
+    import generate_timeline  # type: ignore[import-not-found]
 
     data = generate_timeline.load_data(str(db_path), str(csv_path))
     html = generate_timeline.generate_html(data, str(db_path), metrics=metrics)

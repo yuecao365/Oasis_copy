@@ -40,11 +40,10 @@ from yaml import safe_load
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _SIMULATION_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Add simulation/ to path so we can import llm_client
-if _SIMULATION_DIR not in sys.path:
-    sys.path.insert(0, _SIMULATION_DIR)
+# Add repo root first, then simulation/ at front so simulation/llm_client.py takes priority
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
+sys.path.insert(0, _SIMULATION_DIR)  # always first so simulation/llm_client shadows root one
 
 import llm_client as _llm  # noqa: E402  (after sys.path setup)
 

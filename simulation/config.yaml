@@ -44,10 +44,10 @@ simulation:
   action_selection_mode: manual_probabilistic
   # Probabilities are normalized automatically.
   action_probabilities:
-    like_post: 0.60
-    create_post: 0.10
-    create_comment: 0.20
-    repost: 0.10
+    like_post: 0.35
+    create_post: 0.25
+    create_comment: 0.25
+    repost: 0.15
   available_actions:
     - create_post
     - create_comment

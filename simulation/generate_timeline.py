@@ -650,7 +650,8 @@ agentList.innerHTML = sorted.map(u => `
     card('Total Engagements Classified', es.total_engagements_classified),
     card('Organic Engagements', es.organic_engagements),
     card('Recsys Engagements', es.recsys_engagements),
-    card('Semantic Similarity', sem.mean_cosine !== undefined ? sem.mean_cosine : (sem.error || null), sem.error ? null : 'mean cosine sim between sim and GT post embeddings'),
+    card('Centroid Similarity', sem.sim_to_gt_centroid_sim !== undefined ? sem.sim_to_gt_centroid_sim : (sem.error || null), sem.error ? null : 'cosine sim between sim and GT post embedding centroids'),
+    card('Semantic Max-Match', sem.sim_to_gt_semantic_max_match !== undefined ? sem.sim_to_gt_semantic_max_match : (sem.error || null), sem.error ? null : 'avg best-match cosine sim per sim post vs GT'),
   ]);
 
   mc.innerHTML = html;

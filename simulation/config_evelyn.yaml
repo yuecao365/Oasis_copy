@@ -1,0 +1,43 @@
+# Oasis Twitter simulation config — Evelyn persona set
+---
+data:
+  db_path: data/simu_db/evelyn_run.db
+  csv_path: persona_generation/outputs/user_personas_evelyn.csv
+
+simulation:
+  num_timesteps: 3
+  auto_num_timesteps_from_split: true
+  split_info_path: persona_generation/outputs/split_info.json
+  train_activity_csv_path: persona_generation/outputs/train_tweets.csv
+  activity_granularity: weekly
+  default_activity_probability: 0.10
+  target_posts_per_step: 11
+  auto_target_posts_per_step_from_train: false
+  max_actions_per_active_agent: 1
+  extra_action_probability: 0.5
+  timestep_hours: 12.0
+  clock_step_units: 1
+  agent_activation_multiplier: 4.0
+  min_activation_threshold: 0.10
+  clock_factor: 60
+  recsys_type: random
+  action_selection_mode: manual_probabilistic
+  action_probabilities:
+    like_post: 0.35
+    create_post: 0.25
+    create_comment: 0.25
+    repost: 0.15
+  available_actions:
+    - create_post
+    - create_comment
+    - repost
+    - like_post
+
+inference:
+  model_name: qwen3.5-plus
+  base_url: https://coding.dashscope.aliyuncs.com/v1
+  api_key_env: DASHSCOPE_API_KEY
+  max_feed_posts: 8
+  llm_concurrency: 3
+  llm_timeout: 60.0
+  llm_max_retries: 2
