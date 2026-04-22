@@ -46,6 +46,14 @@ def main() -> None:
         "--skip-sim", action="store_true",
         help="Skip the simulation step and only regenerate the dashboard from an existing DB",
     )
+    parser.add_argument(
+        "--db", default=None,
+        help="Override db_path from config (e.g. data/simu_db/evelyn_run.db)",
+    )
+    parser.add_argument(
+        "--csv", default=None,
+        help="Override csv_path from config (e.g. persona_generation/outputs/user_personas_evelyn.csv)",
+    )
     args = parser.parse_args()
 
     config_path = _resolve(args.config)
@@ -62,17 +70,31 @@ def main() -> None:
         print(f"[run.py] Error reading config: {e}", file=sys.stderr)
         sys.exit(1)
 
-    db_path  = _resolve(cfg["data"]["db_path"])
-    csv_path = _resolve(cfg["data"]["csv_path"])
+    db_path  = _resolve(args.db  or cfg["data"]["db_path"])
+    csv_path = _resolve(args.csv or cfg["data"]["csv_path"])
 
     # ── Step 1: Simulation ────────────────────────────────────────────────────
     if not args.skip_sim:
         print("=" * 60)
         print("Step 1/2 — Running simulation")
         print("=" * 60)
+
+        # If CLI overrides db/csv, write a temp config so the simulation picks them up
+        import tempfile, copy
+        sim_config_path = config_path
+        if args.db or args.csv:
+            from yaml import safe_load, dump
+            patched = copy.deepcopy(cfg)
+            patched["data"]["db_path"]  = str(db_path)
+            patched["data"]["csv_path"] = str(csv_path)
+            tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False)
+            dump(patched, tmp)
+            tmp.close()
+            sim_config_path = Path(tmp.name)
+
         result = subprocess.run(
             [sys.executable, str(_REPO_ROOT / "simulation" / "twitter_simulation.py"),
-             "--config_path", str(config_path)],
+             "--config_path", str(sim_config_path)],
             cwd=str(_REPO_ROOT),
         )
         if result.returncode != 0:
