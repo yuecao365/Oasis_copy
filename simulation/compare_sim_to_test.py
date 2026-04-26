@@ -1105,28 +1105,14 @@ def main() -> None:
         f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['quotes']['percentile_hist_jsd']:.4f}",
         "",
     ]
-    if "error" in sem:
-        md_lines.append(f"- Error: {sem['error']}")
-    else:
-        md_lines += [
-            f"- Sim posts embedded: {sem.get('sim_post_count', 'N/A')}",
-            f"- GT posts embedded: {sem.get('gt_post_count', 'N/A')}",
-            f"- Centroid similarity: {_fmt(sem.get('sim_to_gt_centroid_sim'))}",
-            f"- Mean max-match similarity: {_fmt(sem.get('sim_to_gt_semantic_max_match'))}",
-        ]
-    md_lines += [
-        "",
-        "### Intra-User Repetition",
-    ]
-    if "error" in rep:
-        md_lines.append(f"- Error: {rep['error']}")
-    else:
-        md_lines += [
-            f"- Eligible users (≥2 posts): {rep.get('eligible_users', 'N/A')}",
-            f"- Mean intra-user similarity: {_fmt(rep.get('mean_intra_user_similarity'))}",
-            f"- High-repetition user rate (>0.85): {_fmt(rep.get('high_repetition_user_rate'))}",
-            f"- Near-duplicate pair rate (>0.92): {_fmt(rep.get('near_duplicate_rate'))}",
-        ]
+
+    def _fmtv(v):
+        if v is None:
+            return "N/A"
+        try:
+            return f"{float(v):.4f}"
+        except Exception:
+            return str(v)
 
     oe = report.get("official_post_engagement", {})
     md_lines += ["", "## Official Post Engagement"]
@@ -1139,9 +1125,9 @@ def main() -> None:
             f"- Sim official posts injected: {oe.get('sim_official_post_count', 'N/A')}",
             f"- GT total community engagement: {oe.get('gt_total_engagement', 'N/A')}",
             f"- Sim total community engagement: {oe.get('sim_total_engagement', 'N/A')}",
-            f"- GT mean engagement/post: {_fmt(oe.get('gt_mean_engagement_per_post'))}",
-            f"- Sim mean engagement/post: {_fmt(oe.get('sim_mean_engagement_per_post'))}",
-            f"- Spearman (engagement/post): {_fmt(oe.get('spearman_engagement_per_post'))}",
+            f"- GT mean engagement/post: {_fmtv(oe.get('gt_mean_engagement_per_post'))}",
+            f"- Sim mean engagement/post: {_fmtv(oe.get('sim_mean_engagement_per_post'))}",
+            f"- Spearman (engagement/post): {_fmtv(oe.get('spearman_engagement_per_post'))}",
         ]
     md_lines.append("")
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")
