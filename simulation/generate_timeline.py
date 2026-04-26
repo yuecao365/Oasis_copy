@@ -116,8 +116,9 @@ def load_data(db_path: str, csv_path: str = "") -> dict:
     }
 
 
-def generate_html(data: dict, db_path: str) -> str:
+def generate_html(data: dict, db_path: str, metrics: dict | None = None) -> str:
     data_json = json.dumps(data)
+    metrics_json = json.dumps(metrics or {})
     db_label = Path(db_path).name
 
     return f"""<!DOCTYPE html>
@@ -248,6 +249,18 @@ def generate_html(data: dict, db_path: str) -> str:
   #tooltip .tt-name{{font-weight:600;color:var(--text);margin-bottom:2px;}}
   #tooltip .tt-bio{{color:var(--muted);}}
   #tooltip .tt-stats{{color:var(--accent);margin-top:4px;}}
+
+  /* ── Metrics tab ── */
+  .metrics-container{{padding:32px 40px;max-width:960px;}}
+  .metrics-section{{margin-bottom:32px;}}
+  .metrics-section-title{{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}}
+  .metrics-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}}
+  .metric-card{{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;}}
+  .metric-val{{font-size:22px;font-weight:700;color:var(--accent);margin-bottom:4px;}}
+  .metric-val.na{{color:var(--muted);font-size:16px;}}
+  .metric-lbl{{font-size:11px;color:var(--muted);line-height:1.4;}}
+  .metric-sub{{font-size:10px;color:var(--border);margin-top:4px;}}
+  .metrics-none{{color:var(--muted);font-size:13px;padding:24px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);}}
 </style>
 </head>
 <body>
@@ -264,9 +277,15 @@ def generate_html(data: dict, db_path: str) -> str:
 <div class="tab-bar">
   <div class="tab active" onclick="switchTab('agents')">Agents</div>
   <div class="tab" onclick="switchTab('timeline')">Timeline</div>
+  <div class="tab" onclick="switchTab('metrics')">Metrics</div>
 </div>
 
 <div class="stats" id="stat-bar"></div>
+
+<!-- ═══════════════════ METRICS TAB ═══════════════════ -->
+<div class="tab-panel" id="panel-metrics">
+  <div class="metrics-container" id="metrics-container"></div>
+</div>
 
 <!-- ═══════════════════ AGENTS TAB ═══════════════════ -->
 <div class="tab-panel active" id="panel-agents">
@@ -301,6 +320,7 @@ def generate_html(data: dict, db_path: str) -> str:
 
 <script>
 const DATA = {data_json};
+const METRICS = {metrics_json};
 
 // ── Shared helpers ───────────────────────────────────────────────────────────
 const PALETTE = ['#58a6ff','#3fb950','#bc8cff','#f78166','#f778ba','#39d353','#d29922','#79c0ff','#56d364','#e3b341'];
@@ -317,7 +337,7 @@ function esc(s) {{ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;
 // ── Tab switching ────────────────────────────────────────────────────────────
 function switchTab(name) {{
   document.querySelectorAll('.tab').forEach((t,i) => {{
-    const n = ['agents','timeline'][i];
+    const n = ['agents','timeline','metrics'][i];
     t.classList.toggle('active', n === name);
   }});
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -555,6 +575,85 @@ agentList.innerHTML = sorted.map(u => `
     <div class="afol">${{u.num_followers}} · ${{u.num_followings}}</div>
   </div>`).join('');
 
+// ══════════════════════════════════════════════════════════════════════════════
+// METRICS TAB
+// ══════════════════════════════════════════════════════════════════════════════
+(function() {{
+  const mc = document.getElementById('metrics-container');
+  if (!METRICS || Object.keys(METRICS).length === 0) {{
+    mc.innerHTML = '<div class="metrics-none">No metrics available. Run compare_sim_to_test.py or use run.py to generate metrics.</div>';
+    return;
+  }}
+  function fmt(v) {{
+    if (v === null || v === undefined) return {{cls:'na', txt:'N/A'}};
+    if (typeof v === 'string') return {{cls:'na', txt:v}};
+    if (typeof v === 'number') return {{cls:'', txt: Number.isInteger(v) ? String(v) : v.toFixed(4)}};
+    return {{cls:'na', txt:String(v)}};
+  }}
+  function card(label, val, sub) {{
+    const {{cls, txt}} = fmt(val);
+    return `<div class="metric-card"><div class="metric-val ${{cls}}">${{esc(txt)}}</div><div class="metric-lbl">${{esc(label)}}</div>${{sub ? `<div class="metric-sub">${{esc(sub)}}</div>` : ''}}</div>`;
+  }}
+  function section(title, cards) {{
+    return `<div class="metrics-section"><div class="metrics-section-title">${{title}}</div><div class="metrics-grid">${{cards.join('')}}</div></div>`;
+  }}
+  let html = '';
+
+  const cov = METRICS.coverage || {{}};
+  html += section('Coverage', [
+    card('Persona Users', cov.persona_user_count),
+    card('GT Active Users', cov.gt_active_users),
+    card('Sim Active Users', cov.sim_active_users),
+  ]);
+
+  const ua = METRICS.user_activity_fit || {{}};
+  html += section('User Activity Fit', [
+    card('Spearman Posts/User', ua.spearman_posts_per_user, 'rank correlation of per-user post counts'),
+    card('Top-10 User Overlap', ua.top10_overlap, 'fraction of top-10 most active users shared'),
+  ]);
+
+  const tf = METRICS.temporal_fit || {{}};
+  html += section('Temporal Fit', [
+    card('Day-of-Week JSD', tf.day_of_week_jsd, 'JS divergence of weekday post distribution (lower = better)'),
+    card('Cumulative Posts RMSE', tf.cumulative_posts_daily_rmse, 'daily cumulative post count RMSE vs ground truth'),
+    card('Cumulative Posts NRMSE', tf.cumulative_posts_daily_nrmse, 'normalized RMSE (lower = better)'),
+  ]);
+
+  const ef = METRICS.engagement_fit || {{}};
+  html += section('Engagement Fit', [
+    card('GT Total Posts', ef.gt_total_posts),
+    card('Sim Total Posts', ef.sim_total_posts),
+    card('Likes Top-Share RMSE', ef.likes_top_share_curve_rmse, 'deviation from GT likes concentration curve'),
+    card('Spearman Engagement/User', ef.spearman_total_engagement_per_user, 'rank correlation of per-user engagement'),
+  ]);
+
+  const cf = METRICS.content_fit || {{}};
+  const es = cf.engagement_source || {{}};
+  const sem = cf.semantic_similarity || {{}};
+  html += section('Content Fit', [
+    card('Total Engagements Classified', es.total_engagements_classified),
+    card('Organic Engagements', es.organic_engagements),
+    card('Recsys Engagements', es.recsys_engagements),
+    card('Centroid Similarity', sem.sim_to_gt_centroid_sim !== undefined ? sem.sim_to_gt_centroid_sim : (sem.error || null), sem.error ? null : 'cosine sim between sim and GT post embedding centroids'),
+    card('Semantic Max-Match', sem.sim_to_gt_semantic_max_match !== undefined ? sem.sim_to_gt_semantic_max_match : (sem.error || null), sem.error ? null : 'avg best-match cosine sim per sim post vs GT'),
+  ]);
+
+  const oe = METRICS.official_post_engagement || {{}};
+  if (!oe.error && Object.keys(oe).length > 0) {{
+    html += section('Official Post Engagement (@vechainofficial)', [
+      card('GT Official Posts', oe.gt_official_post_count, 'real @vechainofficial root posts in test period'),
+      card('Sim Posts Injected', oe.sim_official_post_count, 'official posts replayed into simulation'),
+      card('GT Total Community Engagement', oe.gt_total_engagement, 'likes + retweets + replies + quotes in ground truth'),
+      card('Sim Total Community Engagement', oe.sim_total_engagement, 'likes + comments + reposts by agents in sim'),
+      card('GT Mean Engagement / Post', oe.gt_mean_engagement_per_post),
+      card('Sim Mean Engagement / Post', oe.sim_mean_engagement_per_post),
+      card('Spearman (per-post)', oe.spearman_engagement_per_post, 'rank correlation — higher means sim correctly identifies which VeChain posts get most community response'),
+    ]);
+  }}
+
+  mc.innerHTML = html;
+}})();
+
 // ── Network graph (built lazily on first Timeline tab visit) ─────────────────
 window._networkBuilt = false;
 function buildNetwork() {{
@@ -628,7 +727,14 @@ def main():
     print(f"  {len(data['users'])} agents, {len(data['sim_posts'])} sim posts, "
           f"{len(data['timesteps'])} timesteps, {len(data['personas'])} personas")
 
-    html = generate_html(data, db_path)
+    metrics: dict = {}
+    metrics_path = os.path.join(_REPO_ROOT, "simulation", "metrics_report.json")
+    if os.path.exists(metrics_path):
+        with open(metrics_path, encoding="utf-8") as f:
+            metrics = json.load(f)
+        print(f"  Loaded metrics from {metrics_path}")
+
+    html = generate_html(data, db_path, metrics=metrics)
     Path(out_path).write_text(html, encoding="utf-8")
     print(f"Written: {out_path}")
 
