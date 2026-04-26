@@ -444,6 +444,328 @@ def weekday_hist_from_steps(
     return hist
 
 
+def _compute_engagement_source(db_path: Path, agent_to_username: Dict[int, str]) -> Dict:
+    """
+    Classify each engagement action (like, comment, repost) as organic or recsys-driven.
+
+    Heuristic: if the acting user follows the post author at the time of analysis,
+    the engagement is considered organic (from their following list); otherwise it is
+    attributed to the recommendation system.
+    """
+    con = sqlite3.connect(str(db_path))
+    cur = con.cursor()
+
+    # Build follow set: (follower_id, followee_id)
+    cur.execute("SELECT follower_id, followee_id FROM follow")
+    follow_set: set[Tuple[int, int]] = {
+        (_safe_int(r, -1), _safe_int(f, -1)) for r, f in cur.fetchall()
+    }
+
+    # Build post_author map: post_id -> user_id
+    cur.execute("SELECT post_id, user_id FROM post WHERE original_post_id IS NULL AND CAST(created_at AS REAL) > 0")
+    post_author: Dict[int, int] = {_safe_int(pid, -1): _safe_int(uid, -1) for pid, uid in cur.fetchall()}
+
+    # Collect engagements from likes, comments, and reposts directly.
+    # (actor_id, post_author_id) pairs — trace table not required.
+    engagement_pairs: List[Tuple[int, int]] = []
+
+    # Likes
+    cur.execute('SELECT user_id, post_id FROM "like" WHERE CAST(created_at AS REAL) > 0')
+    for uid, pid in cur.fetchall():
+        author = post_author.get(_safe_int(pid, -1), -1)
+        if author >= 0:
+            engagement_pairs.append((_safe_int(uid, -1), author))
+
+    # Comments
+    cur.execute("SELECT user_id, post_id FROM comment WHERE CAST(created_at AS REAL) > 0")
+    for uid, pid in cur.fetchall():
+        author = post_author.get(_safe_int(pid, -1), -1)
+        if author >= 0:
+            engagement_pairs.append((_safe_int(uid, -1), author))
+
+    # Reposts (original_post_id IS NOT NULL means it's a repost/quote)
+    cur.execute("SELECT user_id, original_post_id FROM post WHERE original_post_id IS NOT NULL AND CAST(created_at AS REAL) > 0")
+    for uid, orig_pid in cur.fetchall():
+        author = post_author.get(_safe_int(orig_pid, -1), -1)
+        if author >= 0:
+            engagement_pairs.append((_safe_int(uid, -1), author))
+
+    # Fall back to trace table if it exists (legacy OASIS DBs)
+    try:
+        cur.execute(
+            "SELECT user_id, action, info FROM trace "
+            "WHERE action IN ('like_post', 'create_comment', 'repost', 'quote_post')"
+        )
+        for user_id, action, info_str in cur.fetchall():
+            actor_id = _safe_int(user_id, -1)
+            try:
+                info = json.loads(info_str) if info_str else {}
+            except Exception:
+                continue
+            pid = _safe_int(info.get("post_id") or info.get("postId") or -1, -1)
+            author = post_author.get(pid, -1)
+            if actor_id >= 0 and author >= 0:
+                engagement_pairs.append((actor_id, author))
+    except Exception:
+        pass
+
+    con.close()
+
+    organic = 0
+    recsys = 0
+    for actor_id, author_id in engagement_pairs:
+        if actor_id < 0 or author_id < 0 or actor_id == author_id:
+            continue
+        if (actor_id, author_id) in follow_set:
+            organic += 1
+        else:
+            recsys += 1
+
+    total = organic + recsys
+    return {
+        "total_engagements_classified": total,
+        "organic_engagements": organic,
+        "recsys_engagements": recsys,
+        "pct_organic_engagements": round(organic / total, 4) if total > 0 else None,
+        "pct_recsys_engagements": round(recsys / total, 4) if total > 0 else None,
+        "organic_vs_recsys_ratio": round(organic / recsys, 4) if recsys > 0 else None,
+    }
+
+
+def _compute_semantic_similarity(gt_texts: List[str], sim_texts: List[str]) -> Dict:
+    """
+    Measure how semantically close the sim corpus is to the GT corpus.
+    Uses paraphrase-MiniLM-L6-v2 (GPU-accelerated if available).
+    """
+    if not _HAS_ST:
+        return {"error": "sentence-transformers not installed"}
+    if not gt_texts or not sim_texts:
+        return {"error": "empty text corpus"}
+
+    import torch
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = SentenceTransformer("paraphrase-MiniLM-L6-v2", device=device)
+
+    gt_emb = model.encode(gt_texts, batch_size=128, normalize_embeddings=True, show_progress_bar=False)
+    sim_emb = model.encode(sim_texts, batch_size=128, normalize_embeddings=True, show_progress_bar=False)
+
+    gt_emb = np.array(gt_emb, dtype=np.float32)
+    sim_emb = np.array(sim_emb, dtype=np.float32)
+
+    # Centroid similarity
+    gt_centroid = gt_emb.mean(axis=0)
+    sim_centroid = sim_emb.mean(axis=0)
+    centroid_sim = float(np.dot(gt_centroid, sim_centroid) / (
+        np.linalg.norm(gt_centroid) * np.linalg.norm(sim_centroid) + 1e-9
+    ))
+
+    # Max-match: for each sim post, cosine sim to its nearest GT post
+    # sim_emb is already normalized, gt_emb is already normalized → dot product = cosine sim
+    chunk = 512  # process in chunks to avoid OOM
+    max_sims = []
+    for i in range(0, len(sim_emb), chunk):
+        block = sim_emb[i:i + chunk]  # (chunk, d)
+        sims = block @ gt_emb.T       # (chunk, n_gt)
+        max_sims.extend(sims.max(axis=1).tolist())
+    mean_max_match = float(np.mean(max_sims))
+
+    return {
+        "sim_to_gt_centroid_sim": round(centroid_sim, 4),
+        "sim_to_gt_semantic_max_match": round(mean_max_match, 4),
+        "sim_post_count": len(sim_texts),
+        "gt_post_count": len(gt_texts),
+    }
+
+
+def _compute_official_post_engagement(
+    test_csv: Path,
+    db_path: Path,
+    official_accounts: List[str],
+) -> Dict:
+    """
+    Compare community engagement with official account posts in GT vs simulation.
+
+    GT engagement: likes + retweets + replies + quotes on each official root post
+      (from the test CSV columns).
+    Sim engagement: likes + comments + reposts/quotes recorded in the DB against
+      each official post (identified via the official_user table).
+
+    Returns per-post vectors and summary statistics.
+    """
+    official_lower = {u.lower() for u in official_accounts}
+    if not official_lower:
+        return {"error": "no official accounts specified"}
+
+    # --- Ground-truth engagement per official post ---
+    gt_engagements: List[float] = []
+    gt_posts: List[Dict] = []
+    try:
+        with test_csv.open("r", encoding="utf-8", newline="") as f:
+            for row in csv.DictReader(f):
+                uname = (row.get("user_name") or "").strip().lower()
+                if uname not in official_lower:
+                    continue
+                if row.get("is_root") != "1":
+                    continue
+                eng = (
+                    _safe_int(row.get("likes"), 0)
+                    + _safe_int(row.get("retweets"), 0)
+                    + _safe_int(row.get("replies"), 0)
+                    + _safe_int(row.get("quotes"), 0)
+                )
+                gt_engagements.append(float(eng))
+                gt_posts.append({
+                    "user": uname,
+                    "timestamp": row.get("timestamp", ""),
+                    "gt_engagement": eng,
+                    "text_snippet": (row.get("text") or "")[:60],
+                })
+    except Exception as e:
+        return {"error": f"failed to load GT: {e}"}
+
+    if not gt_posts:
+        return {"error": "no official root posts found in test CSV"}
+
+    # --- Simulation engagement per official post ---
+    sim_engagements: List[float] = []
+    sim_total_by_post: Dict[int, int] = {}
+    try:
+        con = sqlite3.connect(str(db_path))
+        cur = con.cursor()
+
+        # Get official user IDs from the dedicated table
+        cur.execute("SELECT user_id FROM official_user")
+        official_db_user_ids = [r[0] for r in cur.fetchall()]
+
+        if not official_db_user_ids:
+            con.close()
+            return {
+                "error": "official_user table empty — run simulation with official_accounts configured",
+                "gt_post_count": len(gt_posts),
+                "gt_total_engagement": sum(gt_engagements),
+            }
+
+        uid_placeholders = ",".join("?" for _ in official_db_user_ids)
+
+        # Get all official posts (created during simulation, not seed)
+        cur.execute(
+            f"SELECT post_id FROM post "
+            f"WHERE user_id IN ({uid_placeholders}) AND CAST(created_at AS REAL) > 0",
+            official_db_user_ids,
+        )
+        official_post_ids = [r[0] for r in cur.fetchall()]
+
+        if official_post_ids:
+            pid_placeholders = ",".join("?" for _ in official_post_ids)
+
+            # Likes
+            cur.execute(
+                f'SELECT post_id, COUNT(*) FROM "like" WHERE post_id IN ({pid_placeholders}) GROUP BY post_id',
+                official_post_ids,
+            )
+            likes_by_pid = {r[0]: r[1] for r in cur.fetchall()}
+
+            # Comments
+            cur.execute(
+                f"SELECT post_id, COUNT(*) FROM comment WHERE post_id IN ({pid_placeholders}) GROUP BY post_id",
+                official_post_ids,
+            )
+            comments_by_pid = {r[0]: r[1] for r in cur.fetchall()}
+
+            # Reposts + quotes
+            cur.execute(
+                f"SELECT original_post_id, COUNT(*) FROM post "
+                f"WHERE original_post_id IN ({pid_placeholders}) GROUP BY original_post_id",
+                official_post_ids,
+            )
+            shares_by_pid = {r[0]: r[1] for r in cur.fetchall()}
+
+            for pid in official_post_ids:
+                total = (
+                    _safe_int(likes_by_pid.get(pid, 0), 0)
+                    + _safe_int(comments_by_pid.get(pid, 0), 0)
+                    + _safe_int(shares_by_pid.get(pid, 0), 0)
+                )
+                sim_total_by_post[pid] = total
+                sim_engagements.append(float(total))
+
+        con.close()
+    except Exception as e:
+        return {"error": f"failed to query sim DB: {e}", "gt_post_count": len(gt_posts)}
+
+    gt_total = sum(gt_engagements)
+    sim_total = sum(sim_engagements)
+    gt_per_post_mean = gt_total / len(gt_posts) if gt_posts else 0.0
+    sim_per_post_mean = sim_total / len(sim_engagements) if sim_engagements else 0.0
+
+    # Rank correlation — only meaningful when lengths match (both vectors represent posts)
+    # GT has one entry per official root post; sim has one entry per injected official post.
+    # Lengths may differ if some posts fall outside the simulated window.
+    rho: float | None = None
+    if len(gt_engagements) >= 2 and len(sim_engagements) >= 2:
+        # Pad shorter vector with zeros for comparison
+        n = max(len(gt_engagements), len(sim_engagements))
+        gt_pad = gt_engagements + [0.0] * (n - len(gt_engagements))
+        sim_pad = sim_engagements + [0.0] * (n - len(sim_engagements))
+        rho = round(spearman(sim_pad, gt_pad), 4)
+
+    return {
+        "gt_official_post_count": len(gt_posts),
+        "sim_official_post_count": len(sim_engagements),
+        "gt_total_engagement": gt_total,
+        "sim_total_engagement": sim_total,
+        "gt_mean_engagement_per_post": round(gt_per_post_mean, 2),
+        "sim_mean_engagement_per_post": round(sim_per_post_mean, 2),
+        "spearman_engagement_per_post": rho,
+    }
+
+
+def _compute_repetition(user_post_texts: Dict[str, List[str]]) -> Dict:
+    """
+    Measure intra-user content repetition in the simulation.
+    High similarity = agent is producing near-duplicate posts.
+    """
+    if not _HAS_ST:
+        return {"error": "sentence-transformers not installed"}
+
+    import torch
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = SentenceTransformer("paraphrase-MiniLM-L6-v2", device=device)
+
+    # Only consider users with ≥2 posts
+    eligible = {u: texts for u, texts in user_post_texts.items() if len(texts) >= 2}
+    if not eligible:
+        return {"mean_intra_user_similarity": None, "high_repetition_user_rate": None, "near_duplicate_rate": None}
+
+    user_mean_sims = []
+    total_pairs = 0
+    near_dup_pairs = 0
+
+    for uname, texts in eligible.items():
+        emb = model.encode(texts, batch_size=128, normalize_embeddings=True, show_progress_bar=False)
+        emb = np.array(emb, dtype=np.float32)
+        sim_matrix = emb @ emb.T  # (n, n) cosine sims
+        n = len(texts)
+        # Upper triangle only (exclude diagonal)
+        pair_sims = [sim_matrix[i, j] for i in range(n) for j in range(i + 1, n)]
+        user_mean_sims.append(float(np.mean(pair_sims)))
+        for s in pair_sims:
+            total_pairs += 1
+            if s > 0.92:
+                near_dup_pairs += 1
+
+    mean_intra = float(np.mean(user_mean_sims))
+    high_rep_rate = float(sum(1 for s in user_mean_sims if s > 0.85) / len(user_mean_sims))
+    near_dup_rate = float(near_dup_pairs / total_pairs) if total_pairs > 0 else 0.0
+
+    return {
+        "eligible_users": len(eligible),
+        "mean_intra_user_similarity": round(mean_intra, 4),
+        "high_repetition_user_rate": round(high_rep_rate, 4),
+        "near_duplicate_rate": round(near_dup_rate, 4),
+    }
+
+
 def _slug(v: object) -> str:
     s = str(v)
     s = re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
@@ -532,6 +854,13 @@ def main() -> None:
         default="",
         type=str,
         help="Optional suffix tag for archive filenames (e.g., experiment id).",
+    )
+    parser.add_argument(
+        "--official_accounts",
+        nargs="*",
+        default=["vechainofficial"],
+        help="Usernames of official accounts whose post engagement is measured separately "
+             "(default: ['vechainofficial']). Pass empty string to disable.",
     )
     args = parser.parse_args()
 
@@ -655,6 +984,15 @@ def main() -> None:
         "sim_top20pct_share_total_engagement": sim_top_shares[1] if len(sim_top_shares) > 1 else 0.0,
     }
 
+    # Official account post engagement.
+    official_accounts_list = [a for a in (args.official_accounts or []) if a]
+    print(f"Computing official post engagement ({official_accounts_list})...")
+    official_engagement = _compute_official_post_engagement(
+        test_csv=args.test_csv,
+        db_path=args.db,
+        official_accounts=official_accounts_list,
+    )
+
     report = {
         "inputs": {
             "db": str(args.db),
@@ -689,6 +1027,7 @@ def main() -> None:
             },
             "user_level": engagement_user_level,
         },
+        "official_post_engagement": official_engagement,
     }
 
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -766,6 +1105,45 @@ def main() -> None:
         f"{report['engagement_fit']['post_level']['percentile_rank_jsd']['quotes']['percentile_hist_jsd']:.4f}",
         "",
     ]
+    if "error" in sem:
+        md_lines.append(f"- Error: {sem['error']}")
+    else:
+        md_lines += [
+            f"- Sim posts embedded: {sem.get('sim_post_count', 'N/A')}",
+            f"- GT posts embedded: {sem.get('gt_post_count', 'N/A')}",
+            f"- Centroid similarity: {_fmt(sem.get('sim_to_gt_centroid_sim'))}",
+            f"- Mean max-match similarity: {_fmt(sem.get('sim_to_gt_semantic_max_match'))}",
+        ]
+    md_lines += [
+        "",
+        "### Intra-User Repetition",
+    ]
+    if "error" in rep:
+        md_lines.append(f"- Error: {rep['error']}")
+    else:
+        md_lines += [
+            f"- Eligible users (≥2 posts): {rep.get('eligible_users', 'N/A')}",
+            f"- Mean intra-user similarity: {_fmt(rep.get('mean_intra_user_similarity'))}",
+            f"- High-repetition user rate (>0.85): {_fmt(rep.get('high_repetition_user_rate'))}",
+            f"- Near-duplicate pair rate (>0.92): {_fmt(rep.get('near_duplicate_rate'))}",
+        ]
+
+    oe = report.get("official_post_engagement", {})
+    md_lines += ["", "## Official Post Engagement"]
+    if "error" in oe:
+        md_lines.append(f"- Error: {oe['error']}")
+    else:
+        md_lines += [
+            f"- Official accounts: {official_accounts_list}",
+            f"- GT official root posts: {oe.get('gt_official_post_count', 'N/A')}",
+            f"- Sim official posts injected: {oe.get('sim_official_post_count', 'N/A')}",
+            f"- GT total community engagement: {oe.get('gt_total_engagement', 'N/A')}",
+            f"- Sim total community engagement: {oe.get('sim_total_engagement', 'N/A')}",
+            f"- GT mean engagement/post: {_fmt(oe.get('gt_mean_engagement_per_post'))}",
+            f"- Sim mean engagement/post: {_fmt(oe.get('sim_mean_engagement_per_post'))}",
+            f"- Spearman (engagement/post): {_fmt(oe.get('spearman_engagement_per_post'))}",
+        ]
+    md_lines.append("")
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")
 
     # Also write a historical, hyperparameter-labeled artifact for comparison over time.

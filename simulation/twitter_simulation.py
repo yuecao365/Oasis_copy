@@ -162,6 +162,10 @@ class SimDB:
         action_taken    TEXT,
         action_success  INTEGER DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS official_user (
+        user_id  INTEGER PRIMARY KEY,
+        username TEXT
+    );
     """
 
     def __init__(self, db_path: str) -> None:
@@ -221,6 +225,18 @@ class SimDB:
             )
         self._con.commit()
 
+    def insert_official_user(self, user_id: int, username: str) -> None:
+        self._con.execute(
+            "INSERT OR IGNORE INTO user (user_id, agent_id, user_name, name, bio, created_at) "
+            "VALUES (?, -1, ?, ?, '', 0.0)",
+            (user_id, username, username),
+        )
+        self._con.execute(
+            "INSERT OR IGNORE INTO official_user (user_id, username) VALUES (?, ?)",
+            (user_id, username.lower()),
+        )
+        self._con.commit()
+
     def insert_initial_posts(
         self,
         posts: list[tuple[int, str]],
@@ -239,55 +255,75 @@ class SimDB:
     # ------------------------------------------------------------------
     # Feed
     # ------------------------------------------------------------------
-    def get_feed(self, agent_id: int, limit: int = 8) -> list[dict[str, Any]]:
+    def get_feed(
+        self,
+        agent_id: int,
+        limit: int = 8,
+        pinned_post_ids: list[int] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Return up to `limit` feed posts for this agent:
+          - Pinned posts (official account posts for this timestep) always first
           - Posts from users they follow (ordered by num_likes desc)
           - Plus random recent posts for discovery
         Only returns original posts (original_post_id IS NULL) created during simulation (created_at > 0).
         """
         cur = self._con.cursor()
-        # Posts from followed users
-        cur.execute(
-            """
-            SELECT post_id, user_id, content, created_at, num_likes
-            FROM post
-            WHERE user_id IN (SELECT followee_id FROM follow WHERE follower_id = ?)
-              AND original_post_id IS NULL
-              AND CAST(created_at AS REAL) > 0
-            ORDER BY num_likes DESC, created_at DESC
-            LIMIT ?
-            """,
-            (agent_id, limit),
-        )
-        followed_posts = [{**dict(r), "source": "following"} for r in cur.fetchall()]
 
-        # Random posts for discovery (recommendation system)
-        cur.execute(
-            """
-            SELECT post_id, user_id, content, created_at, num_likes
-            FROM post
-            WHERE original_post_id IS NULL
-              AND CAST(created_at AS REAL) > 0
-            ORDER BY RANDOM()
-            LIMIT ?
-            """,
-            (limit,),
-        )
-        random_posts = [{**dict(r), "source": "recommendation"} for r in cur.fetchall()]
+        # Pinned posts (VeChain official posts injected this timestep)
+        pinned: list[dict[str, Any]] = []
+        if pinned_post_ids:
+            placeholders = ",".join("?" for _ in pinned_post_ids)
+            cur.execute(
+                f"SELECT post_id, user_id, content, created_at, num_likes "
+                f"FROM post WHERE post_id IN ({placeholders})",
+                pinned_post_ids,
+            )
+            pinned = [{**dict(r), "source": "official"} for r in cur.fetchall()]
 
-        # Merge: following posts first, then fill with recommendation posts.
-        # Deduplicate by post_id; exclude agent's own posts.
-        seen: set[int] = set()
-        merged: list[dict[str, Any]] = []
-        for p in followed_posts + random_posts:
-            pid = p["post_id"]
-            if pid not in seen and pid is not None:
-                if p["user_id"] != agent_id:
+        seen: set[int] = {p["post_id"] for p in pinned if p["post_id"] is not None}
+        merged: list[dict[str, Any]] = list(pinned)
+
+        if len(merged) < limit:
+            # Posts from followed users
+            cur.execute(
+                """
+                SELECT post_id, user_id, content, created_at, num_likes
+                FROM post
+                WHERE user_id IN (SELECT followee_id FROM follow WHERE follower_id = ?)
+                  AND original_post_id IS NULL
+                  AND CAST(created_at AS REAL) > 0
+                ORDER BY num_likes DESC, created_at DESC
+                LIMIT ?
+                """,
+                (agent_id, limit),
+            )
+            followed_posts = [{**dict(r), "source": "following"} for r in cur.fetchall()]
+
+            # Random posts for discovery (recommendation system)
+            cur.execute(
+                """
+                SELECT post_id, user_id, content, created_at, num_likes
+                FROM post
+                WHERE original_post_id IS NULL
+                  AND CAST(created_at AS REAL) > 0
+                ORDER BY RANDOM()
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            random_posts = [{**dict(r), "source": "recommendation"} for r in cur.fetchall()]
+
+            # Merge: following posts first, then fill with recommendation posts.
+            # Deduplicate by post_id; exclude agent's own posts.
+            for p in followed_posts + random_posts:
+                pid = p["post_id"]
+                if pid not in seen and pid is not None and p["user_id"] != agent_id:
                     seen.add(pid)
                     merged.append(p)
-            if len(merged) >= limit:
-                break
+                if len(merged) >= limit:
+                    break
+
         return merged
 
     # ------------------------------------------------------------------
@@ -678,6 +714,59 @@ def _sample_num_actions_per_agent(
 
 
 # ---------------------------------------------------------------------------
+# Official account post loading
+# ---------------------------------------------------------------------------
+
+def _load_official_posts(
+    csv_path: str,
+    official_usernames: set[str],
+    test_start_dt: datetime,
+    timestep_hours: float,
+) -> dict[int, list[tuple[str, str]]]:
+    """Read real official account root posts from the test CSV and bin them by timestep.
+
+    Returns {timestep: [(username, text), ...]} where timestep >= 1.
+    Posts before the simulation start are dropped; posts after the last timestep
+    are clamped to timestep 1 (so they always appear).
+    """
+    out: dict[int, list[tuple[str, str]]] = {}
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception as e:
+        social_log.warning("_load_official_posts: failed to read %s — %s", csv_path, e)
+        return out
+
+    start = test_start_dt.replace(tzinfo=None)
+
+    for _, row in df.iterrows():
+        uname = str(row.get("user_name", "")).strip().lower()
+        if uname not in official_usernames:
+            continue
+        if str(row.get("is_root", "0")) != "1":
+            continue
+        text = str(
+            row.get("text") or row.get("full_text") or row.get("content") or ""
+        ).strip()
+        if not text:
+            continue
+        ts_raw = str(row.get("timestamp", ""))
+        try:
+            ts_dt = datetime.fromisoformat(ts_raw).replace(tzinfo=None)
+        except Exception:
+            continue
+        hours_offset = max(0.0, (ts_dt - start).total_seconds() / 3600.0)
+        timestep = max(1, int(math.ceil(hours_offset / max(timestep_hours, 1e-9))))
+        out.setdefault(timestep, []).append((uname, text))
+
+    total = sum(len(v) for v in out.values())
+    social_log.info(
+        "_load_official_posts: %d posts from %s across %d timesteps",
+        total, sorted(official_usernames), len(out),
+    )
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Agent loading
 # ---------------------------------------------------------------------------
 
@@ -816,6 +905,9 @@ async def running(
     action_probabilities: dict[str, float] | None = None,
     available_actions: list[str] | None = None,
     inference_configs: dict[str, Any] | None = None,
+    # Official account settings
+    official_accounts: list[str] | None = None,
+    official_posts_csv_path: str = "persona_generation/outputs/test_tweets.csv",
     # Legacy OASIS params accepted but ignored:
     recsys_type: str = "random",
     clock_factor: int = 60,
@@ -891,6 +983,25 @@ async def running(
     ]
     db.insert_initial_posts(initial_posts, start_time=0.0)
 
+    # --- Official accounts setup ---
+    # Official accounts (e.g. vechainofficial) are NOT simulated agents; their real
+    # posts from the test split are injected at the correct timestep so community
+    # agents can react to them. Official post IDs are pinned to every agent's feed.
+    official_usernames: set[str] = {u.lower() for u in (official_accounts or [])}
+    official_user_ids: dict[str, int] = {}   # username -> DB user_id
+    official_posts_by_timestep: dict[int, list[tuple[str, str]]] = {}
+
+    if official_usernames:
+        max_agent_id = max(a.agent_id for a in agents) if agents else -1
+        for i, uname in enumerate(sorted(official_usernames)):
+            uid = max_agent_id + 1 + i
+            db.insert_official_user(uid, uname)
+            official_user_ids[uname] = uid
+            social_log.info("Registered official account @%s as DB user_id=%d", uname, uid)
+
+        # Posts will be loaded after simulation_start_dt is resolved below.
+        pass
+
     # --- Activity profiles ---
     usernames = {a.username.lower() for a in agents}
     activity_profiles = _build_activity_profiles(
@@ -943,6 +1054,15 @@ async def running(
 
     if simulation_start_dt is None:
         simulation_start_dt = datetime.now()
+
+    # Now that simulation_start_dt is resolved, reload official posts with correct start time.
+    if official_usernames:
+        official_posts_by_timestep = _load_official_posts(
+            csv_path=_resolve(official_posts_csv_path, _REPO_ROOT),
+            official_usernames=official_usernames,
+            test_start_dt=simulation_start_dt,
+            timestep_hours=timestep_hours,
+        )
 
     social_log.info(
         "Starting simulation: %d agents, %d timesteps, model=%s",
@@ -1001,6 +1121,20 @@ async def running(
         if not active_agents:
             continue
 
+        # --- Inject official account posts for this timestep ---
+        # These are real posts from e.g. @vechainofficial, replayed from the test split.
+        # Their post_ids are pinned into every community agent's feed so agents react to them.
+        current_pinned_post_ids: list[int] = []
+        for uname, text in official_posts_by_timestep.get(timestep, []):
+            uid = official_user_ids.get(uname)
+            if uid is not None:
+                pid = db.create_post(uid, text, timestep)
+                current_pinned_post_ids.append(pid)
+                social_log.info(
+                    "t=%d Injected official post from @%s (post_id=%d): %s…",
+                    timestep, uname, pid, text[:60],
+                )
+
         # Gather feeds and LLM decisions concurrently for all active agents
         # (each agent may take multiple actions)
         remaining_post_budget: int | None = target_posts_per_step
@@ -1019,16 +1153,18 @@ async def running(
         # Each task returns a list of (decision, feed_stats) pairs.
         async def _agent_action_task(
             agent: Agent,
+            pinned_post_ids: list[int],
         ) -> list[tuple[dict[str, Any], dict[str, int]]]:
             n = agent_action_counts[agent.agent_id]
             results = []
             for _ in range(n):
-                feed = db.get_feed(agent.agent_id, limit=max_feed_posts)
+                feed = db.get_feed(agent.agent_id, limit=max_feed_posts, pinned_post_ids=pinned_post_ids)
                 n_following = sum(1 for p in feed if p.get("source") == "following")
                 n_rec = sum(1 for p in feed if p.get("source") == "recommendation")
+                n_official = sum(1 for p in feed if p.get("source") == "official")
                 social_log.info(
-                    "t=%d @%s | obs: feed=%d (following=%d, rec=%d)",
-                    timestep, agent.username, len(feed), n_following, n_rec,
+                    "t=%d @%s | obs: feed=%d (following=%d, rec=%d, official=%d)",
+                    timestep, agent.username, len(feed), n_following, n_rec, n_official,
                 )
                 decision = await _call_llm_for_agent(agent, feed)
                 feed_stats = {
@@ -1040,7 +1176,7 @@ async def running(
             return results
 
         all_results: list[list[tuple[dict[str, Any], dict[str, int]]]] = await asyncio.gather(
-            *[_agent_action_task(a) for a in active_agents],
+            *[_agent_action_task(a, current_pinned_post_ids) for a in active_agents],
             return_exceptions=False,
         )
 

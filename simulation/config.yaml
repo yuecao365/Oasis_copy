@@ -9,6 +9,12 @@
 data:
   db_path: data/simu_db/yue_run.db
   csv_path: persona_generation/outputs/user_personas_yue.csv
+  # Official accounts whose real test-period posts are injected verbatim each timestep.
+  # Community agents always see these posts in their feed and can like/comment/repost them.
+  official_accounts:
+    - vechainofficial
+  # CSV containing the official posts (same file used for ground-truth comparison).
+  official_posts_csv_path: persona_generation/outputs/test_tweets.csv
 
 simulation:
   # If auto_num_timesteps_from_split=true, num_timesteps is ignored and derived
