@@ -242,9 +242,23 @@ def load_test(test_csv: Path, persona_usernames: set[str]) -> Dict:
     }
 
 
+def _load_synthetic_ids(cur) -> List[int]:
+    """Return user_ids of synthetic agents; empty list if the table doesn't exist (e.g. baseline DB)."""
+    try:
+        cur.execute("SELECT user_id FROM synthetic_agent")
+        return [r[0] for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
 def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: float) -> Dict:
     con = sqlite3.connect(str(db_path))
     cur = con.cursor()
+
+    # Synthetic agent IDs are excluded from all engagement counts so their
+    # actions don't inflate fidelity metrics.
+    synthetic_ids = _load_synthetic_ids(cur)
+    synth_ph = ",".join("?" for _ in synthetic_ids) if synthetic_ids else None
 
     sim_posts_by_user = Counter()
     sim_total_engagement_by_user = Counter()
@@ -255,10 +269,10 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     sim_eng_reposts = []
     sim_eng_quotes = []
 
-    # Original posts created by simulation (exclude initialization created_at == 0).
+    # Original posts by persona users created during simulation (created_at == 0 are seed rows).
     cur.execute(
         """
-        SELECT p.post_id, p.user_id, p.created_at, p.num_likes, p.num_shares
+        SELECT p.post_id, p.user_id, p.created_at, p.num_shares
         FROM post p
         WHERE p.original_post_id IS NULL
           AND CAST(p.created_at AS REAL) > 0
@@ -267,8 +281,7 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
     sim_posts = cur.fetchall()
     post_ids = []
     post_user = {}
-    post_like = {}
-    for post_id, user_id, created_at, nlikes, nshares in sim_posts:
+    for post_id, user_id, created_at, nshares in sim_posts:
         uname = agent_to_username.get(_safe_int(user_id, -1))
         if not uname:
             continue
@@ -278,54 +291,87 @@ def load_sim(db_path: Path, agent_to_username: Dict[int, str], timestep_hours: f
         sim_post_steps.append(step)
         hour = int((step * timestep_hours) % 24)
         sim_hour[hour] += 1
-        sim_eng_like.append(_safe_int(nlikes, 0))
         sim_eng_share.append(_safe_int(nshares, 0))
         post_ids.append(pid)
         post_user[pid] = uname
-        post_like[pid] = _safe_int(nlikes, 0)
 
-    # Comment counts per post.
+    # Engagement counts per persona post — all excluding synthetic agents.
     sim_eng_replies = []
     repost_count = {}
     quote_count = {}
+    like_count: Dict[int, int] = {}
     if post_ids:
-        placeholders = ",".join("?" for _ in post_ids)
-        cur.execute(
-            f"SELECT post_id, COUNT(*) FROM comment WHERE post_id IN ({placeholders}) GROUP BY post_id",
-            post_ids,
-        )
+        pid_ph = ",".join("?" for _ in post_ids)
+
+        # Likes from the like table (not num_likes, which includes synthetic agent likes).
+        if synth_ph:
+            cur.execute(
+                f'SELECT post_id, COUNT(*) FROM "like" '
+                f'WHERE post_id IN ({pid_ph}) AND user_id NOT IN ({synth_ph}) GROUP BY post_id',
+                post_ids + synthetic_ids,
+            )
+        else:
+            cur.execute(
+                f'SELECT post_id, COUNT(*) FROM "like" WHERE post_id IN ({pid_ph}) GROUP BY post_id',
+                post_ids,
+            )
+        like_count = {pid: cnt for pid, cnt in cur.fetchall()}
+
+        # Comments excluding synthetic agents.
+        if synth_ph:
+            cur.execute(
+                f"SELECT post_id, COUNT(*) FROM comment "
+                f"WHERE post_id IN ({pid_ph}) AND user_id NOT IN ({synth_ph}) GROUP BY post_id",
+                post_ids + synthetic_ids,
+            )
+        else:
+            cur.execute(
+                f"SELECT post_id, COUNT(*) FROM comment WHERE post_id IN ({pid_ph}) GROUP BY post_id",
+                post_ids,
+            )
         comment_count = {pid: cnt for pid, cnt in cur.fetchall()}
 
-        # Repost and quote counts per original post.
-        # Repost rows: child post with original_post_id set and quote_content NULL/empty.
-        # Quote rows: child post with original_post_id set and non-empty quote_content.
-        cur.execute(
-            f"""
-            SELECT original_post_id,
-                   SUM(CASE WHEN quote_content IS NULL OR TRIM(quote_content) = '' THEN 1 ELSE 0 END) AS reposts,
-                   SUM(CASE WHEN quote_content IS NOT NULL AND TRIM(quote_content) <> '' THEN 1 ELSE 0 END) AS quotes
-            FROM post
-            WHERE original_post_id IN ({placeholders})
-            GROUP BY original_post_id
-            """,
-            post_ids,
-        )
+        # Reposts and quotes excluding synthetic agents.
+        if synth_ph:
+            cur.execute(
+                f"""
+                SELECT original_post_id,
+                       SUM(CASE WHEN quote_content IS NULL OR TRIM(quote_content) = '' THEN 1 ELSE 0 END),
+                       SUM(CASE WHEN quote_content IS NOT NULL AND TRIM(quote_content) <> '' THEN 1 ELSE 0 END)
+                FROM post
+                WHERE original_post_id IN ({pid_ph}) AND user_id NOT IN ({synth_ph})
+                GROUP BY original_post_id
+                """,
+                post_ids + synthetic_ids,
+            )
+        else:
+            cur.execute(
+                f"""
+                SELECT original_post_id,
+                       SUM(CASE WHEN quote_content IS NULL OR TRIM(quote_content) = '' THEN 1 ELSE 0 END),
+                       SUM(CASE WHEN quote_content IS NOT NULL AND TRIM(quote_content) <> '' THEN 1 ELSE 0 END)
+                FROM post
+                WHERE original_post_id IN ({pid_ph})
+                GROUP BY original_post_id
+                """,
+                post_ids,
+            )
         for opid, rcount, qcount in cur.fetchall():
             repost_count[_safe_int(opid, -1)] = _safe_int(rcount, 0)
             quote_count[_safe_int(opid, -1)] = _safe_int(qcount, 0)
 
         for pid in post_ids:
+            nlikes = _safe_int(like_count.get(pid, 0), 0)
             nreplies = _safe_int(comment_count.get(pid, 0), 0)
             nreposts = _safe_int(repost_count.get(pid, 0), 0)
             nquotes = _safe_int(quote_count.get(pid, 0), 0)
+            sim_eng_like.append(nlikes)
             sim_eng_replies.append(nreplies)
             sim_eng_reposts.append(nreposts)
             sim_eng_quotes.append(nquotes)
             uname = post_user.get(pid)
             if uname:
-                sim_total_engagement_by_user[uname] += (
-                    _safe_int(post_like.get(pid, 0), 0) + nreplies + nreposts + nquotes
-                )
+                sim_total_engagement_by_user[uname] += nlikes + nreplies + nreposts + nquotes
 
     # Follow graph in simulation (map to usernames).
     cur.execute(
@@ -658,26 +704,51 @@ def _compute_official_post_engagement(
         if official_post_ids:
             pid_placeholders = ",".join("?" for _ in official_post_ids)
 
-            # Likes
-            cur.execute(
-                f'SELECT post_id, COUNT(*) FROM "like" WHERE post_id IN ({pid_placeholders}) GROUP BY post_id',
-                official_post_ids,
-            )
+            # Exclude synthetic agents from community engagement counts.
+            synthetic_ids = _load_synthetic_ids(cur)
+            synth_ph = ",".join("?" for _ in synthetic_ids) if synthetic_ids else None
+
+            # Likes (excluding synthetic agents)
+            if synth_ph:
+                cur.execute(
+                    f'SELECT post_id, COUNT(*) FROM "like" '
+                    f'WHERE post_id IN ({pid_placeholders}) AND user_id NOT IN ({synth_ph}) GROUP BY post_id',
+                    official_post_ids + synthetic_ids,
+                )
+            else:
+                cur.execute(
+                    f'SELECT post_id, COUNT(*) FROM "like" WHERE post_id IN ({pid_placeholders}) GROUP BY post_id',
+                    official_post_ids,
+                )
             likes_by_pid = {r[0]: r[1] for r in cur.fetchall()}
 
-            # Comments
-            cur.execute(
-                f"SELECT post_id, COUNT(*) FROM comment WHERE post_id IN ({pid_placeholders}) GROUP BY post_id",
-                official_post_ids,
-            )
+            # Comments (excluding synthetic agents)
+            if synth_ph:
+                cur.execute(
+                    f"SELECT post_id, COUNT(*) FROM comment "
+                    f"WHERE post_id IN ({pid_placeholders}) AND user_id NOT IN ({synth_ph}) GROUP BY post_id",
+                    official_post_ids + synthetic_ids,
+                )
+            else:
+                cur.execute(
+                    f"SELECT post_id, COUNT(*) FROM comment WHERE post_id IN ({pid_placeholders}) GROUP BY post_id",
+                    official_post_ids,
+                )
             comments_by_pid = {r[0]: r[1] for r in cur.fetchall()}
 
-            # Reposts + quotes
-            cur.execute(
-                f"SELECT original_post_id, COUNT(*) FROM post "
-                f"WHERE original_post_id IN ({pid_placeholders}) GROUP BY original_post_id",
-                official_post_ids,
-            )
+            # Reposts + quotes (excluding synthetic agents)
+            if synth_ph:
+                cur.execute(
+                    f"SELECT original_post_id, COUNT(*) FROM post "
+                    f"WHERE original_post_id IN ({pid_placeholders}) AND user_id NOT IN ({synth_ph}) GROUP BY original_post_id",
+                    official_post_ids + synthetic_ids,
+                )
+            else:
+                cur.execute(
+                    f"SELECT original_post_id, COUNT(*) FROM post "
+                    f"WHERE original_post_id IN ({pid_placeholders}) GROUP BY original_post_id",
+                    official_post_ids,
+                )
             shares_by_pid = {r[0]: r[1] for r in cur.fetchall()}
 
             for pid in official_post_ids:
@@ -764,6 +835,198 @@ def _compute_repetition(user_post_texts: Dict[str, List[str]]) -> Dict:
         "high_repetition_user_rate": round(high_rep_rate, 4),
         "near_duplicate_rate": round(near_dup_rate, 4),
     }
+
+
+def _compute_community_health(
+    db_path: Path,
+    persona_usernames: set,
+    official_accounts: List[str],
+) -> Dict:
+    """
+    Absolute community-health metrics — no ground-truth comparison needed.
+    Measures the intrinsic quality of engagement within the simulated community.
+    Designed to show improvement when synthetic engagement agents are added.
+
+    All metrics are scoped to persona users (from the persona CSV) excluding
+    official accounts.  Engagement on persona posts may come from anyone
+    (including synthetic agents).
+    """
+    official_lower = {a.lower() for a in official_accounts if a}
+    persona_lower = {u.lower() for u in persona_usernames}
+
+    try:
+        con = sqlite3.connect(str(db_path))
+        cur = con.cursor()
+
+        # Map username → user_id for everyone in DB
+        cur.execute("SELECT user_id, user_name FROM user")
+        all_db_users = {row[1].lower(): row[0] for row in cur.fetchall()}
+
+        # Official user IDs (excluded from community metrics)
+        cur.execute("SELECT user_id FROM official_user")
+        official_ids = {r[0] for r in cur.fetchall()}
+
+        # Persona user IDs: in persona CSV and not official
+        persona_user_ids = [
+            uid for uname, uid in all_db_users.items()
+            if uname in persona_lower and uid not in official_ids
+        ]
+        total_persona_users = len(persona_user_ids)
+
+        if total_persona_users == 0:
+            con.close()
+            return {"error": "no persona users found in DB"}
+
+        uid_ph = ",".join("?" for _ in persona_user_ids)
+
+        # Community posts: original posts by persona users created during simulation
+        cur.execute(
+            f"SELECT post_id FROM post "
+            f"WHERE user_id IN ({uid_ph}) "
+            f"AND original_post_id IS NULL "
+            f"AND CAST(created_at AS REAL) > 0",
+            persona_user_ids,
+        )
+        community_post_ids = [r[0] for r in cur.fetchall()]
+        total_community_posts = len(community_post_ids)
+
+        # Synthetic agents are excluded from all engagement counts.
+        synthetic_ids = _load_synthetic_ids(cur)
+        synth_ph = ",".join("?" for _ in synthetic_ids) if synthetic_ids else None
+
+        # Per-post engagement tallies — actions by synthetic agents excluded
+        posts_with_reply = 0
+        posts_with_zero_engagement = 0
+        total_likes = 0
+        total_comments = 0
+        total_reposts = 0
+
+        if community_post_ids:
+            pid_ph = ",".join("?" for _ in community_post_ids)
+
+            if synth_ph:
+                cur.execute(
+                    f'SELECT post_id, COUNT(*) FROM "like" '
+                    f'WHERE post_id IN ({pid_ph}) AND user_id NOT IN ({synth_ph}) GROUP BY post_id',
+                    community_post_ids + synthetic_ids,
+                )
+            else:
+                cur.execute(
+                    f'SELECT post_id, COUNT(*) FROM "like" WHERE post_id IN ({pid_ph}) GROUP BY post_id',
+                    community_post_ids,
+                )
+            likes_by_pid = {r[0]: r[1] for r in cur.fetchall()}
+
+            if synth_ph:
+                cur.execute(
+                    f"SELECT post_id, COUNT(*) FROM comment "
+                    f"WHERE post_id IN ({pid_ph}) AND user_id NOT IN ({synth_ph}) GROUP BY post_id",
+                    community_post_ids + synthetic_ids,
+                )
+            else:
+                cur.execute(
+                    f"SELECT post_id, COUNT(*) FROM comment WHERE post_id IN ({pid_ph}) GROUP BY post_id",
+                    community_post_ids,
+                )
+            comments_by_pid = {r[0]: r[1] for r in cur.fetchall()}
+
+            if synth_ph:
+                cur.execute(
+                    f"SELECT original_post_id, COUNT(*) FROM post "
+                    f"WHERE original_post_id IN ({pid_ph}) AND user_id NOT IN ({synth_ph}) GROUP BY original_post_id",
+                    community_post_ids + synthetic_ids,
+                )
+            else:
+                cur.execute(
+                    f"SELECT original_post_id, COUNT(*) FROM post "
+                    f"WHERE original_post_id IN ({pid_ph}) GROUP BY original_post_id",
+                    community_post_ids,
+                )
+            reposts_by_pid = {r[0]: r[1] for r in cur.fetchall()}
+
+            for pid in community_post_ids:
+                l = likes_by_pid.get(pid, 0)
+                c = comments_by_pid.get(pid, 0)
+                r = reposts_by_pid.get(pid, 0)
+                total_likes += l
+                total_comments += c
+                total_reposts += r
+                if c > 0:
+                    posts_with_reply += 1
+                if l == 0 and c == 0 and r == 0:
+                    posts_with_zero_engagement += 1
+
+        reply_rate = posts_with_reply / total_community_posts if total_community_posts else 0.0
+        unanswered_rate = posts_with_zero_engagement / total_community_posts if total_community_posts else 0.0
+        total_community_engagement = total_likes + total_comments + total_reposts
+        avg_engagement_per_post = total_community_engagement / total_community_posts if total_community_posts else 0.0
+
+        # User participation rate: persona users (not synthetic) who took any action
+        active_ids: set = set()
+
+        cur.execute(
+            f"SELECT DISTINCT user_id FROM post WHERE user_id IN ({uid_ph}) AND CAST(created_at AS REAL) > 0",
+            persona_user_ids,
+        )
+        active_ids.update(r[0] for r in cur.fetchall())
+
+        cur.execute(
+            f'SELECT DISTINCT user_id FROM "like" WHERE user_id IN ({uid_ph})',
+            persona_user_ids,
+        )
+        active_ids.update(r[0] for r in cur.fetchall())
+
+        cur.execute(
+            f"SELECT DISTINCT user_id FROM comment WHERE user_id IN ({uid_ph})",
+            persona_user_ids,
+        )
+        active_ids.update(r[0] for r in cur.fetchall())
+
+        cur.execute(
+            f"SELECT DISTINCT follower_id FROM follow WHERE follower_id IN ({uid_ph})",
+            persona_user_ids,
+        )
+        active_ids.update(r[0] for r in cur.fetchall())
+
+        user_participation_rate = len(active_ids) / total_persona_users
+
+        # Peripheral user activation: bottom-50% of persona users by post count
+        cur.execute(
+            f"SELECT user_id, COUNT(*) FROM post "
+            f"WHERE user_id IN ({uid_ph}) AND original_post_id IS NULL AND CAST(created_at AS REAL) > 0 "
+            f"GROUP BY user_id",
+            persona_user_ids,
+        )
+        posts_by_uid = {r[0]: r[1] for r in cur.fetchall()}
+        ranked = sorted(persona_user_ids, key=lambda uid: posts_by_uid.get(uid, 0))
+        n_peripheral = max(1, len(ranked) // 2)
+        peripheral_ids = set(ranked[:n_peripheral])
+        peripheral_activation_rate = len(peripheral_ids & active_ids) / len(peripheral_ids)
+
+        # Follow growth per timestep
+        cur.execute("SELECT COUNT(*) FROM follow WHERE CAST(created_at AS REAL) > 0")
+        total_new_follows = cur.fetchone()[0]
+        cur.execute("SELECT MAX(timestep) FROM observation")
+        row = cur.fetchone()
+        max_timestep = (row[0] or 0) if row else 0
+        follow_growth_per_timestep = total_new_follows / max_timestep if max_timestep > 0 else 0.0
+
+        con.close()
+
+        return {
+            "total_persona_users": total_persona_users,
+            "total_community_posts": total_community_posts,
+            "total_community_engagement": total_community_engagement,
+            "avg_engagement_per_community_post": round(avg_engagement_per_post, 4),
+            "reply_rate": round(reply_rate, 4),
+            "unanswered_post_rate": round(unanswered_rate, 4),
+            "user_participation_rate": round(user_participation_rate, 4),
+            "peripheral_user_activation_rate": round(peripheral_activation_rate, 4),
+            "follow_growth_per_timestep": round(follow_growth_per_timestep, 4),
+        }
+
+    except Exception as e:
+        return {"error": f"community health compute failed: {e}"}
 
 
 def _slug(v: object) -> str:
@@ -993,6 +1256,13 @@ def main() -> None:
         official_accounts=official_accounts_list,
     )
 
+    print("Computing community health metrics...")
+    community_health = _compute_community_health(
+        db_path=args.db,
+        persona_usernames=persona_usernames,
+        official_accounts=official_accounts_list,
+    )
+
     report = {
         "inputs": {
             "db": str(args.db),
@@ -1028,6 +1298,7 @@ def main() -> None:
             "user_level": engagement_user_level,
         },
         "official_post_engagement": official_engagement,
+        "community_health": community_health,
     }
 
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -1130,6 +1401,25 @@ def main() -> None:
             f"- Spearman (engagement/post): {_fmtv(oe.get('spearman_engagement_per_post'))}",
         ]
     md_lines.append("")
+
+    ch = report.get("community_health", {})
+    md_lines += ["## Community Health"]
+    if "error" in ch:
+        md_lines.append(f"- Error: {ch['error']}")
+    else:
+        md_lines += [
+            f"- Persona users: {ch.get('total_persona_users', 'N/A')}",
+            f"- Community posts: {ch.get('total_community_posts', 'N/A')}",
+            f"- Total community engagement: {ch.get('total_community_engagement', 'N/A')}",
+            f"- Avg engagement per community post: {_fmtv(ch.get('avg_engagement_per_community_post'))}",
+            f"- Reply rate (posts with ≥1 comment): {_fmtv(ch.get('reply_rate'))}",
+            f"- Unanswered post rate (0 engagement): {_fmtv(ch.get('unanswered_post_rate'))}",
+            f"- User participation rate: {_fmtv(ch.get('user_participation_rate'))}",
+            f"- Peripheral user activation rate: {_fmtv(ch.get('peripheral_user_activation_rate'))}",
+            f"- Follow growth per timestep: {_fmtv(ch.get('follow_growth_per_timestep'))}",
+        ]
+    md_lines.append("")
+
     args.output_md.write_text("\n".join(md_lines), encoding="utf-8")
 
     # Also write a historical, hyperparameter-labeled artifact for comparison over time.

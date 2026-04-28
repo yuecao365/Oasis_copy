@@ -7,7 +7,7 @@
 
 ---
 data:
-  db_path: data/simu_db/yue_run.db
+  db_path: data/simu_db/facilitated_run.db
   csv_path: persona_generation/outputs/user_personas_yue.csv
   # Official accounts whose real test-period posts are injected verbatim each timestep.
   # Community agents always see these posts in their feed and can like/comment/repost them.
@@ -19,8 +19,8 @@ data:
 simulation:
   # If auto_num_timesteps_from_split=true, num_timesteps is ignored and derived
   # from persona_generation/outputs/split_info.json test_period duration.
-  num_timesteps: 3
-  auto_num_timesteps_from_split: true
+  num_timesteps: 48
+  auto_num_timesteps_from_split: false
   split_info_path: persona_generation/outputs/split_info.json
   # Source train split used to estimate user activity probabilities.
   train_activity_csv_path: persona_generation/outputs/train_tweets.csv
@@ -42,7 +42,7 @@ simulation:
   # Value written to clock.time_step each iteration: timestep * clock_step_units.
   clock_step_units: 1
   # Increase autonomous agent action firing rate.
-  agent_activation_multiplier: 2.0
+  agent_activation_multiplier: 4.0
   min_activation_threshold: 0.10
   clock_factor: 60
   recsys_type: random
@@ -59,6 +59,52 @@ simulation:
     - create_comment
     - repost
     - like_post
+
+synthetic_agents:
+  - role: community_manager
+    username: community_manager
+    name: VeChain Community Manager
+    bio: "VeChain community manager | Connecting builders, creators, and believers in the ecosystem"
+    user_char: "Warm, encouraging, and always ready to engage. I make sure no voice goes unheard — I like and amplify great community content, surface buried posts, and occasionally add a warm response to spark discussion."
+    category_description: "VeChain ecosystem, community building, blockchain adoption, member engagement"
+    action_probabilities:
+      like_post: 0.50
+      create_comment: 0.30
+      repost: 0.15
+      create_post: 0.05
+    feed_mode: unanswered   # prioritizes posts with 0 comments
+    always_active: true
+    actions_per_timestep: 3
+
+  - role: domain_expert
+    username: vechain_analyst
+    name: VeChain Analyst
+    bio: "Blockchain researcher & VeChain ecosystem analyst | Supply chain | DeFi | Real-world assets | Opinions my own"
+    user_char: "Analytical curator of VeChain content. I surface and amplify the best community posts with likes and reposts, occasionally add expert commentary, and rarely post original content so I don't crowd the feed."
+    category_description: "VeChain technology, blockchain infrastructure, DeFi, supply chain traceability, enterprise blockchain, tokenomics, ecosystem developments"
+    action_probabilities:
+      like_post: 0.45
+      repost: 0.25
+      create_comment: 0.15
+      create_post: 0.15
+    feed_mode: default
+    always_active: true
+    actions_per_timestep: 2
+
+  - role: discussion_facilitator
+    username: vechain_connector
+    name: VeChain Connector
+    bio: "Connecting VeChain community members | Sparking real conversations across the ecosystem"
+    user_char: "I exist to turn monologues into dialogues. I ask pointed open-ended questions in comments, quote community posts with discussion prompts, and actively follow members whose voices deserve more reach — all to get community members talking to each other."
+    category_description: "VeChain community discussion, blockchain ecosystem, peer-to-peer engagement, conversation facilitation"
+    action_probabilities:
+      create_comment: 0.45
+      quote_post: 0.25
+      like_post: 0.20
+      follow: 0.10
+    feed_mode: default
+    always_active: true
+    actions_per_timestep: 3
 
 inference:
   model_name: qwen3.5-plus

@@ -117,6 +117,14 @@ def load_data(db_path: str, csv_path: str = "") -> dict:
 
 
 def generate_html(data: dict, db_path: str, metrics: dict | None = None) -> str:
+    if metrics is None:
+        db_stem = Path(db_path).stem
+        history_dir = Path(_REPO_ROOT) / "simulation" / "metrics_history"
+        if history_dir.exists():
+            matches = sorted(history_dir.glob(f"db-{db_stem}__*.json"))
+            if matches:
+                with open(matches[-1], encoding="utf-8") as _f:
+                    metrics = json.load(_f)
     data_json = json.dumps(data)
     metrics_json = json.dumps(metrics or {})
     db_label = Path(db_path).name
@@ -620,23 +628,31 @@ agentList.innerHTML = sorted.map(u => `
   ]);
 
   const ef = METRICS.engagement_fit || {{}};
+  const efu = ef.user_level || {{}};
+  const efp = ((ef.post_level || {{}}).top_share_curve || {{}});
   html += section('Engagement Fit', [
     card('GT Total Posts', ef.gt_total_posts),
     card('Sim Total Posts', ef.sim_total_posts),
-    card('Likes Top-Share RMSE', ef.likes_top_share_curve_rmse, 'deviation from GT likes concentration curve'),
-    card('Spearman Engagement/User', ef.spearman_total_engagement_per_user, 'rank correlation of per-user engagement'),
+    card('Spearman Engagement/User', efu.spearman_total_engagement_per_user, 'rank correlation of per-user total engagement'),
+    card('JSD Engagement/User', efu.jsd_total_engagement_per_user, 'JS divergence of per-user engagement distribution (lower = better)'),
+    card('Top-10 User Overlap', (efu.topk_overlap_total_engagement_per_user || {{}}).top10, 'fraction of top-10 highest-engagement users shared with GT'),
+    card('Likes Top-Share RMSE', (efp.likes || {{}}).top_share_curve_rmse, 'deviation from GT likes concentration curve (lower = better)'),
+    card('Replies Top-Share RMSE', (efp.replies || {{}}).top_share_curve_rmse, 'deviation from GT replies concentration curve (lower = better)'),
+    card('Reposts Top-Share RMSE', (efp.retweets_reposts || {{}}).top_share_curve_rmse, 'deviation from GT retweet concentration curve (lower = better)'),
   ]);
 
-  const cf = METRICS.content_fit || {{}};
-  const es = cf.engagement_source || {{}};
-  const sem = cf.semantic_similarity || {{}};
-  html += section('Content Fit', [
-    card('Total Engagements Classified', es.total_engagements_classified),
-    card('Organic Engagements', es.organic_engagements),
-    card('Recsys Engagements', es.recsys_engagements),
-    card('Centroid Similarity', sem.sim_to_gt_centroid_sim !== undefined ? sem.sim_to_gt_centroid_sim : (sem.error || null), sem.error ? null : 'cosine sim between sim and GT post embedding centroids'),
-    card('Semantic Max-Match', sem.sim_to_gt_semantic_max_match !== undefined ? sem.sim_to_gt_semantic_max_match : (sem.error || null), sem.error ? null : 'avg best-match cosine sim per sim post vs GT'),
-  ]);
+  const ch = METRICS.community_health || {{}};
+  if (Object.keys(ch).length > 0) {{
+    html += section('Community Health (Absolute)', [
+      card('Total Community Posts', ch.total_community_posts, 'posts authored by persona agents (excl. synthetic)'),
+      card('Total Community Engagement', ch.total_community_engagement, 'likes + comments + reposts by persona agents'),
+      card('Avg Engagement / Post', ch.avg_engagement_per_community_post, 'mean engagement actions received per community post'),
+      card('Reply Rate', ch.reply_rate, 'fraction of posts that received at least one comment'),
+      card('Unanswered Post Rate', ch.unanswered_post_rate, 'fraction of posts with zero engagement (lower = better)'),
+      card('User Participation Rate', ch.user_participation_rate, 'fraction of persona users who posted at least once'),
+      card('Follow Growth / Timestep', ch.follow_growth_per_timestep, 'avg new follow relationships created per timestep'),
+    ]);
+  }}
 
   const oe = METRICS.official_post_engagement || {{}};
   if (!oe.error && Object.keys(oe).length > 0) {{
@@ -727,14 +743,7 @@ def main():
     print(f"  {len(data['users'])} agents, {len(data['sim_posts'])} sim posts, "
           f"{len(data['timesteps'])} timesteps, {len(data['personas'])} personas")
 
-    metrics: dict = {}
-    metrics_path = os.path.join(_REPO_ROOT, "simulation", "metrics_report.json")
-    if os.path.exists(metrics_path):
-        with open(metrics_path, encoding="utf-8") as f:
-            metrics = json.load(f)
-        print(f"  Loaded metrics from {metrics_path}")
-
-    html = generate_html(data, db_path, metrics=metrics)
+    html = generate_html(data, db_path, metrics=None)
     Path(out_path).write_text(html, encoding="utf-8")
     print(f"Written: {out_path}")
 

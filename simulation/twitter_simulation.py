@@ -10,8 +10,8 @@ Pipeline:
   persona_generation/outputs/user_personas.csv  (agent profiles)
   persona_generation/outputs/split_info.json     (test-period timing)
   persona_generation/outputs/train_tweets.csv    (activity profiles)
-     → LLM-driven simulation
-     → data/simu_db/.../*.db                     (SQLite output)
+     -> LLM-driven simulation
+     -> data/simu_db/.../*.db                     (SQLite output)
 """
 from __future__ import annotations
 
@@ -97,6 +97,12 @@ class Agent:
     action_probs: dict[str, float] = field(default_factory=dict)
     activity_hourly: list[float] | None = None
     activity_weekly: list[float] | None = None
+    # Synthetic agent fields (unused for persona agents)
+    is_synthetic: bool = False
+    role: str = ""
+    system_prompt_override: str = ""
+    feed_mode: str = "default"   # "default" or "unanswered"
+    actions_per_step: int = 1
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +172,11 @@ class SimDB:
         user_id  INTEGER PRIMARY KEY,
         username TEXT
     );
+    CREATE TABLE IF NOT EXISTS synthetic_agent (
+        user_id  INTEGER PRIMARY KEY,
+        username TEXT,
+        role     TEXT
+    );
     """
 
     def __init__(self, db_path: str) -> None:
@@ -234,6 +245,13 @@ class SimDB:
         self._con.execute(
             "INSERT OR IGNORE INTO official_user (user_id, username) VALUES (?, ?)",
             (user_id, username.lower()),
+        )
+        self._con.commit()
+
+    def insert_synthetic_agent(self, user_id: int, username: str, role: str) -> None:
+        self._con.execute(
+            "INSERT OR IGNORE INTO synthetic_agent (user_id, username, role) VALUES (?, ?, ?)",
+            (user_id, username.lower(), role),
         )
         self._con.commit()
 
@@ -325,6 +343,73 @@ class SimDB:
                     break
 
         return merged
+
+    def get_unanswered_feed(
+        self,
+        agent_id: int,
+        limit: int = 8,
+        pinned_post_ids: list[int] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Feed biased toward posts with 0 comments — used by community manager."""
+        cur = self._con.cursor()
+
+        pinned: list[dict[str, Any]] = []
+        if pinned_post_ids:
+            placeholders = ",".join("?" for _ in pinned_post_ids)
+            cur.execute(
+                f"SELECT post_id, user_id, content, created_at, num_likes "
+                f"FROM post WHERE post_id IN ({placeholders})",
+                pinned_post_ids,
+            )
+            pinned = [{**dict(r), "source": "official"} for r in cur.fetchall()]
+
+        seen: set[int] = {p["post_id"] for p in pinned}
+        merged: list[dict[str, Any]] = list(pinned)
+
+        if len(merged) < limit:
+            cur.execute(
+                """
+                SELECT p.post_id, p.user_id, p.content, p.created_at, p.num_likes
+                FROM post p
+                WHERE p.original_post_id IS NULL
+                  AND CAST(p.created_at AS REAL) > 0
+                  AND p.user_id != ?
+                  AND p.post_id NOT IN (SELECT DISTINCT post_id FROM comment)
+                ORDER BY p.created_at DESC
+                LIMIT ?
+                """,
+                (agent_id, limit * 2),
+            )
+            for r in cur.fetchall():
+                p = {**dict(r), "source": "unanswered"}
+                if p["post_id"] not in seen:
+                    seen.add(p["post_id"])
+                    merged.append(p)
+                if len(merged) >= limit:
+                    break
+
+        if len(merged) < limit:
+            cur.execute(
+                """
+                SELECT post_id, user_id, content, created_at, num_likes
+                FROM post
+                WHERE original_post_id IS NULL
+                  AND CAST(created_at AS REAL) > 0
+                  AND user_id != ?
+                ORDER BY RANDOM()
+                LIMIT ?
+                """,
+                (agent_id, limit),
+            )
+            for r in cur.fetchall():
+                p = {**dict(r), "source": "recommendation"}
+                if p["post_id"] not in seen:
+                    seen.add(p["post_id"])
+                    merged.append(p)
+                if len(merged) >= limit:
+                    break
+
+        return merged[:limit]
 
     # ------------------------------------------------------------------
     # Actions (called during the simulation loop)
@@ -822,6 +907,47 @@ def load_agents(
     return agents
 
 
+def load_synthetic_agents(
+    synthetic_configs: list[dict[str, Any]],
+    start_agent_id: int,
+    available_actions: list[str] | None,
+) -> list[Agent]:
+    """Create synthetic Agent objects from config definitions."""
+    agents: list[Agent] = []
+    for i, cfg in enumerate(synthetic_configs):
+        role = str(cfg.get("role", "community_manager"))
+        username = str(cfg.get("username", f"{role}_{i}"))
+        name = str(cfg.get("name", username))
+        bio = str(cfg.get("bio", ""))
+        user_char = str(cfg.get("user_char", ""))
+        category_description = str(cfg.get("category_description", ""))
+        feed_mode = str(cfg.get("feed_mode", "default"))
+        actions_per_step = max(1, int(cfg.get("actions_per_timestep", 2)))
+        action_probs = _normalize_action_probabilities(
+            action_probabilities=cfg.get("action_probabilities"),
+            available_actions=available_actions,
+        )
+        system_prompt_override = _llm.ROLE_SYSTEM_PROMPTS.get(role, "")
+
+        agents.append(Agent(
+            agent_id=start_agent_id + i,
+            username=username,
+            name=name,
+            bio=bio,
+            user_char=user_char,
+            category_description=category_description,
+            action_probs=action_probs,
+            is_synthetic=True,
+            role=role,
+            system_prompt_override=system_prompt_override,
+            feed_mode=feed_mode,
+            actions_per_step=actions_per_step,
+        ))
+
+    social_log.info("Loaded %d synthetic agents", len(agents))
+    return agents
+
+
 # ---------------------------------------------------------------------------
 # Action application (DB writes after LLM decisions)
 # ---------------------------------------------------------------------------
@@ -908,6 +1034,8 @@ async def running(
     # Official account settings
     official_accounts: list[str] | None = None,
     official_posts_csv_path: str = "persona_generation/outputs/test_tweets.csv",
+    # Synthetic engagement agents (community manager, domain expert, etc.)
+    synthetic_agents_config: list[dict[str, Any]] | None = None,
     # Legacy OASIS params accepted but ignored:
     recsys_type: str = "random",
     clock_factor: int = 60,
@@ -991,8 +1119,8 @@ async def running(
     official_user_ids: dict[str, int] = {}   # username -> DB user_id
     official_posts_by_timestep: dict[int, list[tuple[str, str]]] = {}
 
+    max_agent_id = max(a.agent_id for a in agents) if agents else -1
     if official_usernames:
-        max_agent_id = max(a.agent_id for a in agents) if agents else -1
         for i, uname in enumerate(sorted(official_usernames)):
             uid = max_agent_id + 1 + i
             db.insert_official_user(uid, uname)
@@ -1000,7 +1128,23 @@ async def running(
             social_log.info("Registered official account @%s as DB user_id=%d", uname, uid)
 
         # Posts will be loaded after simulation_start_dt is resolved below.
-        pass
+
+    # --- Synthetic agents ---
+    next_id = max_agent_id + 1 + len(official_usernames)
+    synthetic_agents: list[Agent] = []
+    if synthetic_agents_config:
+        synthetic_agents = load_synthetic_agents(
+            synthetic_configs=synthetic_agents_config,
+            start_agent_id=next_id,
+            available_actions=available_actions,
+        )
+        db.insert_users(synthetic_agents, start_time=0.0)
+        for sa in synthetic_agents:
+            db.insert_synthetic_agent(sa.agent_id, sa.username, sa.role)
+            social_log.info(
+                "Registered synthetic agent @%s (role=%s) as DB user_id=%d",
+                sa.username, sa.role, sa.agent_id,
+            )
 
     # --- Activity profiles ---
     usernames = {a.username.lower() for a in agents}
@@ -1069,11 +1213,22 @@ async def running(
         len(agents), num_timesteps, model_name,
     )
 
-    # --- Concurrency semaphore for LLM calls ---
+    # --- Concurrency semaphores for LLM calls ---
+    # Persona agents share a bounded semaphore to avoid overwhelming the API.
+    # Synthetic agents get their own separate semaphore so their calls don't
+    # consume slots from the persona budget — they run in a dedicated lane.
     sem = asyncio.Semaphore(llm_concurrency)
+    synth_total_calls = sum(a.actions_per_step for a in synthetic_agents) if synthetic_agents else 1
+    synth_sem = asyncio.Semaphore(max(llm_concurrency, synth_total_calls))
 
     async def _call_llm_for_agent(agent: Agent, feed: list[dict]) -> dict[str, Any]:
-        async with sem:
+        effective_sem = synth_sem if agent.is_synthetic else sem
+        async with effective_sem:
+            # Synthetic agents define their own action space via action_probs keys
+            if agent.is_synthetic:
+                eff_actions = list(agent.action_probs.keys())
+            else:
+                eff_actions = list(available_actions or normalized_action_probs.keys())
             return await _llm.decide_action(
                 username=agent.username,
                 name=agent.name,
@@ -1082,10 +1237,11 @@ async def running(
                 category_description=agent.category_description,
                 previous_tweets=agent.previous_tweets,
                 feed_posts=feed,
-                available_actions=list(available_actions or normalized_action_probs.keys()),
+                available_actions=eff_actions,
                 action_probs=agent.action_probs,
                 model=model_name,
                 client=client,
+                system_prompt=agent.system_prompt_override or None,
             )
 
     # ---------------------------------------------------------------------------
@@ -1097,8 +1253,8 @@ async def running(
 
         simulation_dt = simulation_start_dt + timedelta(hours=timestep_hours * timestep)
 
-        # Determine active agents
-        active_agents: list[Agent] = []
+        # Determine active persona agents via activity profiles
+        active_persona: list[Agent] = []
         for agent in agents:
             base_threshold = _choose_threshold(
                 agent=agent,
@@ -1110,20 +1266,21 @@ async def running(
                 min(1.0, float(base_threshold) * float(agent_activation_multiplier)),
             )
             if random.random() < threshold:
-                active_agents.append(agent)
+                active_persona.append(agent)
+
+        # Synthetic agents are always active every timestep
+        active_synthetic: list[Agent] = list(synthetic_agents)
 
         social_log.info(
-            "Timestep %d/%d: %d/%d agents active (sim_dt=%s)",
-            timestep, num_timesteps, len(active_agents), len(agents),
-            simulation_dt.strftime("%Y-%m-%d %H:%M"),
+            "Timestep %d/%d: %d/%d persona agents active, %d synthetic agents (sim_dt=%s)",
+            timestep, num_timesteps, len(active_persona), len(agents),
+            len(active_synthetic), simulation_dt.strftime("%Y-%m-%d %H:%M"),
         )
 
-        if not active_agents:
+        if not active_persona and not active_synthetic:
             continue
 
         # --- Inject official account posts for this timestep ---
-        # These are real posts from e.g. @vechainofficial, replayed from the test split.
-        # Their post_ids are pinned into every community agent's feed so agents react to them.
         current_pinned_post_ids: list[int] = []
         for uname, text in official_posts_by_timestep.get(timestep, []):
             uid = official_user_ids.get(uname)
@@ -1135,22 +1292,16 @@ async def running(
                     timestep, uname, pid, text[:60],
                 )
 
-        # Gather feeds and LLM decisions concurrently for all active agents
-        # (each agent may take multiple actions)
-        remaining_post_budget: int | None = target_posts_per_step
-
-        # Build one flat list of (agent, action_index) tasks to run
-        # Each active agent does _sample_num_actions_per_agent() actions
-        agent_action_counts = {
-            a.agent_id: _sample_num_actions_per_agent(
+        # Action count per agent
+        agent_action_counts: dict[int, int] = {}
+        for a in active_persona:
+            agent_action_counts[a.agent_id] = _sample_num_actions_per_agent(
                 max_actions_per_active_agent=max_actions_per_active_agent,
                 extra_action_probability=extra_action_probability,
             )
-            for a in active_agents
-        }
+        for a in active_synthetic:
+            agent_action_counts[a.agent_id] = a.actions_per_step
 
-        # Run all LLM calls concurrently (one per action slot).
-        # Each task returns a list of (decision, feed_stats) pairs.
         async def _agent_action_task(
             agent: Agent,
             pinned_post_ids: list[int],
@@ -1158,55 +1309,61 @@ async def running(
             n = agent_action_counts[agent.agent_id]
             results = []
             for _ in range(n):
-                feed = db.get_feed(agent.agent_id, limit=max_feed_posts, pinned_post_ids=pinned_post_ids)
+                if agent.feed_mode == "unanswered":
+                    feed = db.get_unanswered_feed(
+                        agent.agent_id, limit=max_feed_posts, pinned_post_ids=pinned_post_ids
+                    )
+                else:
+                    feed = db.get_feed(
+                        agent.agent_id, limit=max_feed_posts, pinned_post_ids=pinned_post_ids
+                    )
                 n_following = sum(1 for p in feed if p.get("source") == "following")
-                n_rec = sum(1 for p in feed if p.get("source") == "recommendation")
+                n_rec = sum(1 for p in feed if p.get("source") in ("recommendation", "unanswered"))
                 n_official = sum(1 for p in feed if p.get("source") == "official")
                 social_log.info(
                     "t=%d @%s | obs: feed=%d (following=%d, rec=%d, official=%d)",
                     timestep, agent.username, len(feed), n_following, n_rec, n_official,
                 )
                 decision = await _call_llm_for_agent(agent, feed)
-                feed_stats = {
-                    "feed_total": len(feed),
-                    "feed_following": n_following,
-                    "feed_rec": n_rec,
-                }
-                results.append((decision, feed_stats))
+                results.append((decision, {"feed_total": len(feed), "feed_following": n_following, "feed_rec": n_rec}))
             return results
 
+        all_active = active_persona + active_synthetic
         all_results: list[list[tuple[dict[str, Any], dict[str, int]]]] = await asyncio.gather(
-            *[_agent_action_task(a, current_pinned_post_ids) for a in active_agents],
+            *[_agent_action_task(a, current_pinned_post_ids) for a in all_active],
             return_exceptions=False,
         )
 
-        # Apply decisions to DB sequentially (safe single-threaded writes)
-        for agent, action_results in zip(active_agents, all_results):
+        # Apply persona decisions with post budget
+        remaining_post_budget: int | None = target_posts_per_step
+        for agent, action_results in zip(active_persona, all_results[:len(active_persona)]):
             for decision, feed_stats in action_results:
                 blocked: set[str] = set()
                 if remaining_post_budget is not None and remaining_post_budget <= 0:
                     blocked.add("create_post")
                 action_taken, success, remaining_post_budget = _apply_decision(
-                    db=db,
-                    agent=agent,
-                    decision=decision,
-                    timestep=timestep,
-                    remaining_post_budget=remaining_post_budget,
-                    blocked_actions=blocked,
+                    db=db, agent=agent, decision=decision, timestep=timestep,
+                    remaining_post_budget=remaining_post_budget, blocked_actions=blocked,
                 )
-                social_log.debug(
-                    "t=%d @%s → %s (success=%s)",
-                    timestep, agent.username, action_taken, success,
-                )
+                social_log.debug("t=%d @%s -> %s (success=%s)", timestep, agent.username, action_taken, success)
                 db.log_observation(
-                    timestep=timestep,
-                    agent_id=agent.agent_id,
-                    username=agent.username,
-                    feed_total=feed_stats["feed_total"],
-                    feed_following=feed_stats["feed_following"],
-                    feed_rec=feed_stats["feed_rec"],
-                    action_taken=action_taken,
-                    action_success=success,
+                    timestep=timestep, agent_id=agent.agent_id, username=agent.username,
+                    feed_total=feed_stats["feed_total"], feed_following=feed_stats["feed_following"],
+                    feed_rec=feed_stats["feed_rec"], action_taken=action_taken, action_success=success,
+                )
+
+        # Apply synthetic agent decisions (no post budget constraint)
+        for agent, action_results in zip(active_synthetic, all_results[len(active_persona):]):
+            for decision, feed_stats in action_results:
+                action_taken, success, _ = _apply_decision(
+                    db=db, agent=agent, decision=decision, timestep=timestep,
+                    remaining_post_budget=None, blocked_actions=set(),
+                )
+                social_log.debug("t=%d @%s [synthetic] -> %s (success=%s)", timestep, agent.username, action_taken, success)
+                db.log_observation(
+                    timestep=timestep, agent_id=agent.agent_id, username=agent.username,
+                    feed_total=feed_stats["feed_total"], feed_following=feed_stats["feed_following"],
+                    feed_rec=feed_stats["feed_rec"], action_taken=action_taken, action_success=success,
                 )
 
     db.close()
@@ -1238,6 +1395,7 @@ if __name__ == "__main__":
                 **data_params,
                 **simulation_params,
                 inference_configs=inference_configs,
+                synthetic_agents_config=cfg.get("synthetic_agents", []),
             )
         )
     else:
