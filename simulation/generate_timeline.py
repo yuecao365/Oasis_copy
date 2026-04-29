@@ -219,6 +219,11 @@ def generate_html(data: dict, db_path: str, metrics: dict | None = None) -> str:
   .type-quote{{background:rgba(188,140,255,.15);color:var(--purple);border:1px solid rgba(188,140,255,.3);}}
   .type-comment{{background:rgba(247,120,106,.15);color:var(--orange);border:1px solid rgba(247,120,106,.3);}}
   .post-content{{font-size:13px;line-height:1.55;color:var(--text);}}
+  .comment-thread{{margin-top:6px;margin-left:24px;display:flex;flex-direction:column;gap:6px;}}
+  .comment-card{{background:var(--surface2);border:1px solid var(--border);border-left:2px solid var(--orange);border-radius:8px;padding:11px 13px;}}
+  .comment-ref{{font-size:11px;color:var(--muted);border-left:2px solid var(--border);padding-left:8px;margin-bottom:6px;line-height:1.4;}}
+  .comment-section{{margin-top:12px;}}
+  .comment-section-label{{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--orange);opacity:.8;margin-bottom:8px;}}
   .post-footer{{display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--muted);}}
   .seed-summary{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}}
   .seed-card{{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:12px;}}
@@ -487,6 +492,30 @@ function renderPostCard(p) {{
   </div>`;
 }}
 
+// Build post lookup for comment references
+const postById2 = {{}};
+DATA.sim_posts.forEach(p => {{ postById2[p.post_id] = p; }});
+
+function renderCommentCard(c, showRef) {{
+  const u = userById[c.user_id] || {{}};
+  const orig = showRef ? postById2[c.post_id] : null;
+  const refHtml = orig
+    ? `<div class="comment-ref">Reply to @${{esc(orig.user_name)}}: "${{esc((orig.content||'').slice(0,90))}}${{(orig.content||'').length > 90 ? '&hellip;' : ''}}"</div>`
+    : '';
+  return `<div class="comment-card">
+    <div class="post-header">
+      <div class="avatar" style="background:${{avatarColor(c.user_id)}};color:#0d1117;width:28px;height:28px;font-size:11px;flex-shrink:0">${{initials(c.user_name)}}</div>
+      <div style="flex:1;min-width:0">
+        <div class="post-user">@${{esc(c.user_name)}}</div>
+        <div class="post-bio">${{esc((u.bio||'').slice(0,60))}}</div>
+      </div>
+      <span class="post-type-badge type-comment">Comment</span>
+    </div>
+    ${{refHtml}}
+    <div class="post-content" style="font-size:12px">${{esc(c.content)}}</div>
+  </div>`;
+}}
+
 function renderObsPanel(obs) {{
   if (!obs || obs.length === 0) return '';
   const actionCounts = {{}};
@@ -548,21 +577,48 @@ tl.innerHTML += `<div class="tl-phase">
 
 DATA.timesteps.forEach(ts => {{
   const posts    = DATA.sim_posts.filter(p => p.created_at === ts);
-  const comments = DATA.comments.filter(c => c.created_at === ts);
+  const tsComments = DATA.comments.filter(c => c.created_at === ts);
   const likes    = DATA.likes.filter(l => l.created_at === ts);
   const obs      = (DATA.observations || []).filter(o => o.timestep === ts);
   const unique   = new Set(obs.map(o => o.agent_id));
   const stepHours = ts * 12;
+
+  // Split comments into those on a post created this timestep (nested) vs earlier posts (orphans)
+  const tsPostIds = new Set(posts.map(p => p.post_id));
+  const nestedByPostId = {{}};
+  const orphanComments = [];
+  tsComments.forEach(c => {{
+    if (tsPostIds.has(c.post_id)) {{
+      if (!nestedByPostId[c.post_id]) nestedByPostId[c.post_id] = [];
+      nestedByPostId[c.post_id].push(c);
+    }} else {{
+      orphanComments.push(c);
+    }}
+  }});
+
+  const postsHtml = posts.map(p => {{
+    const nested = nestedByPostId[p.post_id] || [];
+    const threadHtml = nested.length
+      ? `<div class="comment-thread">${{nested.map(c => renderCommentCard(c, false)).join('')}}</div>`
+      : '';
+    return renderPostCard(p) + threadHtml;
+  }}).join('');
+
+  const orphanHtml = orphanComments.length
+    ? `<div class="comment-section"><div class="comment-section-label">Replies to earlier posts</div><div class="post-grid">${{orphanComments.map(c => renderCommentCard(c, true)).join('')}}</div></div>`
+    : '';
+
   tl.innerHTML += `<div class="tl-phase">
     <div class="tl-dot active"></div>
     <div class="tl-phase-header">
       <span class="tl-phase-label">Timestep ${{ts}}</span>
       <span class="tl-phase-meta">+${{stepHours}}h from simulation start</span>
-      <span class="tl-phase-badge" style="color:var(--green);border-color:rgba(63,185,80,.3)">${{unique.size}} active · ${{posts.length}} posts · ${{comments.length}} comments · ${{likes.length}} likes</span>
+      <span class="tl-phase-badge" style="color:var(--green);border-color:rgba(63,185,80,.3)">${{unique.size}} active · ${{posts.length}} posts · ${{tsComments.length}} comments · ${{likes.length}} likes</span>
     </div>
     ${{renderObsPanel(obs)}}
-    <div class="post-grid" style="margin-top:12px">${{posts.map(renderPostCard).join('')}}</div>
-    ${{posts.length === 0 && obs.length === 0 ? '<div class="empty-ts">No activity this timestep.</div>' : ''}}
+    <div class="post-grid" style="margin-top:12px">${{postsHtml}}</div>
+    ${{orphanHtml}}
+    ${{posts.length === 0 && tsComments.length === 0 && obs.length === 0 ? '<div class="empty-ts">No activity this timestep.</div>' : ''}}
   </div>`;
 }});
 if (DATA.timesteps.length === 0) {{
