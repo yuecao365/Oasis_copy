@@ -679,14 +679,17 @@ def _compute_official_post_engagement(
         con = sqlite3.connect(str(db_path))
         cur = con.cursor()
 
-        # Get official user IDs from the dedicated table
-        cur.execute("SELECT user_id FROM official_user")
-        official_db_user_ids = [r[0] for r in cur.fetchall()]
+        # Get official user IDs from the dedicated table (older DBs may not have it).
+        try:
+            cur.execute("SELECT user_id FROM official_user")
+            official_db_user_ids = [r[0] for r in cur.fetchall()]
+        except sqlite3.OperationalError:
+            official_db_user_ids = []
 
         if not official_db_user_ids:
             con.close()
             return {
-                "error": "official_user table empty — run simulation with official_accounts configured",
+                "error": "official_user table missing or empty — run simulation with official_accounts configured",
                 "gt_post_count": len(gt_posts),
                 "gt_total_engagement": sum(gt_engagements),
             }
@@ -863,8 +866,12 @@ def _compute_community_health(
         all_db_users = {row[1].lower(): row[0] for row in cur.fetchall()}
 
         # Official user IDs (excluded from community metrics)
-        cur.execute("SELECT user_id FROM official_user")
-        official_ids = {r[0] for r in cur.fetchall()}
+        # Older DBs may not have the official_user table — fall back gracefully.
+        try:
+            cur.execute("SELECT user_id FROM official_user")
+            official_ids = {r[0] for r in cur.fetchall()}
+        except sqlite3.OperationalError:
+            official_ids = set()
 
         # Persona user IDs: in persona CSV and not official
         persona_user_ids = [
