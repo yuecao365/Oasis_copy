@@ -577,204 +577,262 @@ def fig4_pipeline():
 # FIG 5: Combined — agent cards (top) + engagement improvement bars (bottom)
 # ─────────────────────────────────────────────────────────────────────────────
 def fig5_combined():
-    yb = load("baseline_metrics.json")
-    yf = load("facilitated_metrics.json")
-    eb = load("evelyn_baseline_run_metrics.json")
-    ef = load("evelyn_facilitated_metrics.json")
+    # ── load all metrics ──────────────────────────────────────────────────────
+    yb  = load("baseline_metrics.json")
+    yf  = load("facilitated_metrics.json")
+    eb  = load("evelyn_baseline_run_metrics.json")
+    ef  = load("evelyn_facilitated_metrics.json")
+    ybs = load("yue_baseline_semantic.json")
+    yfs = load("yue_facilitated_semantic.json")
+    ebs = load("evelyn_baseline_semantic.json")
+    efs = load("evelyn_facilitated_semantic.json")
 
+    # ── metric definitions ────────────────────────────────────────────────────
+    # (short_label, full_name, description, color, bl_yue, fa_yue, bl_ev, fa_ev)
+    METRICS = [
+        ("Total\nEngagement",
+         "Total Community Engagement",
+         "Sum of all likes, comments,\nand reposts by community members",
+         C_GREEN,
+         get(yb, "community_health", "total_community_engagement"),
+         get(yf, "community_health", "total_community_engagement"),
+         get(eb, "community_health", "total_community_engagement"),
+         get(ef, "community_health", "total_community_engagement")),
+        ("Posts with\nReplies",
+         "Posts with Replies",
+         "Fraction of posts that received\nat least one reply",
+         "#3B82F6",
+         1 - (get(yb, "community_health", "unanswered_post_rate") or 0),
+         1 - (get(yf, "community_health", "unanswered_post_rate") or 0),
+         1 - (get(eb, "community_health", "unanswered_post_rate") or 0),
+         1 - (get(ef, "community_health", "unanswered_post_rate") or 0)),
+        ("Reply\nRelevance",
+         "Reply Relevance",
+         "Avg cosine similarity between\na post and its direct replies",
+         "#F97316",
+         ybs["reply_relevance"], yfs["reply_relevance"],
+         ebs["reply_relevance"], efs["reply_relevance"]),
+        ("Intra-thread\nSimilarity",
+         "Intra-thread Similarity",
+         "Avg pairwise similarity of\nmessages within a thread",
+         "#8B5CF6",
+         ybs["intra_thread_sim"], yfs["intra_thread_sim"],
+         ebs["intra_thread_sim"], efs["intra_thread_sim"]),
+        ("Topic\nCoherence",
+         "Topic Coherence",
+         "Avg similarity of each post\nto its 5 nearest neighbor posts",
+         "#0EA5E9",
+         ybs["topic_coherence"], yfs["topic_coherence"],
+         ebs["topic_coherence"], efs["topic_coherence"]),
+    ]
+
+    # ── figure & axes ─────────────────────────────────────────────────────────
     fig = plt.figure(figsize=(24, 12), facecolor=C_BG)  # 18:9 (2:1)
 
-    # Cards span full figure width; bars have a wide left margin for label text.
-    # Use add_axes([left, bottom, width, height]) for independent control.
-    cw, cgap = 0.313, 0.020   # card width, gap between cards
-    card_axes = [fig.add_axes([0.010 + i * (cw + cgap), 0.46, cw, 0.47])
-                 for i in range(3)]
-
-    bw, bgap = 0.355, 0.045   # bar panel width, gap between panels
-    bar_axes = [
-        fig.add_axes([0.215,             0.06, bw, 0.36]),
-        fig.add_axes([0.215 + bw + bgap, 0.06, bw, 0.36]),
-    ]
-
-    # ── Section labels ────────────────────────────────────────────────────────
     fig.text(0.5, 0.975, "Synthetic Engagement Agents",
-             ha="center", va="top", fontsize=30, fontweight="bold", color=C_TEXT)
+             ha="center", va="top", fontsize=28, fontweight="bold", color=C_TEXT)
 
-    # ── Agent cards ───────────────────────────────────────────────────────────
+    # Combined agent card (left column)
+    ax_card = fig.add_axes([0.01, 0.24, 0.295, 0.70])
+    # Radar charts — square in physical space: width*24 == height*12 → height=2*width
+    rw, rh = 0.215, 0.43
+    ax_r1 = fig.add_axes([0.355,        0.30, rw, rh], projection="polar")
+    ax_r2 = fig.add_axes([0.355 + rw + 0.04, 0.30, rw, rh], projection="polar")
+    # Metric description cards (bottom strip) — taller for bigger text
+    mw = 0.182
+    metric_axes = [fig.add_axes([0.01 + i * (mw + 0.008), 0.02, mw, 0.25])
+                   for i in range(5)]
+
+    # ── combined agent card ───────────────────────────────────────────────────
     agents = [
-        {
-            "name": "Community Manager",
-            "handle": "@community_manager",
-            "color": "#3B82F6",
-            "light": "#EFF6FF",
-            "actions": ["Likes unanswered posts",
-                        "Comments to acknowledge authors",
-                        "Reposts quality content"],
-            "feed": "Prioritizes posts with 0 replies",
-            "metric": "Unanswered post rate",
-        },
-        {
-            "name": "Domain Expert",
-            "handle": "@vechain_analyst",
-            "color": "#8B5CF6",
-            "light": "#F5F3FF",
-            "actions": ["Likes high-quality posts",
-                        "Reposts insightful content",
-                        "Adds expert commentary"],
-            "feed": "Sees full feed ranked by likes",
-            "metric": "Engagement per post",
-        },
-        {
-            "name": "Discussion Facilitator",
-            "handle": "@vechain_connector",
-            "color": "#F97316",
-            "light": "#FFF7ED",
-            "actions": ["Comments with open-ended questions",
-                        "Quote-tweets to spark discussion",
-                        "Follows active community members"],
-            "feed": "Sees full default feed",
-            "metric": "Reply rate",
-        },
+        {"name": "Community Manager",   "color": "#3B82F6", "light": "#EFF6FF",
+         "handle": "@community_manager",
+         "actions": ["Likes unanswered posts",
+                     "Comments to acknowledge authors",
+                     "Reposts quality content"],
+         "feed": "Prioritizes posts with 0 replies"},
+        {"name": "Domain Expert",        "color": "#8B5CF6", "light": "#F5F3FF",
+         "handle": "@vechain_analyst",
+         "actions": ["Likes high-quality posts",
+                     "Reposts insightful content",
+                     "Adds expert commentary"],
+         "feed": "Sees full feed ranked by likes"},
+        {"name": "Discussion Facilitator", "color": "#F97316", "light": "#FFF7ED",
+         "handle": "@vechain_connector",
+         "actions": ["Comments with open-ended questions",
+                     "Quote-tweets to spark discussion",
+                     "Follows active community members"],
+         "feed": "Sees full default feed"},
     ]
 
-    for ax, agent in zip(card_axes, agents):
-        ax.set_facecolor(agent["light"])
-        ax.set_xlim(0, 10)
-        ax.set_ylim(0, 10)
-        ax.axis("off")
+    ax_card.set_facecolor("#F8FAFC")
+    ax_card.set_xlim(0, 10)
+    ax_card.set_ylim(0, 10)
+    ax_card.axis("off")
 
-        # Card border
-        ax.add_patch(FancyBboxPatch(
-            (0.08, 0.08), 9.84, 9.84,
-            boxstyle="round,pad=0.2",
-            facecolor=agent["light"], edgecolor=agent["color"],
-            linewidth=3.0,
+    # Card border
+    ax_card.add_patch(FancyBboxPatch(
+        (0.05, 0.05), 9.9, 9.9, boxstyle="round,pad=0.2",
+        facecolor="#F8FAFC", edgecolor=C_BORDER, linewidth=2.5,
+    ))
+    # Header bar
+    ax_card.add_patch(FancyBboxPatch(
+        (0.05, 8.8), 9.9, 1.15, boxstyle="round,pad=0.1",
+        facecolor=C_TEXT, edgecolor="none",
+    ))
+    ax_card.text(5, 9.37, "Synthetic Engagement Agents",
+                 ha="center", va="center", fontsize=22, fontweight="bold",
+                 color="white")
+    ax_card.text(5, 8.95, "3 always-active LLM-driven bots",
+                 ha="center", va="center", fontsize=15, color="white", alpha=0.75)
+
+    # Agent rows (3 equal sections)
+    section_h = 2.55
+    for i, ag in enumerate(agents):
+        y0 = 8.6 - (i + 1) * section_h
+        # Colored left accent bar
+        ax_card.add_patch(FancyBboxPatch(
+            (0.15, y0 + 0.12), 0.45, section_h - 0.25,
+            boxstyle="square,pad=0",
+            facecolor=ag["color"], edgecolor="none",
         ))
-
-        # Header
-        ax.add_patch(FancyBboxPatch(
-            (0.08, 7.85), 9.84, 2.07,
-            boxstyle="round,pad=0.1",
-            facecolor=agent["color"], edgecolor="none",
-        ))
-        ax.text(5, 9.15, agent["name"], ha="center", va="center",
-                fontsize=30, fontweight="bold", color="white")
-        ax.text(5, 8.22, agent["handle"], ha="center", va="center",
-                fontsize=19, color="white", alpha=0.88)
-
+        # Agent name
+        ax_card.text(0.9, y0 + section_h - 0.45, ag["name"],
+                     ha="left", va="center", fontsize=20, fontweight="bold",
+                     color=ag["color"])
+        ax_card.text(0.9, y0 + section_h - 0.82, ag["handle"],
+                     ha="left", va="center", fontsize=14, color=C_MUTED,
+                     style="italic")
         # Actions
-        ax.text(0.55, 7.52, "ACTIONS", fontsize=16, fontweight="bold",
-                color=agent["color"], va="top")
-        for i, action in enumerate(agent["actions"]):
-            ax.text(0.65, 6.98 - i * 0.98, f"• {action}",
-                    fontsize=19, color=C_TEXT, va="top")
-
-        # Divider
-        ax.plot([0.4, 9.6], [3.92, 3.92], color=agent["color"], alpha=0.25, lw=1.2)
-
+        for j, action in enumerate(ag["actions"]):
+            ax_card.text(0.9, y0 + section_h - 1.28 - j * 0.50,
+                         f"• {action}", ha="left", va="center",
+                         fontsize=15, color=C_TEXT)
         # Feed mode
-        ax.text(0.55, 3.68, "FEED MODE", fontsize=16, fontweight="bold",
-                color=agent["color"], va="top")
-        ax.text(0.65, 3.14, agent["feed"], fontsize=19, color=C_TEXT,
-                va="top", style="italic")
+        ax_card.text(0.9, y0 + 0.32, ag["feed"],
+                     ha="left", va="center", fontsize=14,
+                     color=ag["color"], style="italic")
+        # Divider (skip after last)
+        if i < 2:
+            ax_card.plot([0.15, 9.85], [y0 + 0.07, y0 + 0.07],
+                         color=C_BORDER, lw=1.2)
 
-        # Divider
-        ax.plot([0.4, 9.6], [2.38, 2.38], color=agent["color"], alpha=0.25, lw=1.2)
+    # ── radar charts ──────────────────────────────────────────────────────────
+    N      = len(METRICS)
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False)
+    ang_c  = np.concatenate([angles, [angles[0]]])   # closed loop
 
-        # Key metric
-        ax.text(0.55, 2.14, "KEY METRIC IMPROVED", fontsize=16, fontweight="bold",
-                color=agent["color"], va="top")
-        ax.add_patch(FancyBboxPatch(
-            (0.4, 0.82), 9.2, 0.98,
-            boxstyle="round,pad=0.1",
-            facecolor=agent["color"], edgecolor="none", alpha=0.15,
-        ))
-        ax.text(5, 1.31, agent["metric"], ha="center", va="center",
-                fontsize=24, fontweight="bold", color=agent["color"])
+    # Pin baseline at radius 0.60; facilitated scales proportionally from there.
+    # Rings at 0.3 / 0.6 / 0.9 → labeled "–50%" / "baseline" / "+50%".
+    BL_R = 0.60
 
-    # ── Engagement bars ───────────────────────────────────────────────────────
-    # 3 agent-specific metrics (always shown, even if negative) + total engagement.
-    # Tuple: (label, calc_note, bl_val, fa_val, invert, fmt, color)
-    def agent_metrics(bl, fa):
-        return [
-            ("Total Community Engagement",
-             "sum of all likes + comments + reposts",
-             get(bl, "community_health", "total_community_engagement"),
-             get(fa, "community_health", "total_community_engagement"),
-             False, "{:.0f}", C_GREEN),
-            ("Reply Rate",
-             "posts with ≥1 comment ÷ total posts",
-             get(bl, "community_health", "reply_rate"),
-             get(fa, "community_health", "reply_rate"),
-             False, "{:.1%}", "#F97316"),   # Discussion Facilitator
-            ("Avg Engagement / Post",
-             "(likes + comments + reposts) ÷ total posts",
-             get(bl, "community_health", "avg_engagement_per_community_post"),
-             get(fa, "community_health", "avg_engagement_per_community_post"),
-             False, "{:.2f}", "#8B5CF6"),   # Domain Expert
-            ("Posts with Replies",
-             "1 − (posts with 0 replies ÷ total posts)",
-             1 - (get(bl, "community_health", "unanswered_post_rate") or 0),
-             1 - (get(fa, "community_health", "unanswered_post_rate") or 0),
-             False, "{:.1%}", "#3B82F6"),   # Community Manager
-        ]
+    def norm_radar(bl_vals, fa_vals):
+        nb, nf = [], []
+        for b, f in zip(bl_vals, fa_vals):
+            if b == 0:
+                nb.append(BL_R); nf.append(BL_R)
+            else:
+                nb.append(BL_R)
+                nf.append(min(BL_R * (f / b), 0.97))
+        return nb, nf
 
-    datasets = [
-        ("Coarse-Grained  (k=4, 40 personas)", agent_metrics(yb, yf)),
-        ("Fine-Grained  (k=19, 143 personas)",  agent_metrics(eb, ef)),
+    radar_datasets = [
+        ("Coarse-Grained  (k=4, 40 personas)",
+         [m[4] for m in METRICS], [m[5] for m in METRICS]),
+        ("Fine-Grained  (k=19, 143 personas)",
+         [m[6] for m in METRICS], [m[7] for m in METRICS]),
     ]
 
-    for ax, (title, mlist) in zip(bar_axes, datasets):
-        ax.set_facecolor(C_BG)
-        changes    = [pct_change(m[3], m[2], invert=m[4]) for m in mlist]
-        abs_base   = [m[2] for m in mlist]
-        abs_facil  = [m[3] for m in mlist]
-        fmts       = [m[5] for m in mlist]
-        labels     = [m[0] for m in mlist]
-        calcs      = [m[1] for m in mlist]
-        clrs       = [m[6] for m in mlist]
+    spoke_labels = [m[0] for m in METRICS]
+    spoke_colors = [m[3] for m in METRICS]
 
-        y       = np.arange(len(mlist)) * 1.7
-        vals    = [c if c is not None else 0 for c in changes]
-        max_abs = max(abs(v) for v in vals) if vals else 10
+    for ax_r, (title, bl_vals, fa_vals) in zip([ax_r1, ax_r2], radar_datasets):
+        nb, nf = norm_radar(bl_vals, fa_vals)
+        nb_c = nb + [nb[0]]
+        nf_c = nf + [nf[0]]
 
-        bar_colors = [c if v >= 0 else C_RED for c, v in zip(clrs, vals)]
-        bars = ax.barh(y, vals, height=0.62, color=bar_colors, zorder=3, alpha=0.88)
-        ax.axvline(0, color=C_TEXT, linewidth=1.0, zorder=4)
+        ax_r.set_theta_offset(np.pi / 2)
+        ax_r.set_theta_direction(-1)
+        ax_r.set_ylim(0, 1)
 
-        for bar, bv, fv, fmt, chg in zip(bars, abs_base, abs_facil, fmts, changes):
-            if bv is not None and fv is not None:
-                sign = "+" if chg >= 0 else ""
-                ann_x = max(chg, 0) + max_abs * 0.03
-                ax.text(
-                    ann_x,
-                    bar.get_y() + bar.get_height() / 2,
-                    f"{fmt.format(bv)} → {fmt.format(fv)}  ({sign}{chg:.0f}%)",
-                    va="center", ha="left", fontsize=19,
-                    color=C_TEXT,
-                    fontweight="bold" if abs(chg) >= 10 else "normal",
+        # Ring labels: 0.3 = −50% of baseline, 0.6 = baseline, 0.9 = +50%
+        ax_r.set_yticks([0.3, BL_R, 0.9])
+        ax_r.set_yticklabels(["−50%", "baseline", "+50%"],
+                             size=11, color=C_MUTED)
+        ax_r.set_rlabel_position(12)          # offset labels off the first spoke
+        ax_r.grid(color="#CBD5E1", linewidth=0.8, alpha=0.6)
+        ax_r.set_facecolor("#F8FAFC")
+
+        # Fill + lines
+        ax_r.fill(ang_c, nb_c, alpha=0.22, color=C_BASE)
+        ax_r.fill(ang_c, nf_c, alpha=0.28, color=C_FACIL)
+        ax_r.plot(ang_c, nb_c, "o-", lw=2.2, color=C_BASE,
+                  markersize=7, label="Original")
+        ax_r.plot(ang_c, nf_c, "o-", lw=2.2, color=C_FACIL,
+                  markersize=7, label="Facilitated")
+
+        # % change annotation at each facilitated vertex
+        for angle, nf_val, b, f, col in zip(angles, nf, bl_vals, fa_vals,
+                                             spoke_colors):
+            if b and b != 0:
+                pct  = (f - b) / abs(b) * 100
+                sign = "+" if pct >= 0 else ""
+                ann_col = C_GREEN if pct >= 0 else C_RED
+                r_ann = nf_val + 0.09
+                ax_r.annotate(
+                    f"{sign}{pct:.0f}%",
+                    xy=(angle, r_ann),
+                    fontsize=10.5, ha="center", va="center",
+                    fontweight="bold", color=ann_col,
+                    bbox=dict(boxstyle="round,pad=0.18", facecolor="white",
+                              edgecolor=ann_col, alpha=0.88, linewidth=1.2),
                 )
 
-        # Custom y labels colored by agent, clipped off so they render in margin
-        ax.set_yticks([])
-        for lbl, calc, yi, col in zip(labels, calcs, y, clrs):
-            ax.text(-max_abs * 0.04, yi + 0.17, lbl,
-                    ha="right", va="center", fontsize=21, fontweight="bold",
-                    color=col, clip_on=False)
-            ax.text(-max_abs * 0.04, yi - 0.24, calc,
-                    ha="right", va="center", fontsize=15,
-                    color=C_MUTED, style="italic", clip_on=False)
+        # Spoke labels colored by metric
+        ax_r.set_xticks(angles)
+        ax_r.set_xticklabels(spoke_labels, size=13, fontweight="bold")
+        for lbl, col in zip(ax_r.get_xticklabels(), spoke_colors):
+            lbl.set_color(col)
 
-        ax.set_xlim(-max_abs * 0.9, max_abs * 2.3)
-        ax.set_ylim(-0.9, max(y) + 1.1)
-        ax.set_xlabel("% improvement from original", fontsize=17, color=C_MUTED)
-        ax.tick_params(axis="x", colors=C_MUTED, labelsize=16)
-        for spine in ["top", "right", "left"]:
-            ax.spines[spine].set_visible(False)
-        ax.spines["bottom"].set_color(C_BORDER)
-        ax.set_axisbelow(True)
-        ax.xaxis.grid(True, color=C_GRID, linewidth=0.8, zorder=0)
-        ax.set_title(title, fontsize=22, fontweight="bold", color=C_TEXT, pad=12)
+        ax_r.set_title(title, pad=22, fontsize=16, fontweight="bold",
+                       color=C_TEXT, loc="center")
+        ax_r.legend(loc="upper right", fontsize=12,
+                    framealpha=0.90, edgecolor=C_BORDER,
+                    handlelength=1.6, handleheight=0.9)
+
+    # ── metric description cards (bottom strip) ───────────────────────────────
+    for ax_m, m in zip(metric_axes, METRICS):
+        _, full_name, desc, color, *_ = m
+        ax_m.set_facecolor("#F8FAFC")
+        ax_m.set_xlim(0, 10)
+        ax_m.set_ylim(0, 10)
+        ax_m.axis("off")
+
+        # Colored header band
+        ax_m.add_patch(FancyBboxPatch(
+            (0.1, 7.2), 9.8, 2.7, boxstyle="round,pad=0.1",
+            facecolor=color, edgecolor="none", alpha=0.15,
+        ))
+        ax_m.add_patch(FancyBboxPatch(
+            (0.1, 7.2), 9.8, 2.7, boxstyle="round,pad=0.1",
+            facecolor="none", edgecolor=color, linewidth=2.0,
+        ))
+        ax_m.text(5, 8.65, full_name, ha="center", va="center",
+                  fontsize=16, fontweight="bold", color=color)
+
+        # Description
+        ax_m.text(5, 5.5, desc, ha="center", va="center",
+                  fontsize=14, color=C_TEXT, linespacing=1.5)
+
+        # Computation type tag
+        tag = "semantic" if _ and full_name not in ("Total Community Engagement",
+                                                      "Posts with Replies") else "community health"
+        ax_m.add_patch(FancyBboxPatch(
+            (2.5, 0.5), 5.0, 1.4, boxstyle="round,pad=0.15",
+            facecolor=color, edgecolor="none", alpha=0.2,
+        ))
+        ax_m.text(5, 1.2, tag, ha="center", va="center",
+                  fontsize=11, color=color, fontweight="bold")
 
     out = os.path.join(OUT_DIR, "fig5_combined.svg")
     plt.savefig(out, format="svg", facecolor=C_BG)

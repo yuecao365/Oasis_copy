@@ -1,0 +1,295 @@
+{
+  "inputs": {
+    "db": "data\\simu_db\\facilitated_run.db",
+    "test_csv": "persona_generation\\outputs\\test_tweets.csv",
+    "personas_csv": "persona_generation\\outputs\\user_personas_yue.csv",
+    "filtered_jsonl": "data\\processed\\filtered_tweets.jsonl",
+    "timestep_hours": 24.0,
+    "split_info": "persona_generation\\outputs\\split_info.json"
+  },
+  "coverage": {
+    "persona_user_count": 40,
+    "gt_active_users": 23,
+    "sim_active_users": 33
+  },
+  "user_activity_fit": {
+    "spearman_posts_per_user": 0.2683431045908381,
+    "jsd_posts_per_user": 0.5346495118193099,
+    "top10_overlap": 0.5,
+    "top20_overlap": 0.55
+  },
+  "temporal_fit": {
+    "day_of_week_jsd": 0.028998985578902587,
+    "cumulative_posts_daily_rmse": 49.60720713767305,
+    "cumulative_posts_daily_nrmse": 0.21853395214833943
+  },
+  "engagement_fit": {
+    "gt_total_posts": 228,
+    "sim_total_posts": 280,
+    "post_level": {
+      "top_share_curve": {
+        "likes": {
+          "cutoffs": [
+            0.01,
+            0.05,
+            0.1,
+            0.2,
+            0.5
+          ],
+          "gt_top_share_curve": [
+            0.22894507410636442,
+            0.5630340017436791,
+            0.7215344376634699,
+            0.8491717523975588,
+            0.9755884917175239
+          ],
+          "sim_top_share_curve": [
+            0.2631578947368421,
+            0.6491228070175439,
+            0.8947368421052632,
+            1.0,
+            1.0
+          ],
+          "top_share_curve_rmse": 0.11128877248387807
+        },
+        "retweets_reposts": {
+          "cutoffs": [
+            0.01,
+            0.05,
+            0.1,
+            0.2,
+            0.5
+          ],
+          "gt_top_share_curve": [
+            0.4660361134995701,
+            0.7214101461736887,
+            0.8340498710232158,
+            0.9320722269991402,
+            1.0
+          ],
+          "sim_top_share_curve": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "top_share_curve_rmse": 0.2810278870126156
+        },
+        "replies": {
+          "cutoffs": [
+            0.01,
+            0.05,
+            0.1,
+            0.2,
+            0.5
+          ],
+          "gt_top_share_curve": [
+            0.3183139534883721,
+            0.6555232558139535,
+            0.7616279069767442,
+            0.8677325581395349,
+            0.9941860465116279
+          ],
+          "sim_top_share_curve": [
+            0.30666666666666664,
+            0.6133333333333333,
+            0.8,
+            1.0,
+            1.0
+          ],
+          "top_share_curve_rmse": 0.06467850431741552
+        },
+        "quotes": {
+          "cutoffs": [
+            0.01,
+            0.05,
+            0.1,
+            0.2,
+            0.5
+          ],
+          "gt_top_share_curve": [
+            0.39285714285714285,
+            0.7321428571428571,
+            0.9285714285714286,
+            1.0,
+            1.0
+          ],
+          "sim_top_share_curve": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "top_share_curve_rmse": 0.8429252393799069
+        }
+      },
+      "percentile_rank_jsd": {
+        "likes": {
+          "bins": 10,
+          "gt_percentile_hist": [
+            31,
+            0,
+            44,
+            25,
+            10,
+            28,
+            20,
+            25,
+            21,
+            24
+          ],
+          "sim_percentile_hist": [
+            0,
+            0,
+            0,
+            0,
+            246,
+            0,
+            0,
+            0,
+            0,
+            34
+          ],
+          "percentile_hist_jsd": 0.7598265183033515
+        },
+        "retweets_reposts": {
+          "bins": 10,
+          "gt_percentile_hist": [
+            0,
+            0,
+            125,
+            0,
+            0,
+            0,
+            41,
+            21,
+            19,
+            22
+          ],
+          "sim_percentile_hist": [
+            0,
+            0,
+            0,
+            0,
+            279,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "percentile_hist_jsd": 0.9888841152737575
+        },
+        "replies": {
+          "bins": 10,
+          "gt_percentile_hist": [
+            0,
+            0,
+            110,
+            0,
+            0,
+            53,
+            0,
+            22,
+            21,
+            22
+          ],
+          "sim_percentile_hist": [
+            0,
+            0,
+            0,
+            0,
+            237,
+            0,
+            0,
+            0,
+            0,
+            43
+          ],
+          "percentile_hist_jsd": 0.8797096940575133
+        },
+        "quotes": {
+          "bins": 10,
+          "gt_percentile_hist": [
+            0,
+            0,
+            0,
+            0,
+            201,
+            0,
+            0,
+            0,
+            0,
+            27
+          ],
+          "sim_percentile_hist": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            280,
+            0,
+            0,
+            0,
+            0
+          ],
+          "percentile_hist_jsd": 1.0
+        }
+      }
+    },
+    "user_level": {
+      "scope": "user",
+      "components": [
+        "likes",
+        "replies",
+        "reposts",
+        "quotes"
+      ],
+      "topk_values": [
+        10,
+        20
+      ],
+      "gt_total_engagement": 7642.0,
+      "sim_total_engagement": 133.0,
+      "spearman_total_engagement_per_user": 0.1478469370676502,
+      "jsd_total_engagement_per_user": 0.6099220610350311,
+      "spearman_engagement_per_post_per_user": 0.02426732226196903,
+      "jsd_engagement_per_post_per_user": 0.6269425818667227,
+      "topk_overlap_total_engagement_per_user": {
+        "top10": 0.4,
+        "top20": 0.5
+      },
+      "topk_overlap_engagement_per_post_per_user": {
+        "top10": 0.3,
+        "top20": 0.5
+      },
+      "gt_top10pct_share_total_engagement": 0.7617115938236064,
+      "sim_top10pct_share_total_engagement": 0.45864661654135336,
+      "gt_top20pct_share_total_engagement": 0.9014655849254122,
+      "sim_top20pct_share_total_engagement": 0.6766917293233082
+    }
+  },
+  "official_post_engagement": {
+    "gt_official_post_count": 23,
+    "sim_official_post_count": 23,
+    "gt_total_engagement": 9588.0,
+    "sim_total_engagement": 11.0,
+    "gt_mean_engagement_per_post": 416.87,
+    "sim_mean_engagement_per_post": 0.48,
+    "spearman_engagement_per_post": -0.3738
+  },
+  "community_health": {
+    "total_persona_users": 40,
+    "total_community_posts": 280,
+    "total_community_engagement": 133,
+    "avg_engagement_per_community_post": 0.475,
+    "reply_rate": 0.1536,
+    "unanswered_post_rate": 0.7607,
+    "user_participation_rate": 1.0,
+    "peripheral_user_activation_rate": 1.0,
+    "follow_growth_per_timestep": 0.0
+  }
+}
